@@ -96,6 +96,22 @@ public:
     // ordering.
     std::vector<KnowledgeObjectId> allNodeIds() const;
 
+    // Every live edge id, in unspecified order — same caveat as
+    // allNodeIds(). Needed once a UI wants to list/manage relationships
+    // directly, not just traverse them from a node's perspective.
+    std::vector<RelationshipId> allEdgeIds() const;
+
+    // Public (not just an addEdge() implementation detail) specifically
+    // so callers can pre-flight-check before writing anything to
+    // persistence: "would the graph accept this edge?" This is what
+    // lets WorkspaceController reject a duplicate (including a
+    // symmetric type's reverse-pair, which the database's ordered
+    // UNIQUE constraint alone wouldn't catch) before any database
+    // write happens, rather than discovering the rejection only after
+    // the database has already accepted it.
+    bool hasDuplicateEdge(const KnowledgeObjectId& source, const KnowledgeObjectId& target,
+                            RelationshipType type) const;
+
     enum class Direction { Outgoing, Incoming, Both };
 
     // Returns the ids of nodes connected to `id`, optionally filtered
@@ -130,8 +146,6 @@ private:
         std::optional<Relationship> relationship;  // nullopt => tombstoned
     };
 
-    bool hasDuplicateEdge(const KnowledgeObjectId& source, const KnowledgeObjectId& target,
-                            RelationshipType type) const;
     void indexEdge(size_t edgeIndex);
     void unindexEdge(size_t edgeIndex);
 

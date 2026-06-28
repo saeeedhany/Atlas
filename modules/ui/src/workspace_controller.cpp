@@ -69,7 +69,7 @@ Result<KnowledgeObjectId, ControllerFailure> WorkspaceController::createKnowledg
             {ControllerErrorCode::GraphInconsistency, "addNode failed after a successful save"});
     }
 
-    emit knowledgeObjectAdded(id);
+    emit graphChanged();
     return Result<KnowledgeObjectId, ControllerFailure>::ok(id);
 }
 
@@ -113,7 +113,7 @@ Result<void, ControllerFailure> WorkspaceController::updateKnowledgeObject(
             {ControllerErrorCode::GraphInconsistency, "updateNode failed after a successful save"});
     }
 
-    emit knowledgeObjectUpdated(id);
+    emit graphChanged();
     return Result<void, ControllerFailure>::ok();
 }
 
@@ -126,7 +126,65 @@ Result<void, ControllerFailure> WorkspaceController::removeKnowledgeObject(
     }
 
     graph_.removeNode(id);  // database is the source of truth; already removed there
-    emit knowledgeObjectRemoved(id);
+    emit graphChanged();
+    return Result<void, ControllerFailure>::ok();
+}
+
+Result<RelationshipId, ControllerFailure> WorkspaceController::createRelationship(
+    const KnowledgeObjectId& sourceId, const KnowledgeObjectId& targetId, RelationshipType type,
+    std::optional<std::string> note) {
+    if (sourceId == targetId) {
+        return Result<RelationshipId, ControllerFailure>::err(
+            {ControllerErrorCode::ValidationFailed, "A concept cannot have a relationship to itself"});
+    }
+    // Checked against the graph *before* writing anything: the database's
+    // UNIQUE(source_id, target_id, type) constraint doesn't catch a
+    // symmetric type's reverse-pair duplicate, but GraphEngine does.
+    // Checking here means that case is rejected before any database
+    // write, not discovered as an inconsistency after one.
+    if (graph_.hasDuplicateEdge(sourceId, targetId, type)) {
+        return Result<RelationshipId, ControllerFailure>::err(
+            {ControllerErrorCode::ValidationFailed,
+             "This relationship (or its symmetric equivalent) already exists"});
+    }
+
+    auto created = Relationship::create(sourceId, targetId, type, std::move(note));
+    if (!created.hasValue()) {
+        return Result<RelationshipId, ControllerFailure>::err(
+            {ControllerErrorCode::ValidationFailed, "A concept cannot have a relationship to itself"});
+    }
+    auto relationship = std::move(created).value();
+    auto id = relationship.id();
+
+    auto saveResult = relationshipRepository_.save(relationship);
+    if (!saveResult.hasValue()) {
+        return Result<RelationshipId, ControllerFailure>::err(
+            {ControllerErrorCode::PersistenceFailed, saveResult.error().detail});
+    }
+
+    auto graphResult = graph_.addEdge(std::move(relationship));
+    if (!graphResult.hasValue()) {
+        // Should be unreachable now that hasDuplicateEdge is checked
+        // up front — same reasoning as createKnowledgeObject's
+        // equivalent comment.
+        return Result<RelationshipId, ControllerFailure>::err(
+            {ControllerErrorCode::GraphInconsistency, "addEdge failed after a successful save"});
+    }
+
+    emit graphChanged();
+    return Result<RelationshipId, ControllerFailure>::ok(id);
+}
+
+Result<void, ControllerFailure> WorkspaceController::removeRelationship(
+    const RelationshipId& id) {
+    auto removeResult = relationshipRepository_.remove(id);
+    if (!removeResult.hasValue()) {
+        return Result<void, ControllerFailure>::err(
+            {ControllerErrorCode::PersistenceFailed, removeResult.error().detail});
+    }
+
+    graph_.removeEdge(id);  // database is the source of truth; already removed there
+    emit graphChanged();
     return Result<void, ControllerFailure>::ok();
 }
 
@@ -140,6 +198,21 @@ std::vector<KnowledgeObject> WorkspaceController::allKnowledgeObjects() const {
         return a.title() < b.title();
     });
     return objects;
+}
+
+std::vector<Relationship> WorkspaceController::allRelationships() const {
+    std::vector<Relationship> relationships;
+    for (const auto& id : graph_.allEdgeIds()) {
+        const Relationship* relationship = graph_.findEdge(id);
+        if (relationship != nullptr) relationships.push_back(*relationship);
+    }
+    // Chronological: relationships have no natural display name to
+    // sort by, but creation order is still deterministic and stable.
+    std::sort(relationships.begin(), relationships.end(),
+              [](const Relationship& a, const Relationship& b) {
+                  return a.createdAt() < b.createdAt();
+              });
+    return relationships;
 }
 
 std::optional<KnowledgeObject> WorkspaceController::findKnowledgeObject(

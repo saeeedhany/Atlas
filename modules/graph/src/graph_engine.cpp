@@ -38,6 +38,15 @@ std::vector<KnowledgeObjectId> GraphEngine::allNodeIds() const {
     return ids;
 }
 
+std::vector<RelationshipId> GraphEngine::allEdgeIds() const {
+    std::vector<RelationshipId> ids;
+    ids.reserve(edgeIndexById_.size());
+    for (const auto& [id, index] : edgeIndexById_) {
+        ids.push_back(id);
+    }
+    return ids;
+}
+
 bool GraphEngine::hasDuplicateEdge(const KnowledgeObjectId& source, const KnowledgeObjectId& target,
                                      RelationshipType type) const {
     auto sourceIt = nodeIndexById_.find(source);

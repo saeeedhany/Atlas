@@ -5,11 +5,7 @@ namespace atlas::ui {
 KnowledgeObjectListModel::KnowledgeObjectListModel(WorkspaceController& controller,
                                                      QObject* parent)
     : QAbstractListModel(parent), controller_(&controller) {
-    connect(controller_, &WorkspaceController::knowledgeObjectAdded, this,
-            &KnowledgeObjectListModel::refresh);
-    connect(controller_, &WorkspaceController::knowledgeObjectUpdated, this,
-            &KnowledgeObjectListModel::refresh);
-    connect(controller_, &WorkspaceController::knowledgeObjectRemoved, this,
+    connect(controller_, &WorkspaceController::graphChanged, this,
             &KnowledgeObjectListModel::refresh);
     refresh();
 }

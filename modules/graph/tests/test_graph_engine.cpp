@@ -253,6 +253,55 @@ TEST_CASE("allNodeIds returns exactly the set of live nodes") {
     CHECK(std::find(ids.begin(), ids.end(), bId) == ids.end());
 }
 
+TEST_CASE("allEdgeIds returns exactly the set of live edges") {
+    GraphEngine graph;
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    auto c = makeNode("C");
+    auto aId = a.id();
+    auto bId = b.id();
+    auto cId = c.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+    REQUIRE(graph.addNode(std::move(c)).hasValue());
+
+    auto edge1 = Relationship::create(aId, bId, RelationshipType::DependsOn).value();
+    auto edge2 = Relationship::create(bId, cId, RelationshipType::Uses).value();
+    auto edge1Id = edge1.id();
+    auto edge2Id = edge2.id();
+    REQUIRE(graph.addEdge(std::move(edge1)).hasValue());
+    REQUIRE(graph.addEdge(std::move(edge2)).hasValue());
+    REQUIRE(graph.removeEdge(edge1Id));
+
+    auto ids = graph.allEdgeIds();
+    CHECK(ids.size() == 1);
+    CHECK(ids.front() == edge2Id);
+}
+
+TEST_CASE("hasDuplicateEdge lets a caller pre-flight-check before writing anything") {
+    // This is what WorkspaceController relies on: check before any
+    // database write, rather than discovering a graph-level rejection
+    // only after persistence has already accepted it.
+    GraphEngine graph;
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    auto aId = a.id();
+    auto bId = b.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+
+    CHECK(!graph.hasDuplicateEdge(aId, bId, RelationshipType::RelatedTo));
+
+    REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::RelatedTo).value())
+                .hasValue());
+
+    CHECK(graph.hasDuplicateEdge(aId, bId, RelationshipType::RelatedTo));
+    // Symmetric type: the reverse pair is the same fact.
+    CHECK(graph.hasDuplicateEdge(bId, aId, RelationshipType::RelatedTo));
+    // Different type between the same pair is not a duplicate.
+    CHECK(!graph.hasDuplicateEdge(aId, bId, RelationshipType::DependsOn));
+}
+
 TEST_CASE("transitiveDependencies follows a chain and a diamond without duplicates") {
     GraphEngine graph;
     auto a = makeNode("A");

@@ -1,5 +1,6 @@
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/knowledge_object_repository.hpp"
+#include "atlas/persistence/relationship_repository.hpp"
 #include "atlas/ui/workspace_controller.hpp"
 #include "doctest.h"
 
@@ -50,14 +51,13 @@ TEST_CASE("createKnowledgeObject rejects an empty title without touching the gra
     CHECK(controller.allKnowledgeObjects().empty());
 }
 
-TEST_CASE("createKnowledgeObject emits knowledgeObjectAdded exactly once") {
+TEST_CASE("createKnowledgeObject emits graphChanged exactly once") {
     auto db = openTestDatabase();
     WorkspaceController controller(db);
     REQUIRE(controller.load().hasValue());
 
     int signalCount = 0;
-    QObject::connect(&controller, &WorkspaceController::knowledgeObjectAdded,
-                      [&](KnowledgeObjectId) { ++signalCount; });
+    QObject::connect(&controller, &WorkspaceController::graphChanged, [&]() { ++signalCount; });
 
     REQUIRE(controller.createKnowledgeObject("Recursion").hasValue());
     CHECK(signalCount == 1);
@@ -169,4 +169,98 @@ TEST_CASE("load() populates the graph from data already in the database") {
     auto all = controller.allKnowledgeObjects();
     REQUIRE(all.size() == 1);
     CHECK(all.front().title() == "Seeded From Disk");
+}
+
+TEST_CASE("createRelationship persists and adds to the graph") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    auto a = controller.createKnowledgeObject("Stack").value();
+    auto b = controller.createKnowledgeObject("Recursion").value();
+
+    auto result = controller.createRelationship(a, b, RelationshipType::Uses,
+                                                  std::string{"a note"});
+    REQUIRE(result.hasValue());
+
+    auto all = controller.allRelationships();
+    REQUIRE(all.size() == 1);
+    CHECK(all.front().sourceId() == a);
+    CHECK(all.front().targetId() == b);
+    CHECK(all.front().type() == RelationshipType::Uses);
+
+    RelationshipRepository repo(db);
+    auto persisted = repo.findById(result.value());
+    REQUIRE(persisted.hasValue());
+    CHECK(persisted.value().has_value());
+}
+
+TEST_CASE("createRelationship rejects a self-loop") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+    auto a = controller.createKnowledgeObject("A").value();
+
+    auto result = controller.createRelationship(a, a, RelationshipType::DependsOn, std::nullopt);
+    CHECK(!result.hasValue());
+    CHECK(result.error().code == ControllerErrorCode::ValidationFailed);
+}
+
+TEST_CASE("createRelationship rejects a duplicate before writing to the database") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+    auto a = controller.createKnowledgeObject("A").value();
+    auto b = controller.createKnowledgeObject("B").value();
+
+    REQUIRE(controller.createRelationship(a, b, RelationshipType::RelatedTo, std::nullopt)
+                .hasValue());
+
+    // Reverse pair, symmetric type — same fact, must be rejected even
+    // though a naive ordered UNIQUE constraint wouldn't catch it.
+    auto result = controller.createRelationship(b, a, RelationshipType::RelatedTo, std::nullopt);
+    CHECK(!result.hasValue());
+    CHECK(result.error().code == ControllerErrorCode::ValidationFailed);
+
+    RelationshipRepository repo(db);
+    auto all = repo.findAll();
+    REQUIRE(all.hasValue());
+    CHECK(all.value().size() == 1);  // the rejected attempt never reached the database
+}
+
+TEST_CASE("removeRelationship removes from both the graph and the database") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+    auto a = controller.createKnowledgeObject("A").value();
+    auto b = controller.createKnowledgeObject("B").value();
+    auto relId =
+        controller.createRelationship(a, b, RelationshipType::Causes, std::nullopt).value();
+
+    REQUIRE(controller.removeRelationship(relId).hasValue());
+
+    CHECK(controller.allRelationships().empty());
+
+    RelationshipRepository repo(db);
+    auto persisted = repo.findById(relId);
+    REQUIRE(persisted.hasValue());
+    CHECK(!persisted.value().has_value());
+}
+
+TEST_CASE("removing a KnowledgeObject cascades and the relationship list reflects it") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+    auto a = controller.createKnowledgeObject("A").value();
+    auto b = controller.createKnowledgeObject("B").value();
+    REQUIRE(controller.createRelationship(a, b, RelationshipType::DependsOn, std::nullopt)
+                .hasValue());
+
+    REQUIRE(controller.removeKnowledgeObject(a).hasValue());
+
+    // This is exactly the cascade scenario that motivated collapsing
+    // to one graphChanged signal — removeKnowledgeObject never emits
+    // anything relationship-specific, so a view that only refreshed on
+    // a (now-removed) relationshipRemoved signal would have missed it.
+    CHECK(controller.allRelationships().empty());
 }

@@ -8,6 +8,7 @@
 
 #include "atlas/core/enums.hpp"
 #include "atlas/core/knowledge_object.hpp"
+#include "atlas/core/relationship.hpp"
 #include "atlas/core/result.hpp"
 #include "atlas/graph/graph_engine.hpp"
 #include "atlas/persistence/database.hpp"
@@ -21,6 +22,9 @@ using atlas::core::ConfidenceLevel;
 using atlas::core::Difficulty;
 using atlas::core::KnowledgeObject;
 using atlas::core::KnowledgeObjectId;
+using atlas::core::Relationship;
+using atlas::core::RelationshipId;
+using atlas::core::RelationshipType;
 using atlas::core::Result;
 
 // Optional fields only: every field the dialog doesn't touch is left
@@ -69,17 +73,45 @@ public:
                                                             KnowledgeObjectEdits edits);
     Result<void, ControllerFailure> removeKnowledgeObject(const KnowledgeObjectId& id);
 
-    // Snapshot, sorted alphabetically by title — GraphEngine itself
-    // has no opinion on display order (its allNodeIds() is hash-map
-    // ordered), so the controller imposes one here, since this is the
-    // layer that knows it's serving a UI list.
+    // Rejects a self-loop and rejects a duplicate — including, for a
+    // symmetric type, the same pair stored in reverse order — by
+    // checking the in-memory graph *before* writing anything, via
+    // GraphEngine::hasDuplicateEdge(). That ordering means a rejection
+    // is never discovered only after the database has already
+    // accepted a row the graph wouldn't have.
+    Result<RelationshipId, ControllerFailure> createRelationship(
+        const KnowledgeObjectId& sourceId, const KnowledgeObjectId& targetId, RelationshipType type,
+        std::optional<std::string> note);
+    Result<void, ControllerFailure> removeRelationship(const RelationshipId& id);
+
+    // Snapshots, sorted for deterministic display — GraphEngine itself
+    // has no opinion on ordering (its allNodeIds()/allEdgeIds() are
+    // hash-map ordered), so the controller imposes one here, since
+    // this is the layer that knows it's serving a UI list.
     std::vector<KnowledgeObject> allKnowledgeObjects() const;
+    std::vector<Relationship> allRelationships() const;
     std::optional<KnowledgeObject> findKnowledgeObject(const KnowledgeObjectId& id) const;
 
+    // Read-only access to the underlying graph, for consumers that
+    // need to reason about structure directly (e.g. GraphWindow's
+    // layout computation). Every write still goes through this
+    // class's own validated methods above — this accessor can't be
+    // used to bypass the write-database-first ordering, since
+    // GraphEngine itself has no persistence awareness to bypass.
+    const atlas::graph::GraphEngine& graph() const { return graph_; }
+
 signals:
-    void knowledgeObjectAdded(atlas::core::KnowledgeObjectId id);
-    void knowledgeObjectUpdated(atlas::core::KnowledgeObjectId id);
-    void knowledgeObjectRemoved(atlas::core::KnowledgeObjectId id);
+    // One signal for every kind of change, not one per
+    // operation/entity. The earlier design had
+    // knowledgeObjectAdded/Updated/Removed, and adding
+    // relationshipAdded/Removed alongside them would have made five —
+    // and removeKnowledgeObject's cascade (deleting relationships that
+    // touched the removed object) would silently never have fired any
+    // relationship-specific signal for those cascaded removals. A
+    // single signal that every dependent view treats as "go refresh
+    // yourself" can't miss a cascade, because there's nothing
+    // fine-grained to forget to wire up.
+    void graphChanged();
 
 private:
     atlas::persistence::Database* database_;
