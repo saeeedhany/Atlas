@@ -47,7 +47,8 @@ KnowledgeObject::KnowledgeObject(StorageRecord record)
       difficulty_(record.difficulty),
       confidence_(record.confidence),
       createdAt_(record.createdAt),
-      updatedAt_(record.updatedAt) {}
+      updatedAt_(record.updatedAt),
+      topicId_(record.topicId) {}
 
 void KnowledgeObject::touch() { updatedAt_ = std::chrono::system_clock::now(); }
 
@@ -102,6 +103,11 @@ void KnowledgeObject::setDifficulty(Difficulty difficulty) {
 
 void KnowledgeObject::setConfidence(ConfidenceLevel confidence) {
     confidence_ = confidence;
+    touch();
+}
+
+void KnowledgeObject::assignToTopic(TopicId topicId) {
+    topicId_ = topicId;
     touch();
 }
 

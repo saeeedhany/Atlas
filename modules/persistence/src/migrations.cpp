@@ -21,7 +21,7 @@ struct Migration {
 // migration that's already been released, only append new ones. The
 // schema_migrations table is what lets us tell, for any given .db file
 // on a person's disk, exactly which of these has already been applied.
-constexpr std::array<Migration, 1> kMigrations{{
+constexpr std::array<Migration, 2> kMigrations{{
     {1, "Initial schema: knowledge objects, relationships, and child content tables", R"sql(
         CREATE TABLE knowledge_objects (
             id TEXT PRIMARY KEY,
@@ -74,6 +74,38 @@ constexpr std::array<Migration, 1> kMigrations{{
         );
         CREATE INDEX idx_relationships_source_id ON relationships(source_id);
         CREATE INDEX idx_relationships_target_id ON relationships(target_id);
+    )sql"},
+    {2, "Topics: a KnowledgeObject belongs to exactly one Topic", R"sql(
+        CREATE TABLE topics (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+
+        -- Fixed id (the nil UUID — see atlas::core::uncategorizedTopicId()),
+        -- not a generated one: every pre-existing KnowledgeObject gets
+        -- backfilled into this one topic below, and the app needs to
+        -- be able to name that same topic from C++ without a round
+        -- trip through storage first.
+        INSERT INTO topics (id, name, description, created_at, updated_at)
+        VALUES ('00000000-0000-0000-0000-000000000000', 'Uncategorized', '',
+                CAST(strftime('%s','now') AS INTEGER) * 1000,
+                CAST(strftime('%s','now') AS INTEGER) * 1000);
+
+        ALTER TABLE knowledge_objects ADD COLUMN topic_id TEXT REFERENCES topics(id);
+
+        -- Nullable at the schema level (SQLite can't cheaply add a
+        -- NOT NULL column with no default to an existing table without
+        -- a full table rebuild) — "every object has a topic" is
+        -- enforced in code, at the WorkspaceController boundary, the
+        -- same way KnowledgeObject's own invariants are enforced in
+        -- code rather than by the schema.
+        UPDATE knowledge_objects SET topic_id = '00000000-0000-0000-0000-000000000000'
+            WHERE topic_id IS NULL;
+
+        CREATE INDEX idx_knowledge_objects_topic_id ON knowledge_objects(topic_id);
     )sql"},
 }};
 

@@ -36,9 +36,25 @@ std::optional<atlas::core::KnowledgeObjectId> KnowledgeObjectListModel::idAt(int
     return items_[static_cast<size_t>(row)].id();
 }
 
+void KnowledgeObjectListModel::setSearchQuery(QString query) {
+    searchQuery_ = std::move(query);
+    refresh();
+}
+
+void KnowledgeObjectListModel::setTopicFilter(std::optional<atlas::core::TopicId> topicId) {
+    topicFilter_ = topicId;
+    refresh();
+}
+
 void KnowledgeObjectListModel::refresh() {
     beginResetModel();
-    items_ = controller_->allKnowledgeObjects();
+    items_ = searchQuery_.isEmpty() ? controller_->allKnowledgeObjects()
+                                      : controller_->search(searchQuery_.toStdString());
+    if (topicFilter_.has_value()) {
+        std::erase_if(items_, [this](const atlas::core::KnowledgeObject& object) {
+            return !object.topicId().has_value() || *object.topicId() != *topicFilter_;
+        });
+    }
     endResetModel();
 }
 

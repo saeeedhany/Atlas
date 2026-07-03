@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "atlas/core/knowledge_object.hpp"
+#include "atlas/core/topic.hpp"
 #include "atlas/ui/workspace_controller.hpp"
 
 namespace atlas::ui {
@@ -32,12 +33,31 @@ public:
     // MainWindow that owns this model), never by QML or a delegate.
     std::optional<atlas::core::KnowledgeObjectId> idAt(int row) const;
 
+    // Empty = show everything (alphabetical, via
+    // WorkspaceController::allKnowledgeObjects()). Non-empty = ranked
+    // search results via WorkspaceController::search(). Triggers an
+    // immediate refresh() — the model doesn't wait for the next
+    // graphChanged signal to apply a new query.
+    void setSearchQuery(QString query);
+    const QString& currentQuery() const { return searchQuery_; }
+
+    // std::nullopt = show every KnowledgeObject in the workspace
+    // regardless of topic (the pre-topics behavior, and still what an
+    // unscoped GraphWindow/KnowledgeObjectPanel gets). Set = intersect
+    // whatever the query would otherwise show with topic membership,
+    // so search-within-a-topic composes for free rather than needing
+    // its own code path. Triggers an immediate refresh(), same as
+    // setSearchQuery().
+    void setTopicFilter(std::optional<atlas::core::TopicId> topicId);
+
 public slots:
     void refresh();
 
 private:
     WorkspaceController* controller_;
     std::vector<atlas::core::KnowledgeObject> items_;
+    QString searchQuery_;
+    std::optional<atlas::core::TopicId> topicFilter_;
 };
 
 }  // namespace atlas::ui

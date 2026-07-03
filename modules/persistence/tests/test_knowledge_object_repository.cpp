@@ -1,5 +1,6 @@
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/knowledge_object_repository.hpp"
+#include "atlas/persistence/topic_repository.hpp"
 #include "doctest.h"
 
 using namespace atlas::persistence;
@@ -135,4 +136,70 @@ TEST_CASE("remove on a nonexistent id is not an error") {
     auto db = openTestDatabase();
     KnowledgeObjectRepository repo(db);
     CHECK(repo.remove(KnowledgeObjectId::generate()).hasValue());
+}
+
+TEST_CASE("An object with no topic assigned round-trips with topicId() == nullopt") {
+    auto db = openTestDatabase();
+    KnowledgeObjectRepository repo(db);
+
+    auto created = KnowledgeObject::create("Unsorted Concept");
+    REQUIRE(created.hasValue());
+    auto object = std::move(created).value();
+    REQUIRE(repo.save(object).hasValue());
+
+    auto found = repo.findById(object.id());
+    REQUIRE(found.hasValue());
+    REQUIRE(found.value().has_value());
+    CHECK(!found.value()->topicId().has_value());
+}
+
+TEST_CASE("An object's assigned topic round-trips through save/findById") {
+    auto db = openTestDatabase();
+    KnowledgeObjectRepository repo(db);
+    TopicRepository topics(db);
+
+    auto createdTopic = Topic::create("Operating Systems");
+    REQUIRE(createdTopic.hasValue());
+    auto topic = std::move(createdTopic).value();
+    REQUIRE(topics.save(topic).hasValue());
+
+    auto created = KnowledgeObject::create("Paging");
+    REQUIRE(created.hasValue());
+    auto object = std::move(created).value();
+    object.assignToTopic(topic.id());
+    REQUIRE(repo.save(object).hasValue());
+
+    auto found = repo.findById(object.id());
+    REQUIRE(found.hasValue());
+    REQUIRE(found.value().has_value());
+    REQUIRE(found.value()->topicId().has_value());
+    CHECK(*found.value()->topicId() == topic.id());
+}
+
+TEST_CASE("Reassigning an object to a new topic and re-saving updates topic_id, not just in memory") {
+    auto db = openTestDatabase();
+    KnowledgeObjectRepository repo(db);
+    TopicRepository topics(db);
+
+    auto firstTopic = Topic::create("Operating Systems");
+    auto secondTopic = Topic::create("Databases");
+    REQUIRE(firstTopic.hasValue());
+    REQUIRE(secondTopic.hasValue());
+    REQUIRE(topics.save(firstTopic.value()).hasValue());
+    REQUIRE(topics.save(secondTopic.value()).hasValue());
+
+    auto created = KnowledgeObject::create("Virtual Memory");
+    REQUIRE(created.hasValue());
+    auto object = std::move(created).value();
+    object.assignToTopic(firstTopic.value().id());
+    REQUIRE(repo.save(object).hasValue());
+
+    object.assignToTopic(secondTopic.value().id());
+    REQUIRE(repo.save(object).hasValue());  // same id -> update, not a second row
+
+    auto all = repo.findAll();
+    REQUIRE(all.hasValue());
+    REQUIRE(all.value().size() == 1);
+    REQUIRE(all.value().front().topicId().has_value());
+    CHECK(*all.value().front().topicId() == secondTopic.value().id());
 }

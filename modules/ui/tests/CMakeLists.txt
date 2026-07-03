@@ -2,10 +2,14 @@ add_executable(atlas_ui_tests
     test_main.cpp
     test_workspace_controller.cpp
     test_knowledge_object_list_model.cpp
+    test_knowledge_object_panel.cpp
     test_relationship_list_model.cpp
     test_relationship_edit_dialog.cpp
+    test_roadmap_dialog.cpp
+    test_project_suggestions_dialog.cpp
     test_main_window.cpp
     test_graph_window.cpp
+    test_topic_selector_widget.cpp
 )
 
 target_link_libraries(atlas_ui_tests PRIVATE atlas_ui)

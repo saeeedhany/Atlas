@@ -26,9 +26,11 @@ private:
 
 struct KnowledgeObjectTag {};
 struct RelationshipTag {};
+struct TopicTag {};
 
 using KnowledgeObjectId = StrongId<KnowledgeObjectTag>;
 using RelationshipId = StrongId<RelationshipTag>;
+using TopicId = StrongId<TopicTag>;
 
 }  // namespace atlas::core
 

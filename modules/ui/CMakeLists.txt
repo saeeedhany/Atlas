@@ -9,21 +9,29 @@ set(CMAKE_AUTOMOC ON)
 
 add_library(atlas_ui STATIC
     include/atlas/ui/workspace_controller.hpp
+    include/atlas/ui/knowledge_object_panel.hpp
     include/atlas/ui/knowledge_object_list_model.hpp
     include/atlas/ui/knowledge_object_edit_dialog.hpp
     include/atlas/ui/relationship_edit_dialog.hpp
     include/atlas/ui/relationship_list_model.hpp
+    include/atlas/ui/roadmap_dialog.hpp
+    include/atlas/ui/project_suggestions_dialog.hpp
     include/atlas/ui/main_window.hpp
     include/atlas/ui/graph_window.hpp
     include/atlas/ui/relationships_window.hpp
+    include/atlas/ui/topic_selector_widget.hpp
     src/workspace_controller.cpp
+    src/knowledge_object_panel.cpp
     src/knowledge_object_list_model.cpp
     src/knowledge_object_edit_dialog.cpp
     src/relationship_edit_dialog.cpp
     src/relationship_list_model.cpp
+    src/roadmap_dialog.cpp
+    src/project_suggestions_dialog.cpp
     src/main_window.cpp
     src/graph_window.cpp
     src/relationships_window.cpp
+    src/topic_selector_widget.cpp
 )
 
 target_include_directories(atlas_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

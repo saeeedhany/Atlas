@@ -10,7 +10,7 @@
 namespace atlas::ui {
 
 RelationshipsWindow::RelationshipsWindow(WorkspaceController& controller, QWidget* parent)
-    : QWidget(parent), controller_(&controller) {
+    : QWidget(parent, Qt::Window), controller_(&controller) {
     setWindowTitle("Atlas - Relationships");
 
     model_ = new RelationshipListModel(controller, this);

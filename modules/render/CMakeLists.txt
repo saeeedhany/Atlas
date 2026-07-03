@@ -16,7 +16,9 @@ if (ATLAS_BUILD_UI)
 
     add_library(atlas_render_canvas STATIC
         include/atlas/render/graph_canvas_item.hpp
+        include/atlas/render/theme.hpp
         src/graph_canvas_item.cpp
+        src/theme.cpp
     )
     target_include_directories(atlas_render_canvas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_compile_features(atlas_render_canvas PUBLIC cxx_std_20)

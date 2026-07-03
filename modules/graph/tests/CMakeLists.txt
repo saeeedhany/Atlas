@@ -2,6 +2,7 @@ add_executable(atlas_graph_tests
     test_main.cpp
     test_graph_engine.cpp
     test_graph_engine_scale.cpp
+    test_project_suggestions.cpp
 )
 
 target_link_libraries(atlas_graph_tests PRIVATE atlas_graph)

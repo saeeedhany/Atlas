@@ -7,6 +7,8 @@ add_library(atlas_core STATIC
     src/enums.cpp
     src/knowledge_object.cpp
     src/relationship.cpp
+    src/topic.cpp
+    src/search.cpp
 )
 
 target_include_directories(atlas_core PUBLIC

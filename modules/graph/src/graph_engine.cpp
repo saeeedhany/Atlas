@@ -47,6 +47,33 @@ std::vector<RelationshipId> GraphEngine::allEdgeIds() const {
     return ids;
 }
 
+std::vector<KnowledgeObjectId> GraphEngine::search(std::string_view query) const {
+    if (query.empty()) return allNodeIds();
+
+    std::vector<std::pair<int, KnowledgeObjectId>> scored;
+    scored.reserve(nodeIndexById_.size());
+    for (const auto& [id, index] : nodeIndexById_) {
+        const auto& slot = nodes_[index];
+        if (!slot.object.has_value()) continue;
+        auto score = atlas::core::matchScore(*slot.object, query);
+        if (score.has_value()) scored.emplace_back(*score, id);
+    }
+
+    std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+        if (a.first != b.first) return a.first > b.first;  // higher score first
+        // Deterministic tie-break: nodeIndexById_ is a hash map, so
+        // without this, two identical searches could return ties in a
+        // different order just because of iteration order — making
+        // results look like they're "jumping around" for no reason.
+        return a.second.toString() < b.second.toString();
+    });
+
+    std::vector<KnowledgeObjectId> result;
+    result.reserve(scored.size());
+    for (const auto& [score, id] : scored) result.push_back(id);
+    return result;
+}
+
 bool GraphEngine::hasDuplicateEdge(const KnowledgeObjectId& source, const KnowledgeObjectId& target,
                                      RelationshipType type) const {
     auto sourceIt = nodeIndexById_.find(source);
@@ -215,11 +242,16 @@ std::vector<KnowledgeObjectId> GraphEngine::usedBy(const KnowledgeObjectId& id) 
     return neighbors(id, RelationshipType::DependsOn, Direction::Incoming);
 }
 
-std::vector<KnowledgeObjectId> GraphEngine::transitiveDependencies(
-    const KnowledgeObjectId& id) const {
-    std::vector<KnowledgeObjectId> result;
-    if (!nodeIndexById_.contains(id)) return result;
+namespace {
 
+// Shared BFS core for transitiveDependencies/transitiveDependents —
+// they differ only in which direction they walk (dependsOn vs.
+// usedBy), so the traversal itself is factored out once rather than
+// duplicated.
+template <typename NeighborFn>
+std::vector<KnowledgeObjectId> transitiveClosure(const KnowledgeObjectId& id,
+                                                    NeighborFn neighborsOf) {
+    std::vector<KnowledgeObjectId> result;
     std::unordered_set<KnowledgeObjectId> visited;
     std::queue<KnowledgeObjectId> frontier;
     frontier.push(id);
@@ -228,7 +260,7 @@ std::vector<KnowledgeObjectId> GraphEngine::transitiveDependencies(
     while (!frontier.empty()) {
         auto current = frontier.front();
         frontier.pop();
-        for (const auto& next : dependsOn(current)) {
+        for (const auto& next : neighborsOf(current)) {
             if (visited.insert(next).second) {
                 result.push_back(next);
                 frontier.push(next);
@@ -236,6 +268,23 @@ std::vector<KnowledgeObjectId> GraphEngine::transitiveDependencies(
         }
     }
     return result;
+}
+
+}  // namespace
+
+std::vector<KnowledgeObjectId> GraphEngine::transitiveDependencies(
+    const KnowledgeObjectId& id) const {
+    if (!nodeIndexById_.contains(id)) return {};
+    return transitiveClosure(id, [this](const KnowledgeObjectId& current) {
+        return dependsOn(current);
+    });
+}
+
+std::vector<KnowledgeObjectId> GraphEngine::transitiveDependents(
+    const KnowledgeObjectId& id) const {
+    if (!nodeIndexById_.contains(id)) return {};
+    return transitiveClosure(
+        id, [this](const KnowledgeObjectId& current) { return usedBy(current); });
 }
 
 Result<std::vector<KnowledgeObjectId>, GraphError> GraphEngine::topologicalOrder() const {
@@ -273,6 +322,80 @@ Result<std::vector<KnowledgeObjectId>, GraphError> GraphEngine::topologicalOrder
         return Result<std::vector<KnowledgeObjectId>, GraphError>::err(GraphError::CycleDetected);
     }
     return Result<std::vector<KnowledgeObjectId>, GraphError>::ok(std::move(order));
+}
+
+Result<std::vector<KnowledgeObjectId>, GraphError> GraphEngine::learningRoadmapFor(
+    const KnowledgeObjectId& id) const {
+    if (!nodeIndexById_.contains(id)) {
+        return Result<std::vector<KnowledgeObjectId>, GraphError>::err(GraphError::UnknownNode);
+    }
+
+    auto fullOrderResult = topologicalOrder();
+    if (!fullOrderResult.hasValue()) {
+        return Result<std::vector<KnowledgeObjectId>, GraphError>::err(fullOrderResult.error());
+    }
+
+    // The scope: id itself plus everything it transitively depends on.
+    // A std::unordered_set membership check keeps the filter below
+    // O(1) per entry rather than O(scope size) per entry.
+    auto deps = transitiveDependencies(id);
+    std::unordered_set<KnowledgeObjectId> scope(deps.begin(), deps.end());
+    scope.insert(id);
+
+    std::vector<KnowledgeObjectId> roadmap;
+    roadmap.reserve(scope.size());
+    for (const auto& nodeId : fullOrderResult.value()) {
+        if (scope.contains(nodeId)) roadmap.push_back(nodeId);
+    }
+    return Result<std::vector<KnowledgeObjectId>, GraphError>::ok(std::move(roadmap));
+}
+
+std::vector<GraphEngine::ProjectSuggestion> GraphEngine::suggestProjects(
+    const TopicId& topicId) const {
+    std::vector<ProjectSuggestion> suggestions;
+
+    for (const auto& [id, index] : nodeIndexById_) {
+        const auto& slot = nodes_[index];
+        if (!slot.object.has_value()) continue;
+        const auto& object = *slot.object;
+
+        if (!object.topicId().has_value() || !(*object.topicId() == topicId)) continue;
+        if (object.miniProjects().empty()) continue;
+        if (object.confidence() == atlas::core::ConfidenceLevel::Mastered) continue;
+
+        auto prerequisites = dependsOn(id);
+        double readiness = 1.0;
+        if (!prerequisites.empty()) {
+            int readyCount = 0;
+            for (const auto& prereqId : prerequisites) {
+                const auto* prereq = findNode(prereqId);
+                if (prereq == nullptr) continue;
+                if (prereq->confidence() == atlas::core::ConfidenceLevel::Confident ||
+                    prereq->confidence() == atlas::core::ConfidenceLevel::Mastered) {
+                    ++readyCount;
+                }
+            }
+            readiness = static_cast<double>(readyCount) / static_cast<double>(prerequisites.size());
+        }
+
+        int leverage = static_cast<int>(transitiveDependents(id).size());
+
+        suggestions.push_back(ProjectSuggestion{id, readiness, leverage});
+    }
+
+    std::sort(suggestions.begin(), suggestions.end(),
+              [](const ProjectSuggestion& a, const ProjectSuggestion& b) {
+                  double scoreA = a.readiness * (1.0 + a.leverage);
+                  double scoreB = b.readiness * (1.0 + b.leverage);
+                  if (scoreA != scoreB) return scoreA > scoreB;
+                  // Deterministic tie-break — same reasoning as
+                  // search()'s tie-break: nodeIndexById_ is a hash map,
+                  // so without this, identical inputs could produce a
+                  // different order across runs.
+                  return a.conceptId.toString() < b.conceptId.toString();
+              });
+
+    return suggestions;
 }
 
 }  // namespace atlas::graph

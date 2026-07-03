@@ -278,6 +278,50 @@ TEST_CASE("allEdgeIds returns exactly the set of live edges") {
     CHECK(ids.front() == edge2Id);
 }
 
+TEST_CASE("search with an empty query returns every live node, unranked") {
+    GraphEngine graph;
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+
+    auto results = graph.search("");
+    CHECK(results.size() == 2);
+}
+
+TEST_CASE("search ranks a title match above a definition-only match") {
+    GraphEngine graph;
+    auto titleMatch = KnowledgeObject::create("Tail Call", "unrelated text").value();
+    auto definitionMatch =
+        KnowledgeObject::create("Unrelated Title", "involves a tail call somewhere").value();
+    auto titleMatchId = titleMatch.id();
+    auto definitionMatchId = definitionMatch.id();
+    REQUIRE(graph.addNode(std::move(titleMatch)).hasValue());
+    REQUIRE(graph.addNode(std::move(definitionMatch)).hasValue());
+
+    auto results = graph.search("tail call");
+    REQUIRE(results.size() == 2);
+    CHECK(results.front() == titleMatchId);
+    CHECK(results.back() == definitionMatchId);
+}
+
+TEST_CASE("search excludes nodes that don't match and never includes removed nodes") {
+    GraphEngine graph;
+    auto match = KnowledgeObject::create("Recursion").value();
+    auto noMatch = KnowledgeObject::create("Unrelated").value();
+    auto removed = KnowledgeObject::create("Recursion Removed").value();
+    auto matchId = match.id();
+    auto removedId = removed.id();
+    REQUIRE(graph.addNode(std::move(match)).hasValue());
+    REQUIRE(graph.addNode(std::move(noMatch)).hasValue());
+    REQUIRE(graph.addNode(std::move(removed)).hasValue());
+    REQUIRE(graph.removeNode(removedId));
+
+    auto results = graph.search("recursion");
+    CHECK(results.size() == 1);
+    CHECK(results.front() == matchId);
+}
+
 TEST_CASE("hasDuplicateEdge lets a caller pre-flight-check before writing anything") {
     // This is what WorkspaceController relies on: check before any
     // database write, rather than discovering a graph-level rejection
@@ -378,4 +422,106 @@ TEST_CASE("topologicalOrder detects a cycle") {
     auto orderResult = graph.topologicalOrder();
     CHECK(!orderResult.hasValue());
     CHECK(orderResult.error() == GraphError::CycleDetected);
+}
+
+TEST_CASE("learningRoadmapFor rejects an unknown id") {
+    GraphEngine graph;
+    auto result = graph.learningRoadmapFor(KnowledgeObjectId::generate());
+    CHECK(!result.hasValue());
+    CHECK(result.error() == GraphError::UnknownNode);
+}
+
+TEST_CASE("learningRoadmapFor a node with no dependencies is just that node") {
+    GraphEngine graph;
+    auto a = makeNode("Standalone");
+    auto aId = a.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+
+    auto result = graph.learningRoadmapFor(aId);
+    REQUIRE(result.hasValue());
+    REQUIRE(result.value().size() == 1);
+    CHECK(result.value().front() == aId);
+}
+
+TEST_CASE("learningRoadmapFor orders prerequisites before the target, and excludes unrelated nodes") {
+    GraphEngine graph;
+    auto a = makeNode("A");  // target: depends on B
+    auto b = makeNode("B");  // depends on C
+    auto c = makeNode("C");  // no dependencies
+    auto unrelated = makeNode("Unrelated");  // not connected to A at all
+    auto aId = a.id();
+    auto bId = b.id();
+    auto cId = c.id();
+    auto unrelatedId = unrelated.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+    REQUIRE(graph.addNode(std::move(c)).hasValue());
+    REQUIRE(graph.addNode(std::move(unrelated)).hasValue());
+
+    REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value())
+                .hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(bId, cId, RelationshipType::DependsOn).value())
+                .hasValue());
+
+    auto result = graph.learningRoadmapFor(aId);
+    REQUIRE(result.hasValue());
+    const auto& roadmap = result.value();
+
+    REQUIRE(roadmap.size() == 3);  // A, B, C — not the unrelated node
+    CHECK(std::find(roadmap.begin(), roadmap.end(), unrelatedId) == roadmap.end());
+
+    auto position = [&](const KnowledgeObjectId& id) {
+        return std::distance(roadmap.begin(), std::find(roadmap.begin(), roadmap.end(), id));
+    };
+    CHECK(position(cId) < position(bId));
+    CHECK(position(bId) < position(aId));
+    // The roadmap's whole point: the target itself is always last.
+    CHECK(roadmap.back() == aId);
+}
+
+TEST_CASE("learningRoadmapFor a diamond dependency includes the shared prerequisite once") {
+    GraphEngine graph;
+    auto a = makeNode("A");  // depends on B and C
+    auto b = makeNode("B");  // depends on D
+    auto c = makeNode("C");  // depends on D
+    auto d = makeNode("D");
+    auto aId = a.id();
+    auto bId = b.id();
+    auto cId = c.id();
+    auto dId = d.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+    REQUIRE(graph.addNode(std::move(c)).hasValue());
+    REQUIRE(graph.addNode(std::move(d)).hasValue());
+
+    REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value())
+                .hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(aId, cId, RelationshipType::DependsOn).value())
+                .hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(bId, dId, RelationshipType::DependsOn).value())
+                .hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(cId, dId, RelationshipType::DependsOn).value())
+                .hasValue());
+
+    auto result = graph.learningRoadmapFor(aId);
+    REQUIRE(result.hasValue());
+    CHECK(result.value().size() == 4);  // A, B, C, D — D counted once despite two paths
+}
+
+TEST_CASE("learningRoadmapFor reports a cycle if the target's dependency chain has one") {
+    GraphEngine graph;
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    auto aId = a.id();
+    auto bId = b.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value())
+                .hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(bId, aId, RelationshipType::DependsOn).value())
+                .hasValue());
+
+    auto result = graph.learningRoadmapFor(aId);
+    CHECK(!result.hasValue());
+    CHECK(result.error() == GraphError::CycleDetected);
 }

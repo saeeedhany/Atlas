@@ -5,15 +5,13 @@
 #include <QQuickItem>
 #include <QString>
 
+#include <unordered_set>
 #include <vector>
+
+#include "atlas/render/theme.hpp"
 
 namespace atlas::render {
 
-// Plain data the canvas needs to draw — deliberately decoupled from
-// GraphEngine/KnowledgeObject. GraphCanvasItem only knows how to draw
-// circles-as-quads and lines; it has no idea what a "knowledge object"
-// is. Whoever owns the canvas (atlas-ui's GraphWindow) is responsible
-// for converting graph + layout data into this shape.
 struct RenderNode {
     QString id;
     double x = 0.0;
@@ -28,16 +26,6 @@ struct RenderEdge {
     double y2 = 0.0;
 };
 
-// Hand-built Qt Quick scene graph rendering: all nodes are one batched
-// QSGGeometryNode (DrawTriangles), all edges another (DrawLines) — one
-// GPU draw call each, regardless of node count. This is the whole
-// reason this milestone chose Qt Quick over Qt Widgets' QGraphicsView:
-// QGraphicsView does CPU-side per-item work that doesn't batch this way.
-//
-// Pan/zoom never touches this geometry — they only update a
-// QSGTransformNode's matrix, which costs nothing on the CPU side. Only
-// setGraphData() (called when the underlying graph structurally
-// changes or layout is recomputed) rebuilds the actual vertex buffers.
 class GraphCanvasItem : public QQuickItem {
     Q_OBJECT
 
@@ -46,33 +34,77 @@ public:
 
     void setGraphData(std::vector<RenderNode> nodes, std::vector<RenderEdge> edges);
 
+    // Switches the canvas's own palette (background, dots, edges,
+    // selection rings). Does NOT retint already-set node colors —
+    // those were baked into RenderNode::color by whoever called
+    // setGraphData (see GraphWindow::colorForDifficulty), since node
+    // color is a semantic mapping this class has no opinion on. Callers
+    // that want nodes retinted too should re-call setGraphData after
+    // switching. Safe to call before the item has painted anything.
+    void setTheme(ThemeMode mode);
+    ThemeMode theme() const { return themeMode_; }
+
+    // Highlight a specific node and its neighborhood. `selectedId` is
+    // rendered with an accent ring (drawn as a slightly larger quad
+    // underneath in white). Everything in `neighborIds` renders at
+    // full brightness; everything else is dimmed to make the
+    // neighborhood stand out. Call clearHighlight() to return to the
+    // flat "all nodes equal" rendering.
+    void setHighlight(const QString& selectedId, const std::unordered_set<QString>& neighborIds);
+    void clearHighlight();
+
+signals:
+    // Emitted when the user clicks a node. `id` is the
+    // KnowledgeObjectId UUID string (same value stored in RenderNode).
+    // Emitting a string rather than a KnowledgeObjectId directly keeps
+    // atlas-render free of a dependency on atlas-core.
+    void nodeClicked(QString id);
+
+    // Right-click on a node — distinct from nodeClicked (left-click)
+    // since they trigger different actions (select-and-highlight vs.
+    // a context menu). Not emitted for a right-click on empty space.
+    void nodeRightClicked(QString id);
+
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
+    void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
 
 private:
+    // Returns the index into nodes_ of the node at world-space point,
+    // or -1 if nothing was hit.
+    int hitTest(double worldX, double worldY) const;
+
     std::vector<RenderNode> nodes_;
     std::vector<RenderEdge> edges_;
     bool dataDirty_ = true;
 
-    // Camera state. Deliberately simple for this milestone: zoom is
-    // centered on the origin, not the cursor — a real polish item for
-    // later, not pretended-away here.
+    // Highlight state. Empty selectedId_ means no selection active.
+    QString selectedId_;
+    std::unordered_set<QString> neighborIds_;
+    bool highlightDirty_ = false;
+
     double offsetX_ = 0.0;
     double offsetY_ = 0.0;
     double scale_ = 1.0;
 
     bool dragging_ = false;
+    bool dragMoved_ = false;  // distinguishes a click from a drag-release
     QPointF lastMousePos_;
+
+    // The dotted background is drawn in screen space, not world space
+    // (see graph_canvas_item.cpp for why): its vertex count is bounded
+    // by viewport pixel area / dot spacing, not by graph size or zoom
+    // level, so it stays cheap to rebuild on every pan/zoom frame —
+    // unlike the node/edge geometry, which only rebuilds on a real
+    // structural change (see dataDirty_).
+    ThemeMode themeMode_ = ThemeMode::Dark;
+    bool backgroundDirty_ = true;
 };
 
-// Manual qmlRegisterType call rather than the QML_ELEMENT macro +
-// qt_add_qml_module CMake integration — fewer moving parts, no
-// dependency on a specific Qt6 minor version's module-registration
-// machinery. Call once, before loading any QML that uses GraphCanvas.
 void registerGraphCanvasQmlType();
 
 }  // namespace atlas::render

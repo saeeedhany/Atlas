@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,21 @@ public:
         ConfidenceLevel confidence;
         std::chrono::system_clock::time_point createdAt;
         std::chrono::system_clock::time_point updatedAt;
+
+        // Trailing and defaulted deliberately: this field was added
+        // after StorageRecord already had many positional-brace-init
+        // call sites across every module's tests (see
+        // docs/DECISIONS.md's "enums are stored as text" entry for the
+        // general spirit — small, deliberate storage-shape decisions
+        // documented in one place). A default member initializer lets
+        // every existing `StorageRecord{a, b, c, ...}` call keep
+        // compiling unchanged; only call sites that need to set a
+        // topic actually mention this field. std::optional, not a bare
+        // TopicId, because "not yet assigned to a topic" is a real
+        // state a KnowledgeObject can be in transiently (see
+        // assignToTopic()) even though every object reachable through
+        // WorkspaceController ends up with one.
+        std::optional<TopicId> topicId = std::nullopt;
     };
 
     // Rebuilds a KnowledgeObject from a previously-saved StorageRecord
@@ -72,6 +88,15 @@ public:
     void setDifficulty(Difficulty difficulty);
     void setConfidence(ConfidenceLevel confidence);
 
+    // No validation possible to fail here (unlike renameTo) — every
+    // TopicId is equally valid as far as this class can tell; whether
+    // it refers to a Topic that actually exists is a WorkspaceController/
+    // repository-layer concern, the same division of responsibility as
+    // Relationship's self-loop check (intrinsic, lives on the class)
+    // vs. its duplicate-edge check (needs the whole graph, lives on
+    // the controller).
+    void assignToTopic(TopicId topicId);
+
     const KnowledgeObjectId& id() const { return id_; }
     const std::string& title() const { return title_; }
     const std::string& definition() const { return definition_; }
@@ -85,6 +110,7 @@ public:
     ConfidenceLevel confidence() const { return confidence_; }
     std::chrono::system_clock::time_point createdAt() const { return createdAt_; }
     std::chrono::system_clock::time_point updatedAt() const { return updatedAt_; }
+    const std::optional<TopicId>& topicId() const { return topicId_; }
 
 private:
     explicit KnowledgeObject(StorageRecord record);
@@ -104,6 +130,7 @@ private:
     ConfidenceLevel confidence_;
     std::chrono::system_clock::time_point createdAt_;
     std::chrono::system_clock::time_point updatedAt_;
+    std::optional<TopicId> topicId_;
 };
 
 }  // namespace atlas::core

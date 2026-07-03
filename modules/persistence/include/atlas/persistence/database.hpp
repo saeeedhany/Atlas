@@ -37,6 +37,7 @@ private:
     // rather than becoming part of the public surface.
     friend class KnowledgeObjectRepository;
     friend class RelationshipRepository;
+    friend class TopicRepository;
 
     explicit Database(sqlite3* handle);
     sqlite3* handle() const { return handle_; }

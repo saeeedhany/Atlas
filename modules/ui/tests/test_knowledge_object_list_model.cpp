@@ -65,3 +65,53 @@ TEST_CASE("idAt returns the matching KnowledgeObjectId, and nullopt out of range
     CHECK(!model.idAt(1).has_value());
     CHECK(!model.idAt(-1).has_value());
 }
+
+TEST_CASE("setSearchQuery filters the model to matching results, ranked by relevance") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    REQUIRE(controller.createKnowledgeObject("Recursion").hasValue());
+    REQUIRE(controller.createKnowledgeObject("Linked List").hasValue());
+
+    KnowledgeObjectListModel model(controller);
+    REQUIRE(model.rowCount() == 2);
+
+    model.setSearchQuery("recursion");
+    REQUIRE(model.rowCount() == 1);
+    CHECK(model.data(model.index(0, 0)).toString() == "Recursion");
+}
+
+TEST_CASE("clearing the search query restores the full alphabetical list") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    REQUIRE(controller.createKnowledgeObject("Zebra").hasValue());
+    REQUIRE(controller.createKnowledgeObject("Apple").hasValue());
+
+    KnowledgeObjectListModel model(controller);
+    model.setSearchQuery("zebra");
+    REQUIRE(model.rowCount() == 1);
+
+    model.setSearchQuery("");
+    REQUIRE(model.rowCount() == 2);
+    CHECK(model.data(model.index(0, 0)).toString() == "Apple");  // alphabetical again
+}
+
+TEST_CASE("the model stays current with an active search query across a graphChanged refresh") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    KnowledgeObjectListModel model(controller);
+    model.setSearchQuery("recursion");
+    REQUIRE(model.rowCount() == 0);
+
+    // A newly created object that matches the active query should
+    // appear without anyone needing to re-call setSearchQuery — the
+    // existing graphChanged -> refresh() wiring already re-applies
+    // whatever query is currently set.
+    REQUIRE(controller.createKnowledgeObject("Recursion").hasValue());
+    CHECK(model.rowCount() == 1);
+}

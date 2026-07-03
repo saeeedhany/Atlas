@@ -3,12 +3,14 @@
 #include <cstddef>
 #include <deque>
 #include <optional>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 #include "atlas/core/knowledge_object.hpp"
 #include "atlas/core/relationship.hpp"
 #include "atlas/core/result.hpp"
+#include "atlas/core/search.hpp"
 #include "atlas/graph/graph_error.hpp"
 
 namespace atlas::graph {
@@ -19,6 +21,7 @@ using atlas::core::Relationship;
 using atlas::core::RelationshipId;
 using atlas::core::RelationshipType;
 using atlas::core::Result;
+using atlas::core::TopicId;
 
 // In-memory index over KnowledgeObjects and Relationships. Owns no
 // storage of its own beyond what's added via addNode/addEdge — this is
@@ -101,6 +104,15 @@ public:
     // directly, not just traverse them from a node's perspective.
     std::vector<RelationshipId> allEdgeIds() const;
 
+    // Ranks every live node by atlas::core::matchScore() against
+    // `query`, highest score first, with a deterministic tie-break (by
+    // id string) so two identical searches never return a different
+    // order just because of hash-map iteration order. An empty query
+    // returns every live node, unranked — "show everything," not
+    // "rank everything as equally relevant," since there's no
+    // meaningful ranking to apply against nothing.
+    std::vector<KnowledgeObjectId> search(std::string_view query) const;
+
     // Public (not just an addEdge() implementation detail) specifically
     // so callers can pre-flight-check before writing anything to
     // persistence: "would the graph accept this edge?" This is what
@@ -132,11 +144,57 @@ public:
     // BFS over outgoing DependsOn edges. Does not include `id` itself.
     std::vector<KnowledgeObjectId> transitiveDependencies(const KnowledgeObjectId& id) const;
 
+    // The mirror of transitiveDependencies: BFS over incoming
+    // DependsOn edges (i.e. usedBy()) — every concept that
+    // transitively depends on `id`, directly or indirectly. Does not
+    // include `id` itself. This is the "how much does mastering this
+    // concept unlock elsewhere" query — used as the leverage signal in
+    // suggestProjects(), but useful as a general primitive on its own
+    // (e.g. "what would break, conceptually, if I forgot this").
+    std::vector<KnowledgeObjectId> transitiveDependents(const KnowledgeObjectId& id) const;
+
     // Kahn's algorithm over the DependsOn subgraph. Foundational
-    // primitive for learning-roadmap generation (M6) — ordering
-    // concepts so every dependency comes before its dependents.
-    // Returns GraphError::CycleDetected if DependsOn isn't a DAG.
+    // primitive for learning-roadmap generation — ordering concepts
+    // so every dependency comes before its dependents. Returns
+    // GraphError::CycleDetected if DependsOn isn't a DAG.
     Result<std::vector<KnowledgeObjectId>, GraphError> topologicalOrder() const;
+
+    // The actual "what should I learn, in what order" primitive: the
+    // full graph's topological order, restricted to just `id` and its
+    // transitive dependency closure — not the whole graph. Without
+    // this restriction, asking for a roadmap "to learn X" would
+    // surface every unrelated concept in the workspace that happens to
+    // have no dependencies, which isn't what "roadmap for X" means.
+    // The result is ordered so the last entry is always `id` itself
+    // (assuming no cycle) and every entry before it is a prerequisite,
+    // each one appearing only after all of *its* prerequisites have.
+    Result<std::vector<KnowledgeObjectId>, GraphError> learningRoadmapFor(
+        const KnowledgeObjectId& id) const;
+
+    // A single ranked suggestion: which concept, and why it's worth
+    // doing next. `readiness` is the fraction (0.0-1.0) of the
+    // concept's direct DependsOn prerequisites that are already
+    // Confident or Mastered (1.0 if it has none). `leverage` is the
+    // number of other concepts that transitively depend on this one —
+    // a rough proxy for "how much does practicing this unlock
+    // elsewhere." Both are exposed, not just the final score, so a UI
+    // can explain *why* something was suggested, not just present a
+    // ranked list with no justification.
+    struct ProjectSuggestion {
+        KnowledgeObjectId conceptId;
+        double readiness;
+        int leverage;
+    };
+
+    // Ranks every concept in `topicId` that (a) has at least one
+    // MiniProject and (b) isn't already Mastered, by
+    // readiness * (1 + leverage), highest first, with a deterministic
+    // tie-break (by id string). Concepts with no MiniProjects are
+    // never suggested regardless of how well-connected they are —
+    // there's nothing to actually go *do*. This is a pure function of
+    // graph structure + each object's own fields; no AI involved (that
+    // is deliberately a separate, later feature — see docs/DECISIONS.md).
+    std::vector<ProjectSuggestion> suggestProjects(const TopicId& topicId) const;
 
 private:
     struct NodeSlot {

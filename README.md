@@ -34,6 +34,16 @@ Concepts never store their own relationships as fields. "Depends On"
 and "Used By" look like attributes but are actually graph edges — see
 [Architecture](#architecture) for why that distinction is load-bearing.
 
+Every Knowledge Object belongs to exactly one **Topic** — a named,
+top-level grouping ("Operating Systems," "Databases," "Distributed
+Systems"). Topics don't nest. Relationships can't cross Topic
+boundaries — connecting two concepts is only meaningful within the
+scope you're actively mapping, and cross-topic edges would make a
+single Topic's graph impossible to reason about on its own. Every
+pre-existing Knowledge Object (and everything created without an
+explicit Topic) lives in a fixed "Uncategorized" bucket seeded on
+first run.
+
 ## What a Relationship is
 
 A directed, typed edge between two Knowledge Objects:
@@ -53,18 +63,21 @@ the duplicate-detection notes in `docs/DECISIONS.md`).
 |---|---|
 | Knowledge Object CRUD | **Built** |
 | Relationship CRUD | **Built** (via list selection, not canvas clicks — see below) |
+| Topics (top-level grouping, scoped relationships) | **Built** |
 | SQLite storage, offline-first | **Built** |
 | Interactive graph canvas, pan/zoom | **Built** |
 | Large graph support (10,000+ nodes) | **Built and load-tested** — see Current State below |
-| Dependency visualization (topological ordering) | Algorithm **built** (`GraphEngine::topologicalOrder`); no UI yet |
-| Fast search | Not built |
-| Relationship highlighting | Not built |
-| Learning roadmap generation | Not built (the topological-sort primitive it needs already exists) |
-| Project suggestions | Not built |
+| Dependency visualization (topological ordering) | **Built** — right-click a node on the canvas for a scoped, ordered dependency chain |
+| Fast search | **Built** — ranked, case-insensitive, ~200ms even at 10,000 nodes (see Current State) |
+| Relationship highlighting | **Built** — click a node on the canvas to highlight it and its immediate neighbors; click empty space to clear |
+| Canvas-click node selection | **Built** — click to select; drag still pans, distinguished by a movement threshold |
+| Learning roadmap generation | **Built** — `learningRoadmapFor()` combines topological order with one node's dependency closure; same right-click action as dependency visualization above, since these turned out to be one feature, not two (see `docs/DECISIONS.md`) |
+| Unified window (list + canvas together, topic-scoped) | **Built** — topic selector as the landing page, workspace view (panel + canvas) reachable per-topic, with a fade transition between them |
+| Dark/light theme | **Built** — one four-color palette, two derived modes, applied via a scoped stylesheet |
+| Project suggestions | **Built** — ranked by readiness (are the prerequisites already known) and leverage (how much does mastering this unlock elsewhere), scoped to a Topic, computed entirely from graph structure — no AI |
 | AI-assisted relationship suggestions | Not built |
 | Plugin architecture | Not built |
 | Cross-platform packaging | Not built — Linux-developed only so far, no Windows/macOS verification |
-| Canvas-click node selection | Not built — relationships are created via list selection instead |
 
 ## Architecture
 
@@ -76,12 +89,13 @@ framework, the rendering backend, or the storage engine layered on top
 of it.
 
 ```
-atlas-core         domain model: KnowledgeObject, Relationship, value types
+atlas-core         domain model: KnowledgeObject, Relationship, Topic,
+                    value types
                     - zero dependencies on Qt, SQLite, or OpenGL
 
 atlas-persistence   SQLite storage: schema migrations, one repository
                     per aggregate (KnowledgeObjectRepository,
-                    RelationshipRepository)
+                    RelationshipRepository, TopicRepository)
                     - depends on atlas-core + SQLite only
 
 atlas-graph         in-memory index over the domain model: O(1) id
@@ -94,11 +108,13 @@ atlas-graph         in-memory index over the domain model: O(1) id
 atlas-render        force-directed layout (Qt-free) + the Qt Quick
                     rendering canvas (hand-built scene graph nodes -
                     one GPU draw call for all nodes, one for all edges)
+                    + Theme (a four-color palette, two derived modes)
                     - depends on atlas-core + atlas-graph
 
 atlas-ui            WorkspaceController (the only class that touches
                     both persistence and the graph), and every Qt
-                    Widgets window/dialog
+                    Widgets window/dialog, including the topic
+                    selector and the unified workspace view
                     - depends on everything above
 
 atlas-app           the composition root: opens the real database file,
@@ -120,21 +136,23 @@ UndefinedBehaviorSanitizer. As of this writing:
 
 | Module | Test cases | Assertions |
 |---|---|---|
-| `atlas-core` | 31 | 118 |
-| `atlas-persistence` | 15 | 116 |
-| `atlas-graph` | 19 | 20,620 |
+| `atlas-core` | 48 | 171 |
+| `atlas-persistence` | 26 | 186 |
+| `atlas-graph` | 36 | 20,726 |
 | `atlas-render` | 7 | 20,030 |
-| `atlas-ui` | 30 | 169 |
-| **Total** | **102** | **~41,000** |
+| `atlas-ui` | 72 | 419 |
+| **Total** | **189** | **~41,500** |
 
 (`atlas-graph` and `atlas-render`'s assertion counts are dominated by
 their 10,000-node scale tests, which assert per-node correctness, not
-102 hand-written checks.)
+174 hand-written checks.)
 
 **Load-tested, not just unit-tested, at the scale the spec actually
 asks for:**
 - `GraphEngine` holds 10,000 nodes and ~30,000 edges and runs a full
   BFS traversal + topological sort over them in well under a second.
+- `GraphEngine::search()` ranks all 10,000 nodes by relevance in
+  ~200ms — under sanitizer overhead; faster in Release.
 - `ForceDirectedLayout` computes a full 50-iteration layout pass over
   the same graph in ~525ms in a Release build — after a real
   algorithmic correction (naive O(n^2) repulsion measured at **10.8
@@ -145,30 +163,27 @@ asks for:**
   pan/zoom stays smooth independent of graph size.
 
 **What actually works end-to-end right now, if you build and run it:**
-create a Knowledge Object (title-only, then flesh it out via Edit),
-connect two of them with a typed relationship and an optional note,
-open the Graph View to see the result laid out and navigable (drag to
-pan, scroll to zoom), delete things, restart the app and have it all
-still be there.
+open the app to a Topics landing page, create a Topic, create Knowledge
+Objects inside it (title-only, then flesh them out via Edit), connect
+two of them with a typed relationship and an optional note, see the
+result laid out live in the same window (drag to pan, scroll to zoom,
+click a node to highlight its neighborhood, right-click for a learning
+roadmap), switch between dark and light theme, delete things, restart
+the app and have it all still be there.
 
 **Known, deliberate gaps — not oversights:**
-- The list view and the graph canvas are two separate windows, not one
-  unified layout.
-- Relationships are created by selecting a row in the list and picking
-  a target from a dialog, not by clicking two nodes on the canvas — the
-  canvas has no click-to-select node picking built yet (every click
-  currently just pans).
-- No search, no relationship highlighting, no roadmap generation UI,
-  no AI suggestions, no plugin system. The graph engine has the
-  primitives several of these need (topological sort, transitive
-  dependency traversal) already built and tested; the UI for them
-  doesn't exist yet.
+- No AI suggestions, no plugin system.
+- No UI for adding Examples/MiniProjects/References to a Knowledge
+  Object yet — `KnowledgeObject::addMiniProject()` etc. exist at the
+  domain layer and are fully persisted/queried, but the edit dialog
+  doesn't expose them, so populating them currently requires going
+  through `atlas-persistence`'s repositories directly (as the tests
+  for project suggestions do).
 - Cross-platform packaging hasn't been attempted — built and tested on
   Linux only so far.
 - No threading: all database/graph operations run synchronously on the
-  UI thread. Fine at current data volumes (sub-second even at 10k
-  nodes); will need revisiting before anything long-running (AI calls,
-  large imports) lands.
+  UI thread. Fine at current data volumes; will need revisiting before
+  anything long-running (AI calls, large imports) lands.
 
 ## Engineering principles actually followed, not just stated
 
@@ -231,21 +246,18 @@ Linux).
 
 ## Roadmap
 
-Originally planned as M0-M9; M0-M4 plus a relationship-creation
-addendum are done. Next, in the order they were last agreed on:
+The core interactive knowledge graph is complete: Topics, Knowledge
+Objects, typed Relationships, search, highlighting, dependency
+visualization, roadmap generation, project suggestions, a unified
+themed window. What remains:
 
-1. **Search** — fast lookup across Knowledge Objects by title/content.
-2. **Relationship highlighting** — select a node, see its dependency
-   neighborhood lit up on the canvas.
-3. **Dependency visualization** — surface `GraphEngine::topologicalOrder`
-   and `transitiveDependencies` in the UI, not just in tests.
-4. **Learning roadmap generation** — the actual point of the
-   topological sort primitive: turn "what should I learn, in what
-   order" into a real feature.
-5. Canvas-click node picking, then unifying the list and graph windows.
-6. Project suggestions, AI-assisted relationship suggestions, plugin
-   architecture, cross-platform packaging — in roughly that order, per
-   the original milestone plan.
+1. UI for Examples/MiniProjects/References on a Knowledge Object —
+   currently domain-complete but not editable through the app itself.
+2. AI-assisted relationship suggestions — local heuristics first,
+   optional online model when available (see the offline-first vs. AI
+   posture decided early in this project).
+3. Plugin architecture — sandboxed, versioned, offline-safe.
+4. Cross-platform packaging.
 
 For the detailed "why does this specific thing look this way" history
 — every bug found, every algorithmic correction, every cross-module

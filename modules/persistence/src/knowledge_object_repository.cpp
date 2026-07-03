@@ -32,8 +32,8 @@ Result<void, PersistenceError> upsertMainRow(sqlite3* db, const KnowledgeObject&
     auto statementResult = detail::Statement::prepare(db, R"sql(
         INSERT INTO knowledge_objects
             (id, title, definition, problem_solved, why_it_exists, notes,
-             difficulty, confidence, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             difficulty, confidence, created_at, updated_at, topic_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             definition = excluded.definition,
@@ -42,7 +42,8 @@ Result<void, PersistenceError> upsertMainRow(sqlite3* db, const KnowledgeObject&
             notes = excluded.notes,
             difficulty = excluded.difficulty,
             confidence = excluded.confidence,
-            updated_at = excluded.updated_at;
+            updated_at = excluded.updated_at,
+            topic_id = excluded.topic_id;
     )sql");
     if (!statementResult.hasValue()) {
         return Result<void, PersistenceError>::err(std::move(statementResult).error());
@@ -59,6 +60,10 @@ Result<void, PersistenceError> upsertMainRow(sqlite3* db, const KnowledgeObject&
     statement.bindText(8, toDisplayString(object.confidence()));
     statement.bindInt64(9, toMillis(object.createdAt()));
     statement.bindInt64(10, toMillis(object.updatedAt()));
+    statement.bindOptionalText(
+        11, object.topicId().has_value()
+                ? std::optional<std::string>(object.topicId()->toString())
+                : std::nullopt);
 
     auto stepResult = statement.step();
     if (!stepResult.hasValue()) {
@@ -218,6 +223,18 @@ Result<KnowledgeObject, PersistenceError> rowToObject(sqlite3* db, detail::State
             PersistenceErrorCode::ConstraintViolation, "knowledge_objects row has a malformed id: " + id});
     }
 
+    std::optional<atlas::core::TopicId> topicId;
+    auto topicIdText = statement.columnOptionalText(10);
+    if (topicIdText.has_value()) {
+        auto parsedTopicId = atlas::core::Uuid::parse(*topicIdText);
+        if (!parsedTopicId.has_value()) {
+            return Result<KnowledgeObject, PersistenceError>::err(PersistenceError{
+                PersistenceErrorCode::ConstraintViolation,
+                "knowledge_objects row " + id + " has a malformed topic_id: " + *topicIdText});
+        }
+        topicId = atlas::core::TopicId(*parsedTopicId);
+    }
+
     KnowledgeObject::StorageRecord record{
         KnowledgeObjectId(*parsedId),
         statement.columnText(1),
@@ -231,7 +248,8 @@ Result<KnowledgeObject, PersistenceError> rowToObject(sqlite3* db, detail::State
         *difficulty,
         *confidence,
         fromMillis(statement.columnInt64(8)),
-        fromMillis(statement.columnInt64(9))};
+        fromMillis(statement.columnInt64(9)),
+        topicId};
 
     auto reconstructed = KnowledgeObject::reconstruct(std::move(record));
     if (!reconstructed.hasValue()) {
@@ -244,7 +262,7 @@ Result<KnowledgeObject, PersistenceError> rowToObject(sqlite3* db, detail::State
 
 constexpr const char* kSelectColumns =
     "id, title, definition, problem_solved, why_it_exists, notes, difficulty, confidence, "
-    "created_at, updated_at";
+    "created_at, updated_at, topic_id";
 
 }  // namespace
 

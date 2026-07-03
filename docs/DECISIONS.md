@@ -8,6 +8,226 @@ underneath it.
 
 Organized by module, roughly in the order each decision arose.
 
+## Project suggestions
+
+- **The ranking heuristic lives in `atlas-graph`, not `atlas-ui` or
+  `atlas-core`.** It's a pure computation over graph structure —
+  readiness needs `dependsOn()`, leverage needs the new
+  `transitiveDependents()` — the same category as
+  `topologicalOrder()`/`learningRoadmapFor()`, and for the same reason:
+  keeping it testable with synthetic graphs, no Qt or SQLite involved.
+- **No AI in v1, on purpose — not a placeholder for "AI later," a
+  deliberate separate milestone.** The whole ranking (readiness ×
+  leverage, filtered to concepts with a MiniProject and not already
+  Mastered) is computable from data already in the graph. AI-assisted
+  suggestions are explicitly the *next* roadmap item, not this one —
+  conflating them would have meant either shipping nothing until an AI
+  integration existed, or building a heuristic and quietly calling it
+  "AI" when it isn't.
+- **`transitiveDependents()` is the mirror of `transitiveDependencies()`
+  — added as a new public primitive, not inlined into
+  `suggestProjects()`.** Both are BFS over `DependsOn` edges in
+  opposite directions (dependsOn vs. usedBy), so the traversal itself
+  was factored into one shared private `transitiveClosure()` helper
+  rather than duplicating the loop — the same "don't duplicate a BFS
+  that already exists" instinct that produced
+  `learningRoadmapFor()` reusing `transitiveDependencies()` earlier.
+  `transitiveDependents()` is useful on its own beyond this feature
+  (e.g. "what would break if I forgot this concept"), so it's public,
+  not a suggestProjects()-only implementation detail.
+- **A hard filter, not just a scoring factor, for "has at least one
+  MiniProject."** A highly-leveraged, fully-ready concept with zero
+  MiniProjects would score arbitrarily high under readiness × leverage
+  alone, but there's nothing to actually go *do* — suggesting it would
+  be pointing at an empty room. Filtered out before scoring, not scored
+  low and hoping it sorts to the bottom.
+- **Readiness and leverage are both exposed on `ProjectSuggestion`,
+  not just the final rank.** A ranked list with no visible reasoning
+  reads as arbitrary; showing "80% ready, unlocks 3 other concepts"
+  lets the dialog explain *why* something was suggested, which matters
+  more for a feature whose entire value proposition is guiding what to
+  do next.
+- **`WorkspaceController::ProjectSuggestion` is a distinct struct from
+  `GraphEngine::ProjectSuggestion`, not a re-export.** Same
+  resolve-and-wrap pattern as `roadmapFor()`: the graph-layer struct
+  holds a bare `KnowledgeObjectId`; the UI-layer struct holds the
+  resolved `KnowledgeObject` so a dialog can show its title and
+  MiniProjects without a second lookup. The field originally named
+  `concept` had to be renamed to `knowledgeObject` — `concept` is a
+  reserved keyword in C++20 (concepts, the language feature), and the
+  compiler error surfaced as a bizarre "too many initializers"
+  downstream of the real parse failure, not as an obvious "reserved
+  word" message.
+
+## Topics, unified window, and theming
+
+- **A KnowledgeObject belongs to exactly one Topic; Topics don't
+  nest.** Nesting was real future scope, not this pass's — a flat
+  namespace was enough to make "OS," "Databases," "Distributed
+  Systems" distinct maps without the added complexity of a tree
+  (reparenting, cycle checks, depth limits) that nothing yet demands.
+- **Relationships can't cross Topic boundaries — enforced in
+  `WorkspaceController`, not on `Relationship` or `KnowledgeObject`
+  themselves.** Same split as the duplicate-edge and self-loop checks
+  from earlier: an app-level rule about how two objects may relate,
+  not something intrinsic to either class. All the checks —
+  self-loop, duplicate (including a symmetric type's reverse pair),
+  and now cross-topic — run against the in-memory graph before
+  anything is written, so a rejection is never discovered only after
+  the database already accepted a row.
+- **Migration 2 backfills a fixed "Uncategorized" topic using the nil
+  UUID as its id**, not a freshly generated one. Every pre-existing
+  KnowledgeObject needs a topic the moment this migration runs, and
+  the fixed id means the app can reference "the Uncategorized topic"
+  from C++ (`uncategorizedTopicId()`) without a database round trip —
+  it's the same id on every machine's database, deterministically.
+  `topic_id` stays nullable at the SQL level (SQLite can't cheaply add
+  a `NOT NULL` column with no default to an existing table without a
+  full rebuild); "every object has a topic" is enforced in code at the
+  `WorkspaceController` boundary instead, the same way `KnowledgeObject`'s
+  own invariants are.
+- **`TopicRepository` has no in-memory cache the way
+  `KnowledgeObject`/`Relationship` have `GraphEngine`.** Topics don't
+  participate in graph traversal — they don't nest, don't have edges
+  of their own — and at the scale a person actually has topics (dozens,
+  not thousands), querying the repository directly on every call is
+  simpler than a cache and can't go stale, with no real performance
+  cost to weigh against that simplicity.
+- **`topicsChanged` is a separate signal from `graphChanged`, not
+  folded into it** — a deliberate exception to the earlier "collapse
+  everything into one signal" pattern from the relationship-creation
+  work. That collapse was about not missing a cascade; this is about
+  not doing wasted work. `TopicSelectorWidget` cares about
+  `topicsChanged` and not `graphChanged`; the workspace panel and
+  canvas care about `graphChanged` and not `topicsChanged`. Folding
+  them together would mean every topic rename triggers a full graph
+  relayout in whichever topic happens to be open at the time — an
+  unrelated observer paying a real cost, not a case where something
+  could be silently missed.
+- **The topic selector and the workspace view are two pages of one
+  `QStackedWidget` inside `MainWindow`, not two windows.** Consistent
+  with the earlier decision to unify the list and canvas into one
+  window rather than several utility windows — adding a third
+  top-level window for topic selection would have reintroduced the
+  same problem in a new place. The page swap itself
+  (`switchToPage`/`stack_->setCurrentWidget`) is synchronous and
+  never gated behind animation completion — a fade-in runs on top of
+  it as a cosmetic layer, but `stack_->currentWidget()` is already the
+  new page the instant the call returns, with no event-loop pumping
+  required. That matters for tests: relying on an animation's
+  `finished` signal to know when a page swap is "done" would need a
+  running event loop to ever fire, the same timing trap the
+  empty-state `currentWidget()` (not `isVisible()`) decision avoided
+  earlier in this project.
+- **The dark/light stylesheet is scoped to specific widget classes,
+  not a blanket `QWidget` selector.** Qt stylesheets cascade to every
+  descendant; the edit/relationship/roadmap dialogs are all parented
+  under `MainWindow`, so a blanket rule would silently theme their
+  backgrounds dark while their own `QLabel`s kept default-palette
+  (often black) text — unreadable, and not something anyone asked for.
+  Those dialogs intentionally keep the OS default style until they get
+  their own theming pass; the four-color palette (`Theme`) only
+  applies to the topic selector, the workspace panel, and the canvas.
+- **`Theme` is a plain data struct plus a `themeFor(mode)` lookup, not
+  a live-updating/observable theming system.** Two modes, both
+  precomputed once as static locals — cheap to call repeatedly (e.g.
+  once per `refreshGraph()`), no allocation, no signal/slot machinery
+  for "theme changed" beyond `MainWindow` re-applying the stylesheet
+  and calling `GraphWindow::setTheme()` directly on toggle. Difficulty
+  colors are the one deliberate exception to "everything comes from
+  the four-color palette" — they're a semantic mapping onto Beginner
+  through Expert, so they get their own tuned hues per mode rather
+  than being derived from Black/Brown/Coffee/Beige.
+
+## Dependency visualization and learning roadmap generation
+
+- **These turned out to be one feature, not two.** The original spec
+  listed "dependency visualization" and "learning roadmap generation"
+  as separate items. In practice, "what should I learn before X" and
+  "show me X's dependency order" are the same question — building them
+  as two separate UI flows would have meant building the same
+  underlying primitive twice. Combined into one right-click action.
+- **A real gap found while building the UI, not before:**
+  `GraphEngine::topologicalOrder()` operates on the *entire* graph's
+  `DependsOn` edges. A roadmap "to learn X" needs to be scoped to only
+  X's prerequisite chain — without that restriction, asking for a
+  roadmap to a beginner-level, dependency-free concept would still
+  surface every other disconnected concept in the workspace that also
+  happens to have no dependencies, since they'd all tie for "first" in
+  a global topological sort. `learningRoadmapFor()` fixes this by
+  intersecting the global topological order with
+  `transitiveDependencies(id) ∪ {id}` — O(1) membership checks via an
+  `unordered_set`, so the filter doesn't reintroduce the cost the
+  global sort already paid. `GraphEngine`'s existing tests never
+  caught this because they only ever asserted on the *global* ordering,
+  never on "the order restricted to one node's prerequisites."
+- **Right-click, not a third window or a toolbar button.** Canvas
+  click-selection already existed from the relationship-highlighting
+  work; right-click was the natural extension for a contextual action
+  on a specific node, rather than introducing a new selection mechanism
+  or a separate dialog flow to pick a target node from a list again.
+- **`RoadmapDialog` is read-only by design** — a plain numbered list,
+  no drag-to-reorder, no inline editing. The order is computed, not
+  authored; a UI that implied it could be rearranged by hand would
+  misrepresent what the feature actually does.
+- **A cycle in the dependency graph is reported as a dialog message,
+  not a crash or a silent empty list.** `GraphError::CycleDetected`
+  threads all the way from `GraphEngine::learningRoadmapFor()` through
+  `WorkspaceController::roadmapFor()`'s own `RoadmapErrorCode` (a
+  separate UI-facing enum, not a re-export of `GraphError` — `atlas-ui`
+  shouldn't need to know about `atlas-graph`'s internal error shape) up
+  to a `QMessageBox` telling the person their `DependsOn` graph has a
+  loop. This is a real, reachable state (it's trivial to accidentally
+  create a `DependsOn` cycle through the existing relationship UI), so
+  it needed a real, non-crashing answer.
+- **A second occurrence of the same "edit tool drops the next
+  `TEST_CASE` line" mistake from earlier sessions** happened twice
+  while adding these tests — once in `test_graph_engine.cpp`, once in
+  `test_workspace_controller.cpp`. Both times, an insertion edit
+  silently swallowed the following test's `TEST_CASE(...)` declaration,
+  leaving its body orphaned inside the previous test. Caught both times
+  by a brace-balance + `grep -c "^TEST_CASE"` sanity check before
+  trusting a clean compile — worth treating as a standing habit after
+  any insertion-style edit to a test file, not just when something
+  looks suspicious.
+
+## Search
+
+- **Matching logic lives in `atlas-core` as a pure, Qt-free scoring
+  function (`matchScore`), not in `atlas-graph` or `atlas-ui`.**
+  "Does this object's text match this query" doesn't need graph
+  structure or Qt — it's a property of a single `KnowledgeObject`.
+  `GraphEngine::search()` is a thin layer applying that function across
+  every live node and ranking the results; `WorkspaceController::search()`
+  resolves ids back to full objects, same pattern as
+  `allKnowledgeObjects()`.
+- **v1 searches Title/Definition/Problem Solved/Why It Exists/Notes —
+  not Examples/MiniProjects/References.** Those are comparatively
+  rarely where the differentiating text lives, and including them
+  means iterating nested vectors-of-structs for a benefit with no
+  evidence anyone needs it yet. Easy to extend later.
+- **Search results rank by relevance, not alphabetically — a
+  deliberate departure from `allKnowledgeObjects()`'s sort order.**
+  Title matches outweigh body matches; matching in two fields outranks
+  matching in only one. A deterministic tie-break (by id string) was
+  added specifically because `GraphEngine`'s internal storage is a hash
+  map — without it, two identical searches could return tied results in
+  a different order purely from hash-map iteration order, which would
+  make the list look like it's "jumping around" for no reason.
+- **An empty query is handled differently at each layer, on purpose.**
+  `matchScore()` returns `nullopt` for an empty query (an empty
+  substring trivially "matches" everything via `std::string::find`,
+  which isn't the behavior anyone wants). `GraphEngine::search("")`
+  returns every live node, unranked. `WorkspaceController::search("")`
+  explicitly delegates to `allKnowledgeObjects()` instead, so clearing
+  the search box gives back the same familiar alphabetical order the
+  plain list view uses — not `GraphEngine`'s hash-map order.
+- **Verified fast at the scale that mattered, not assumed fast.** Linear
+  scan, no indexing — and that's fine: ~200ms to rank all 10,000 nodes,
+  measured under ASan/UBSan overhead (faster in Release). No debouncing
+  added to the search box; there's no evidence it's needed at this cost
+  per keystroke.
+
 ## Why some things look the way they do
 
 - **IDs are UUIDs, not sequential integers** — so objects created in

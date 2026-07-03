@@ -68,6 +68,9 @@ TEST_CASE("GraphEngine handles 10,000 nodes and ~30,000 edges without an algorit
     auto topoResult = graph.topologicalOrder();
     auto afterTopoSort = std::chrono::steady_clock::now();
 
+    auto searchResults = graph.search("Concept 1");
+    auto afterSearch = std::chrono::steady_clock::now();
+
     auto ms = [](auto a, auto b) {
         return std::chrono::duration_cast<std::chrono::milliseconds>(b - a).count();
     };
@@ -78,7 +81,9 @@ TEST_CASE("GraphEngine handles 10,000 nodes and ~30,000 edges without an algorit
               << "[scale] transitiveDeps:   " << ms(afterEdges, afterTraversal) << " ms"
               << " (found " << deps.size() << ")\n"
               << "[scale] topologicalOrder: " << ms(afterTraversal, afterTopoSort) << " ms"
-              << " (cycle detected: " << (!topoResult.hasValue()) << ")\n";
+              << " (cycle detected: " << (!topoResult.hasValue()) << ")\n"
+              << "[scale] search:           " << ms(afterTopoSort, afterSearch) << " ms"
+              << " (found " << searchResults.size() << ")\n";
 
     CHECK(graph.nodeCount() == static_cast<size_t>(kNodeCount));
     CHECK(edgesAdded > 0);
@@ -89,4 +94,5 @@ TEST_CASE("GraphEngine handles 10,000 nodes and ~30,000 edges without an algorit
     CHECK(ms(start, afterEdges) < 5000);
     CHECK(ms(afterEdges, afterTraversal) < 2000);
     CHECK(ms(afterTraversal, afterTopoSort) < 2000);
+    CHECK(ms(afterTopoSort, afterSearch) < 1000);
 }
