@@ -29,6 +29,8 @@ struct Theme {
     QColor edgeDimmed;
     QColor selectedRing;
     QColor neighborRing;
+    QColor hoverRing;
+    QColor nodeBorder;
     std::array<QColor, 4> nodeDifficulty;  // indexed by atlas::core::Difficulty
 
     // --- Qt Widgets shell (panel, buttons, list) ---

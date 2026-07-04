@@ -53,7 +53,7 @@ TEST_CASE("the panel shows an empty-state placeholder until the first object is 
     KnowledgeObjectPanel panel(controller);
     auto* stack = panel.findChild<QStackedWidget*>();
     auto* listView = panel.findChild<QListView*>();
-    auto* label = panel.findChild<QLabel*>();
+    auto* label = panel.findChild<QLabel*>("emptyStateLabel");
     REQUIRE(stack != nullptr);
     REQUIRE(listView != nullptr);
     REQUIRE(label != nullptr);
@@ -74,7 +74,7 @@ TEST_CASE("typing in the search box filters the list and shows a search-specific
     auto* searchEdit = panel.findChild<QLineEdit*>();
     auto* stack = panel.findChild<QStackedWidget*>();
     auto* listView = panel.findChild<QListView*>();
-    auto* label = panel.findChild<QLabel*>();
+    auto* label = panel.findChild<QLabel*>("emptyStateLabel");
     REQUIRE(searchEdit != nullptr);
     REQUIRE(stack != nullptr);
 
@@ -180,4 +180,47 @@ TEST_CASE("the Suggest Projects button exists and needs no selection to be usabl
     }
     REQUIRE(suggestButton != nullptr);
     CHECK(suggestButton->isEnabled());
+}
+
+TEST_CASE("the panel's heading defaults to the Uncategorized topic's name") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    KnowledgeObjectPanel panel(controller);  // default topicId is uncategorizedTopicId()
+    auto* heading = panel.findChild<QLabel*>("panelHeading");
+    REQUIRE(heading != nullptr);
+
+    auto uncategorized = controller.findTopic(atlas::core::uncategorizedTopicId());
+    REQUIRE(uncategorized.has_value());
+    CHECK(heading->text() == QString::fromStdString(uncategorized->name()));
+}
+
+TEST_CASE("setTopic updates the heading to the newly scoped topic's name") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+    auto topicId = controller.createTopic("Operating Systems").value();
+
+    KnowledgeObjectPanel panel(controller);
+    auto* heading = panel.findChild<QLabel*>("panelHeading");
+    REQUIRE(heading != nullptr);
+
+    panel.setTopic(topicId);
+    CHECK(heading->text() == "Operating Systems");
+}
+
+TEST_CASE("renaming the currently-viewed topic updates the heading live") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+    auto topicId = controller.createTopic("Old Name").value();
+
+    KnowledgeObjectPanel panel(controller, topicId);
+    auto* heading = panel.findChild<QLabel*>("panelHeading");
+    REQUIRE(heading != nullptr);
+    CHECK(heading->text() == "Old Name");
+
+    REQUIRE(controller.renameTopic(topicId, "New Name").hasValue());
+    CHECK(heading->text() == "New Name");
 }

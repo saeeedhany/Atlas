@@ -1,5 +1,6 @@
 #include "atlas/render/graph_canvas_item.hpp"
 
+#include <QHoverEvent>
 #include <QMatrix4x4>
 #include <QMouseEvent>
 #include <QSGFlatColorMaterial>
@@ -17,11 +18,15 @@
 namespace atlas::render {
 
 namespace {
-constexpr float kNodeHalfSize  = 6.0f;
-constexpr float kSelectHalf    = 9.0f;   // selection ring drawn behind the node
-constexpr double kMinScale     = 0.05;
-constexpr double kMaxScale     = 10.0;
-constexpr double kDragThreshold = 4.0;   // pixels — below this, treat as a click
+constexpr float kNodeRadius       = 8.0f;
+constexpr float kNodeBorderWidth  = 2.2f;
+constexpr float kSelectRingRadius = 15.0f;  // also the hit-test radius — see hitTest()
+constexpr float kNeighborRingRadius = 13.0f;
+constexpr float kHoverRingRadius   = 12.0f;
+constexpr int   kCircleSegments   = 16;  // triangle-fan resolution; see appendCircleFan
+constexpr double kMinScale        = 0.05;
+constexpr double kMaxScale         = 10.0;
+constexpr double kDragThreshold    = 4.0;   // pixels — below this, treat as a click
 
 // Dot grid, in screen pixels. Base spacing is a world-space value that
 // gets scaled by the current zoom (so dots feel attached to content,
@@ -37,18 +42,52 @@ constexpr float kDotRadius           = 1.3f;
 
 float effectiveDotSpacingPx(double scale) {
     float spacing = static_cast<float>(kBaseDotSpacingWorld * scale);
-    // scale is clamped to [kMinScale, kMaxScale] elsewhere, so this
-    // loop is bounded to a handful of iterations either direction —
-    // not an unbounded while.
     while (spacing < kMinDotSpacingPx) spacing *= 2.0f;
     while (spacing > kMaxDotSpacingPx) spacing *= 0.5f;
     return spacing;
 }
+
+// Appends one filled circle (a triangle fan, `segments` triangles) to
+// a ColoredPoint2D vertex buffer at `vertexData[startIndex...]`,
+// returning the next free index. Used for node fills, node borders,
+// and all three ring types (selected/neighbor/hover) — every circular
+// shape this canvas draws goes through this one function, so "make
+// circles smoother" or "add anti-aliasing later" is a one-place change.
+int appendCircleFan(QSGGeometry::ColoredPoint2D* vertexData, int startIndex, float cx, float cy,
+                     float radius, QColor color) {
+    constexpr float kTwoPi = 6.283185307179586f;
+    uchar r = static_cast<uchar>(color.red());
+    uchar g = static_cast<uchar>(color.green());
+    uchar b = static_cast<uchar>(color.blue());
+    uchar a = static_cast<uchar>(color.alpha());
+
+    int vi = startIndex;
+    for (int i = 0; i < kCircleSegments; ++i) {
+        float theta0 = kTwoPi * static_cast<float>(i) / static_cast<float>(kCircleSegments);
+        float theta1 = kTwoPi * static_cast<float>(i + 1) / static_cast<float>(kCircleSegments);
+        float x0 = cx + radius * std::cos(theta0);
+        float y0 = cy + radius * std::sin(theta0);
+        float x1 = cx + radius * std::cos(theta1);
+        float y1 = cy + radius * std::sin(theta1);
+        vertexData[vi + 0].set(cx, cy, r, g, b, a);
+        vertexData[vi + 1].set(x0, y0, r, g, b, a);
+        vertexData[vi + 2].set(x1, y1, r, g, b, a);
+        vi += 3;
+    }
+    return vi;
+}
+
+// Vertex count contributed by one appendCircleFan call — every caller
+// that pre-sizes a buffer needs this, so it's named rather than
+// repeating `kCircleSegments * 3` at each call site.
+constexpr int kVerticesPerCircle = kCircleSegments * 3;
+
 }  // namespace
 
 GraphCanvasItem::GraphCanvasItem(QQuickItem* parent) : QQuickItem(parent) {
     setFlag(QQuickItem::ItemHasContents, true);
     setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton);
+    setAcceptHoverEvents(true);
 }
 
 void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<RenderEdge> edges) {
@@ -78,36 +117,38 @@ void GraphCanvasItem::clearHighlight() {
 void GraphCanvasItem::setTheme(ThemeMode mode) {
     if (themeMode_ == mode) return;
     themeMode_ = mode;
-    // Both dirty: dataDirty_ retints edges/selection rings (built in
-    // the same pass as node geometry), backgroundDirty_ rebuilds the
-    // dot grid at the new dot color.
     dataDirty_ = true;
     backgroundDirty_ = true;
     update();
 }
 
 int GraphCanvasItem::hitTest(double worldX, double worldY) const {
+    // Circular hit test now that nodes render as circles, not squares
+    // — matching the visual shape means a click just outside the
+    // rendered circle (but inside its old bounding-box corners)
+    // correctly misses, instead of feeling like it hit "nothing" when
+    // it visually looked like it should have.
+    float radiusSq = kSelectRingRadius * kSelectRingRadius;
     for (int i = static_cast<int>(nodes_.size()) - 1; i >= 0; --i) {
-        // Test against the larger selection ring so small quads are
-        // easier to click.
         double dx = worldX - nodes_[i].x;
         double dy = worldY - nodes_[i].y;
-        if (std::abs(dx) <= kSelectHalf && std::abs(dy) <= kSelectHalf) return i;
+        if (dx * dx + dy * dy <= radiusSq) return i;
     }
     return -1;
 }
 
 QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
-    // Top-level node is a plain container: the dot grid lives directly
-    // under it in screen space (never transformed by pan/zoom — see
-    // effectiveDotSpacingPx), while everything else lives under a
-    // QSGTransformNode child exactly as before.
+    // Layer order, bottom to top: dot background (screen space,
+    // outside the transform node) -> [highlight/hover rings -> edges
+    // -> node borders -> node fills] (all under one transform node, so
+    // pan/zoom moves them together).
     auto* container = static_cast<QSGNode*>(oldNode);
     QSGGeometryNode* backgroundNode = nullptr;
     QSGTransformNode* root          = nullptr;
-    QSGGeometryNode* selectionNode  = nullptr;
+    QSGGeometryNode* ringsNode      = nullptr;
     QSGGeometryNode* edgesNode      = nullptr;
-    QSGGeometryNode* nodesNode      = nullptr;
+    QSGGeometryNode* nodeBordersNode = nullptr;
+    QSGGeometryNode* nodeFillsNode   = nullptr;
 
     if (container == nullptr) {
         container = new QSGNode();
@@ -125,16 +166,15 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         root = new QSGTransformNode();
         container->appendChildNode(root);
 
-        // Layer order within root: selection rings -> edges -> nodes
-        selectionNode = new QSGGeometryNode();
-        auto* selGeom = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), 0);
-        selGeom->setDrawingMode(QSGGeometry::DrawTriangles);
-        selectionNode->setGeometry(selGeom);
-        selectionNode->setFlag(QSGNode::OwnsGeometry);
-        auto* selMat = new QSGVertexColorMaterial();
-        selectionNode->setMaterial(selMat);
-        selectionNode->setFlag(QSGNode::OwnsMaterial);
-        root->appendChildNode(selectionNode);
+        ringsNode = new QSGGeometryNode();
+        auto* ringGeom = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), 0);
+        ringGeom->setDrawingMode(QSGGeometry::DrawTriangles);
+        ringsNode->setGeometry(ringGeom);
+        ringsNode->setFlag(QSGNode::OwnsGeometry);
+        auto* ringMat = new QSGVertexColorMaterial();
+        ringsNode->setMaterial(ringMat);
+        ringsNode->setFlag(QSGNode::OwnsMaterial);
+        root->appendChildNode(ringsNode);
 
         edgesNode = new QSGGeometryNode();
         auto* edgeGeom = new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), 0);
@@ -147,21 +187,32 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         edgesNode->setFlag(QSGNode::OwnsMaterial);
         root->appendChildNode(edgesNode);
 
-        nodesNode = new QSGGeometryNode();
-        auto* nodeGeom = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), 0);
-        nodeGeom->setDrawingMode(QSGGeometry::DrawTriangles);
-        nodesNode->setGeometry(nodeGeom);
-        nodesNode->setFlag(QSGNode::OwnsGeometry);
-        auto* nodeMat = new QSGVertexColorMaterial();
-        nodesNode->setMaterial(nodeMat);
-        nodesNode->setFlag(QSGNode::OwnsMaterial);
-        root->appendChildNode(nodesNode);
+        nodeBordersNode = new QSGGeometryNode();
+        auto* borderGeom = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), 0);
+        borderGeom->setDrawingMode(QSGGeometry::DrawTriangles);
+        nodeBordersNode->setGeometry(borderGeom);
+        nodeBordersNode->setFlag(QSGNode::OwnsGeometry);
+        auto* borderMat = new QSGVertexColorMaterial();
+        nodeBordersNode->setMaterial(borderMat);
+        nodeBordersNode->setFlag(QSGNode::OwnsMaterial);
+        root->appendChildNode(nodeBordersNode);
+
+        nodeFillsNode = new QSGGeometryNode();
+        auto* fillGeom = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), 0);
+        fillGeom->setDrawingMode(QSGGeometry::DrawTriangles);
+        nodeFillsNode->setGeometry(fillGeom);
+        nodeFillsNode->setFlag(QSGNode::OwnsGeometry);
+        auto* fillMat = new QSGVertexColorMaterial();
+        nodeFillsNode->setMaterial(fillMat);
+        nodeFillsNode->setFlag(QSGNode::OwnsMaterial);
+        root->appendChildNode(nodeFillsNode);
     } else {
-        backgroundNode = static_cast<QSGGeometryNode*>(container->firstChild());
-        root           = static_cast<QSGTransformNode*>(backgroundNode->nextSibling());
-        selectionNode  = static_cast<QSGGeometryNode*>(root->firstChild());
-        edgesNode      = static_cast<QSGGeometryNode*>(selectionNode->nextSibling());
-        nodesNode      = static_cast<QSGGeometryNode*>(edgesNode->nextSibling());
+        backgroundNode   = static_cast<QSGGeometryNode*>(container->firstChild());
+        root             = static_cast<QSGTransformNode*>(backgroundNode->nextSibling());
+        ringsNode        = static_cast<QSGGeometryNode*>(root->firstChild());
+        edgesNode        = static_cast<QSGGeometryNode*>(ringsNode->nextSibling());
+        nodeBordersNode  = static_cast<QSGGeometryNode*>(edgesNode->nextSibling());
+        nodeFillsNode    = static_cast<QSGGeometryNode*>(nodeBordersNode->nextSibling());
     }
 
     QMatrix4x4 matrix;
@@ -176,14 +227,6 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         float width   = static_cast<float>(this->width());
         float height  = static_cast<float>(this->height());
 
-        // Phase-shift the grid by the current pan offset (mod spacing)
-        // so dots appear to belong to world space while the actual
-        // vertex count only ever depends on viewport size / spacing —
-        // never on graph size or how far the user has panned. Scale
-        // enters only through effectiveDotSpacingPx above, not here:
-        // the world-space pan offset itself is already in the same
-        // (unscaled-by-zoom) screen-pixel units mouseMoveEvent applies
-        // it in.
         float phaseX = std::fmod(static_cast<float>(offsetX_), spacing);
         if (phaseX < 0) phaseX += spacing;
         float phaseY = std::fmod(static_cast<float>(offsetY_), spacing);
@@ -226,44 +269,42 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
     if (dataDirty_) {
         bool hasHighlight = !selectedId_.isEmpty();
 
-        // --- Selection rings ---
-        // Allocate one ring quad per highlighted node (selected + neighbors).
-        int ringCount = 0;
-        if (hasHighlight) {
-            for (const auto& n : nodes_) {
-                if (n.id == selectedId_ || neighborIds_.count(n.id)) ++ringCount;
-            }
+        // --- Rings: selected / neighbor / hover ---
+        // Priority per node, at most one ring each: selected outranks
+        // neighbor outranks hover — a node that's both selected and
+        // hovered just shows the (stronger, stickier) selection ring,
+        // rather than stacking rings that would visually compete.
+        int ringedCount = 0;
+        for (const auto& n : nodes_) {
+            bool isSelected = (n.id == selectedId_);
+            bool isNeighbor = hasHighlight && neighborIds_.count(n.id) > 0;
+            bool isHovered  = (!isSelected && n.id == hoveredId_);
+            if (isSelected || isNeighbor || isHovered) ++ringedCount;
         }
-        auto* selGeom = selectionNode->geometry();
-        selGeom->allocate(ringCount * 6);
-        if (ringCount > 0) {
-            auto* v = selGeom->vertexDataAsColoredPoint2D();
+        auto* ringGeom = ringsNode->geometry();
+        ringGeom->allocate(ringedCount * kVerticesPerCircle);
+        if (ringedCount > 0) {
+            auto* rv = ringGeom->vertexDataAsColoredPoint2D();
             int vi = 0;
             for (const auto& n : nodes_) {
-                bool isSelected  = (n.id == selectedId_);
-                bool isNeighbor  = neighborIds_.count(n.id) > 0;
-                if (!isSelected && !isNeighbor) continue;
-                float cx = static_cast<float>(n.x);
-                float cy = static_cast<float>(n.y);
-                const QColor& ringColor = isSelected ? theme.selectedRing : theme.neighborRing;
-                uchar r = static_cast<uchar>(ringColor.red());
-                uchar g = static_cast<uchar>(ringColor.green());
-                uchar b = static_cast<uchar>(ringColor.blue());
-                uchar a = static_cast<uchar>(ringColor.alpha());
-                v[vi+0].set(cx-kSelectHalf, cy-kSelectHalf, r,g,b,a);
-                v[vi+1].set(cx+kSelectHalf, cy-kSelectHalf, r,g,b,a);
-                v[vi+2].set(cx+kSelectHalf, cy+kSelectHalf, r,g,b,a);
-                v[vi+3].set(cx-kSelectHalf, cy-kSelectHalf, r,g,b,a);
-                v[vi+4].set(cx+kSelectHalf, cy+kSelectHalf, r,g,b,a);
-                v[vi+5].set(cx-kSelectHalf, cy+kSelectHalf, r,g,b,a);
-                vi += 6;
+                bool isSelected = (n.id == selectedId_);
+                bool isNeighbor = hasHighlight && neighborIds_.count(n.id) > 0;
+                bool isHovered  = (!isSelected && n.id == hoveredId_);
+                if (!isSelected && !isNeighbor && !isHovered) continue;
+
+                float radius = isSelected ? kSelectRingRadius
+                               : isNeighbor ? kNeighborRingRadius
+                                              : kHoverRingRadius;
+                QColor color = isSelected ? theme.selectedRing
+                                : isNeighbor ? theme.neighborRing
+                                              : theme.hoverRing;
+                vi = appendCircleFan(rv, vi, static_cast<float>(n.x), static_cast<float>(n.y),
+                                       radius, color);
             }
         }
-        selectionNode->markDirty(QSGNode::DirtyGeometry);
+        ringsNode->markDirty(QSGNode::DirtyGeometry);
 
         // --- Edges ---
-        // Dim edges that aren't connected to the selected node when
-        // highlight is active.
         auto* edgeGeom = edgesNode->geometry();
         edgeGeom->allocate(static_cast<int>(edges_.size()) * 2);
         auto* ev = edgeGeom->vertexDataAsPoint2D();
@@ -280,36 +321,43 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         edgesNode->markDirty(QSGNode::DirtyGeometry);
         edgesNode->markDirty(QSGNode::DirtyMaterial);
 
-        // --- Nodes ---
-        auto* nodeGeom = nodesNode->geometry();
-        nodeGeom->allocate(static_cast<int>(nodes_.size()) * 6);
-        auto* nv = nodeGeom->vertexDataAsColoredPoint2D();
-        for (size_t i = 0; i < nodes_.size(); ++i) {
-            float cx = static_cast<float>(nodes_[i].x);
-            float cy = static_cast<float>(nodes_[i].y);
-            QColor c = nodes_[i].color;
-
-            if (hasHighlight) {
-                bool isSelected = (nodes_[i].id == selectedId_);
-                bool isNeighbor = neighborIds_.count(nodes_[i].id) > 0;
-                if (!isSelected && !isNeighbor) {
-                    // Dim non-neighborhood nodes to 25% alpha.
-                    c = QColor(c.red(), c.green(), c.blue(), 60);
+        // --- Node borders (every node, always — see Theme::nodeBorder) ---
+        auto* borderGeom = nodeBordersNode->geometry();
+        borderGeom->allocate(static_cast<int>(nodes_.size()) * kVerticesPerCircle);
+        {
+            auto* bv = borderGeom->vertexDataAsColoredPoint2D();
+            int vi = 0;
+            for (const auto& n : nodes_) {
+                QColor borderColor = theme.nodeBorder;
+                if (hasHighlight) {
+                    bool isSelected = (n.id == selectedId_);
+                    bool isNeighbor = neighborIds_.count(n.id) > 0;
+                    if (!isSelected && !isNeighbor) borderColor.setAlpha(60);
                 }
+                vi = appendCircleFan(bv, vi, static_cast<float>(n.x), static_cast<float>(n.y),
+                                       kNodeRadius + kNodeBorderWidth, borderColor);
             }
-            auto r = static_cast<uchar>(c.red());
-            auto g = static_cast<uchar>(c.green());
-            auto b = static_cast<uchar>(c.blue());
-            auto a = static_cast<uchar>(c.alpha());
-            size_t base = i * 6;
-            nv[base+0].set(cx-kNodeHalfSize, cy-kNodeHalfSize, r,g,b,a);
-            nv[base+1].set(cx+kNodeHalfSize, cy-kNodeHalfSize, r,g,b,a);
-            nv[base+2].set(cx+kNodeHalfSize, cy+kNodeHalfSize, r,g,b,a);
-            nv[base+3].set(cx-kNodeHalfSize, cy-kNodeHalfSize, r,g,b,a);
-            nv[base+4].set(cx+kNodeHalfSize, cy+kNodeHalfSize, r,g,b,a);
-            nv[base+5].set(cx-kNodeHalfSize, cy+kNodeHalfSize, r,g,b,a);
         }
-        nodesNode->markDirty(QSGNode::DirtyGeometry);
+        nodeBordersNode->markDirty(QSGNode::DirtyGeometry);
+
+        // --- Node fills ---
+        auto* fillGeom = nodeFillsNode->geometry();
+        fillGeom->allocate(static_cast<int>(nodes_.size()) * kVerticesPerCircle);
+        {
+            auto* fv = fillGeom->vertexDataAsColoredPoint2D();
+            int vi = 0;
+            for (const auto& n : nodes_) {
+                QColor c = n.color;
+                if (hasHighlight) {
+                    bool isSelected = (n.id == selectedId_);
+                    bool isNeighbor = neighborIds_.count(n.id) > 0;
+                    if (!isSelected && !isNeighbor) c.setAlpha(60);
+                }
+                vi = appendCircleFan(fv, vi, static_cast<float>(n.x), static_cast<float>(n.y),
+                                       kNodeRadius, c);
+            }
+        }
+        nodeFillsNode->markDirty(QSGNode::DirtyGeometry);
 
         dataDirty_ = false;
         highlightDirty_ = false;
@@ -325,9 +373,6 @@ void GraphCanvasItem::mousePressEvent(QMouseEvent* event) {
         lastMousePos_ = event->position();
         event->accept();
     } else if (event->button() == Qt::RightButton) {
-        // Right-click never pans, so it's a direct hit-test on press
-        // rather than going through the drag/release state machine
-        // left-click uses.
         double worldX = (event->position().x() - offsetX_) / scale_;
         double worldY = (event->position().y() - offsetY_) / scale_;
         int hit = hitTest(worldX, worldY);
@@ -354,14 +399,12 @@ void GraphCanvasItem::mouseMoveEvent(QMouseEvent* event) {
 
 void GraphCanvasItem::mouseReleaseEvent(QMouseEvent* event) {
     if (!dragMoved_) {
-        // This was a click, not a drag — hit-test in world space.
         double worldX = (event->position().x() - offsetX_) / scale_;
         double worldY = (event->position().y() - offsetY_) / scale_;
         int hit = hitTest(worldX, worldY);
         if (hit >= 0) {
             emit nodeClicked(nodes_[hit].id);
         } else {
-            // Clicking empty space clears the selection.
             if (!selectedId_.isEmpty()) {
                 clearHighlight();
                 emit nodeClicked(QString{});
@@ -370,6 +413,31 @@ void GraphCanvasItem::mouseReleaseEvent(QMouseEvent* event) {
     }
     dragging_ = false;
     dragMoved_ = false;
+    event->accept();
+}
+
+void GraphCanvasItem::hoverMoveEvent(QHoverEvent* event) {
+    double worldX = (event->position().x() - offsetX_) / scale_;
+    double worldY = (event->position().y() - offsetY_) / scale_;
+    int hit = hitTest(worldX, worldY);
+    QString newHoveredId = hit >= 0 ? nodes_[hit].id : QString{};
+
+    if (newHoveredId != hoveredId_) {
+        hoveredId_ = newHoveredId;
+        dataDirty_ = true;  // ring layer needs rebuilding to show/move the hover ring
+        update();
+        emit nodeHovered(hoveredId_);
+    }
+    event->accept();
+}
+
+void GraphCanvasItem::hoverLeaveEvent(QHoverEvent* event) {
+    if (!hoveredId_.isEmpty()) {
+        hoveredId_.clear();
+        dataDirty_ = true;
+        update();
+        emit nodeHovered(QString{});
+    }
     event->accept();
 }
 
@@ -383,8 +451,6 @@ void GraphCanvasItem::wheelEvent(QWheelEvent* event) {
 
 void GraphCanvasItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
-    // The dot grid covers exactly the viewport (see updatePaintNode),
-    // so a resize needs a rebuild the same as a pan/zoom does.
     backgroundDirty_ = true;
     update();
 }

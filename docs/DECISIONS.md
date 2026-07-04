@@ -8,6 +8,151 @@ underneath it.
 
 Organized by module, roughly in the order each decision arose.
 
+## UI enhancement pass (canvas visuals, hover, topic management)
+
+- **Nodes became circles (triangle-fan geometry), not textured
+  sprites.** A texture-based approach (rendering a circle image via
+  `QSGSimpleTextureNode`) would look smoother with less vertex data,
+  but introduces asset generation/loading that a hand-built triangle
+  fan avoids entirely — `appendCircleFan()` is one small function
+  every circular shape on the canvas (node fills, node borders, and
+  all three ring types) now goes through, so "make circles smoother"
+  or "add anti-aliasing later" is a one-place change, not a rewrite.
+  16 segments per circle was picked as a size/smoothness trade-off,
+  not measured against a specific quality bar — worth revisiting if it
+  ever looks faceted at high zoom.
+- **Every node gets a permanent border, not just highlighted ones.** A
+  flat-colored circle directly on a pure-black (or plain-beige)
+  background reads as a blurry smudge with no defined edge — the
+  border exists purely to give every node a crisp silhouette. A real
+  bug was caught before shipping: the first attempt computed the dark
+  theme's border as `QColor(kBlack).darker(140)`, which has no visible
+  effect on pure black (there's nothing to darken) and would have been
+  literally invisible. Fixed by using `kCoffee` (a distinct warm dark
+  brown, not derived from the background color itself) for both themes.
+- **Hover and selection are visually and architecturally separate
+  states**, with their own ring color, sized smaller than the
+  selection ring so priority reads correctly if a node is somehow both
+  (selection ring wins — stronger and stickier as a user commitment).
+  `GraphCanvasItem::nodeHovered(QString id)` is a dumb, stateless "here's
+  what's under the cursor right now" signal — the canvas has no idea
+  what a tooltip is; `GraphWindow` decides what showing "hovering this
+  id" means (a `QToolTip` with title/difficulty/confidence/definition)
+  and does all the domain-level interpretation.
+- **Hit-testing switched from a square bounding-box check to a real
+  circular distance check**, to match the new circular node shape —
+  otherwise a click near a node's old bounding-box corner (now outside
+  the visible circle) would register as a hit on empty-looking space,
+  which would have read as broken precision rather than a deliberate
+  design.
+- **The dot-grid background is regenerated only on pan/zoom/resize
+  (`backgroundDirty_`), completely independent of `dataDirty_`
+  (nodes/edges/rings).** These two invalidation flags were kept
+  strictly separate on purpose: panning the camera shouldn't force a
+  full node/edge/ring vertex rebuild just to redraw dots, and adding a
+  Knowledge Object shouldn't force every dot on screen to be
+  recomputed. Dot spacing scales with zoom but is snapped to a pixel
+  range (18-72px) via repeated halving/doubling — the standard
+  level-of-detail trick applied to a *spacing value* rather than to
+  actual rendered detail, so the grid never becomes so dense it's
+  expensive to draw when zoomed out, or so sparse it stops reading as
+  a grid when zoomed in.
+- **Topic rename/delete were already fully implemented at the
+  controller layer (with correct validation — can't delete
+  Uncategorized, can't delete a non-empty topic) but had no UI at
+  all.** `TopicSelectorWidget` gained a standard `Qt::CustomContextMenu`
+  right-click handler; no new validation logic was needed anywhere,
+  only wiring an existing, already-tested capability to an entry point
+  a person could actually reach.
+- **A second flaky-modal-test situation, recognized early because of
+  the first one.** `TopicSelectorWidget`'s context menu is a
+  `QMenu::exec()` call — the same class of blocking modal that made
+  the `TwoFieldItemDialog` add-flow test flaky earlier in this project.
+  Rather than repeat that mistake, the test suite here only verifies
+  what's safely testable without driving the menu's own event loop
+  (the context-menu policy is set; an empty-space right-click is a
+  no-op) and leans on the controller-level `renameTopic`/`removeTopic`
+  tests — already passing — for the actual business logic.
+- **Adding a heading label to `KnowledgeObjectPanel`** (it had none —
+  went straight from nothing to the search box) surfaced an ambiguous-
+  lookup test bug: two existing tests called `findChild<QLabel*>()`
+  with no name, which had silently relied on the empty-state label
+  being the *only* `QLabel` in the panel. Adding a second `QLabel`
+  (the heading) made both tests start matching the wrong one. Fixed by
+  giving the empty-state label an explicit object name
+  (`"emptyStateLabel"`) and updating the two lookups to target it by
+  name — the same "don't rely on positional/ordering assumptions that
+  happen to hold today" lesson as the deterministic tie-breaks added
+  to `GraphEngine::search()`/`suggestProjects()` much earlier.
+- **Explicit list-item selection styling was added specifically
+  because its absence was very likely the real "why does this still
+  look bad even with the palette applied" culprit.** Before this pass,
+  `QListView`/`QListWidget` had a background/text/border color from
+  the custom stylesheet, but no `::item:selected` rule — meaning
+  selecting a row fell back to the OS's default selection highlight
+  (typically a system blue), which clashes badly against a deliberately
+  chosen four-color palette. A custom highlight is now
+  applied uniformly for both list types, so no PC's OS theme choice
+  can undermine the app's own palette on this one interaction.
+
+## Examples / Mini Projects / References editing
+
+- **`KnowledgeObject` gained `setExamples()`/`setMiniProjects()`/
+  `setReferences()` — whole-list replacement, not incremental add/
+  remove/edit mutators.** Matches a pattern already established one
+  layer down: `atlas-persistence`'s `KnowledgeObjectRepository` already
+  treats these three fields as "delete every child row for this
+  object, then reinsert the current list" rather than diffing (a
+  decision made back in M1, when these lists were expected to stay
+  small). An editing UI collects a full edited list and hands it over
+  in one call — consistent with how every other field in
+  `KnowledgeObjectEdits` is already an optional full replacement, not
+  an incremental patch.
+- **One generic `TwoFieldItemDialog`, not three near-identical add/edit
+  dialogs.** All three of `atlas-core`'s content types — `Example`
+  (description, optional snippet), `MiniProject` (title, description),
+  `Reference` (title, optional url) — are shaped the same way: one
+  required string field, one second string field that's either
+  required or optional. That's close enough to share one small
+  parameterized dialog. The *list section* around each type
+  (`buildExamplesSection()`/`buildMiniProjectsSection()`/
+  `buildReferencesSection()`) stays three explicit, near-duplicated
+  blocks rather than a generic "list-of-T" widget abstraction —
+  mirroring `KnowledgeObjectRepository`'s own precedent of accepting
+  duplication over genericizing these same three types, since each
+  section's specific item-to-display-text formatting is different
+  enough that a generic abstraction would need callback parameters for
+  nearly everything anyway.
+- **The edit dialog gained tabs.** Five text fields, two combo boxes,
+  and three list-editing sections would not fit in one flat form
+  without becoming an unusable wall of widgets — the existing "Details"
+  form became one tab, Examples/Mini Projects/References each became
+  their own.
+- **List edits are staged locally in the dialog (a `std::vector<T>`
+  member per section) and only committed via `examples()`/
+  `miniProjects()`/`references()` if the dialog is accepted.**
+  Cancelling the dialog discards any in-progress Add/Edit/Remove
+  actions on these lists, the same as cancelling discards edits to
+  every other field — nothing is written to the actual
+  `KnowledgeObject` or the database until `WorkspaceController::
+  updateKnowledgeObject()` is called with the whole edited state.
+- **A flaky test was written, diagnosed, and deliberately removed
+  rather than left in "usually passing."** An end-to-end test drove
+  the "Add..." button's `TwoFieldItemDialog::exec()` via
+  `QApplication::activeModalWidget()` inside a `QTimer::singleShot`
+  callback — the standard Qt technique for testing a button that opens
+  a modal. It failed intermittently: `activeModalWidget()` proved
+  unreliable specifically under the `offscreen` Qt platform this whole
+  test binary runs under, not a defect in the dialog itself. Every
+  other dialog test in this codebase (`RoadmapDialog`,
+  `RelationshipEditDialog`, `ProjectSuggestionsDialog`) already
+  deliberately avoids driving a nested modal for what was, in
+  retrospect, likely this same reason — a convention that had never
+  been written down until this milestone made someone try to break it.
+  Removed rather than kept "because it usually passes": a flaky test
+  that intermittently fails CI erodes trust in every other test's
+  result, which costs more than the coverage gap it leaves behind.
+
 ## Project suggestions
 
 - **The ranking heuristic lives in `atlas-graph`, not `atlas-ui` or

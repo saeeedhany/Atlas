@@ -5,6 +5,8 @@ add_executable(atlas_ui_tests
     test_knowledge_object_panel.cpp
     test_relationship_list_model.cpp
     test_relationship_edit_dialog.cpp
+    test_two_field_item_dialog.cpp
+    test_knowledge_object_edit_dialog.cpp
     test_roadmap_dialog.cpp
     test_project_suggestions_dialog.cpp
     test_main_window.cpp

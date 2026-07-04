@@ -5,10 +5,12 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QQuickWidget>
+#include <QToolTip>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <unordered_set>
 
+#include "atlas/core/enums.hpp"
 #include "atlas/core/uuid.hpp"
 #include "atlas/render/force_directed_layout.hpp"
 #include "atlas/render/graph_canvas_item.hpp"
@@ -151,6 +153,47 @@ void GraphWindow::onNodeClicked(const QString& id) {
     updateHighlight();
 }
 
+void GraphWindow::onNodeHovered(const QString& id) {
+    if (id.isEmpty()) {
+        QToolTip::hideText();
+        return;
+    }
+
+    auto parsed = atlas::core::Uuid::parse(id.toStdString());
+    if (!parsed.has_value()) return;
+    auto object = controller_->findKnowledgeObject(atlas::core::KnowledgeObjectId(*parsed));
+    if (!object.has_value()) return;
+
+    // Rich text: bold title, then a couple of the fields most useful
+    // for "should I click into this" at a glance — difficulty and
+    // confidence (the two axes that actually distinguish concepts,
+    // per atlas-core's design notes), plus the start of the
+    // definition if there is one. Deliberately not the full
+    // definition/notes/examples — a tooltip that's a wall of text
+    // defeats the point of a quick glance.
+    QString text = QString("<b>%1</b>").arg(QString::fromStdString(object->title()).toHtmlEscaped());
+    text += QString("<br>%1 &middot; %2")
+                .arg(QString::fromStdString(
+                         std::string(atlas::core::toDisplayString(object->difficulty()))),
+                     QString::fromStdString(
+                         std::string(atlas::core::toDisplayString(object->confidence()))));
+    if (!object->definition().empty()) {
+        QString definition = QString::fromStdString(object->definition());
+        constexpr int kMaxLength = 140;
+        if (definition.length() > kMaxLength) {
+            definition = definition.left(kMaxLength).trimmed() + "...";
+        }
+        text += QString("<br><i>%1</i>").arg(definition.toHtmlEscaped());
+    }
+
+    // QToolTip::showText, not this widget's own setToolTip(): the
+    // tooltip's content changes per-node while the mouse never leaves
+    // this one QQuickWidget, so a static per-widget tooltip set once
+    // wouldn't update as the cursor moves between nodes. showText()
+    // lets each hover push fresh content at the current cursor position.
+    QToolTip::showText(QCursor::pos(), text, quickWidget_);
+}
+
 void GraphWindow::updateHighlight() {
     auto* canvas = canvasItem();
     if (canvas == nullptr) return;
@@ -255,6 +298,8 @@ void GraphWindow::refreshGraph() {
                 this, &GraphWindow::onNodeClicked, Qt::UniqueConnection);
         connect(canvas, &atlas::render::GraphCanvasItem::nodeRightClicked,
                 this, &GraphWindow::onNodeRightClicked, Qt::UniqueConnection);
+        connect(canvas, &atlas::render::GraphCanvasItem::nodeHovered,
+                this, &GraphWindow::onNodeHovered, Qt::UniqueConnection);
         canvas->setTheme(themeMode_);
         canvas->setGraphData(std::move(renderNodes), std::move(renderEdges));
         // Re-apply the current selection after the data rebuild so

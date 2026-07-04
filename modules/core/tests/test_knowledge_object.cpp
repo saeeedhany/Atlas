@@ -56,6 +56,53 @@ TEST_CASE("KnowledgeObject accumulates examples, mini projects, and references")
     CHECK(object.references().size() == 1);
 }
 
+TEST_CASE("setExamples replaces the whole list, not appends to it") {
+    auto result = KnowledgeObject::create("Binary Search");
+    REQUIRE(result.hasValue());
+    auto object = std::move(result).value();
+
+    object.addExample({"Old example", std::nullopt});
+    object.setExamples({Example{"New example one", std::nullopt},
+                          Example{"New example two", std::string{"code"}}});
+
+    REQUIRE(object.examples().size() == 2);
+    CHECK(object.examples()[0].description == "New example one");
+    CHECK(object.examples()[1].description == "New example two");
+}
+
+TEST_CASE("setMiniProjects replaces the whole list, not appends to it") {
+    auto result = KnowledgeObject::create("Recursion");
+    REQUIRE(result.hasValue());
+    auto object = std::move(result).value();
+
+    object.addMiniProject({"Old project", "old description"});
+    object.setMiniProjects({MiniProject{"New project", "new description"}});
+
+    REQUIRE(object.miniProjects().size() == 1);
+    CHECK(object.miniProjects().front().title == "New project");
+}
+
+TEST_CASE("setReferences replaces the whole list, not appends to it") {
+    auto result = KnowledgeObject::create("Recursion");
+    REQUIRE(result.hasValue());
+    auto object = std::move(result).value();
+
+    object.addReference({"Old reference", std::nullopt});
+    object.setReferences({});  // clearing entirely is a valid replacement
+
+    CHECK(object.references().empty());
+}
+
+TEST_CASE("setExamples/setMiniProjects/setReferences advance updatedAt") {
+    auto result = KnowledgeObject::create("Recursion");
+    REQUIRE(result.hasValue());
+    auto object = std::move(result).value();
+    auto before = object.updatedAt();
+
+    object.setExamples({Example{"An example", std::nullopt}});
+    CHECK(object.updatedAt() >= before);
+}
+
 TEST_CASE("Two KnowledgeObjects created with the same title have different ids") {
     auto a = KnowledgeObject::create("Recursion");
     auto b = KnowledgeObject::create("Recursion");

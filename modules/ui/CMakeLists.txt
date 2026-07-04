@@ -12,6 +12,7 @@ add_library(atlas_ui STATIC
     include/atlas/ui/knowledge_object_panel.hpp
     include/atlas/ui/knowledge_object_list_model.hpp
     include/atlas/ui/knowledge_object_edit_dialog.hpp
+    include/atlas/ui/two_field_item_dialog.hpp
     include/atlas/ui/relationship_edit_dialog.hpp
     include/atlas/ui/relationship_list_model.hpp
     include/atlas/ui/roadmap_dialog.hpp
@@ -24,6 +25,7 @@ add_library(atlas_ui STATIC
     src/knowledge_object_panel.cpp
     src/knowledge_object_list_model.cpp
     src/knowledge_object_edit_dialog.cpp
+    src/two_field_item_dialog.cpp
     src/relationship_edit_dialog.cpp
     src/relationship_list_model.cpp
     src/roadmap_dialog.cpp

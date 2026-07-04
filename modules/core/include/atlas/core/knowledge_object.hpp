@@ -84,6 +84,17 @@ public:
     void addExample(Example example);
     void addMiniProject(MiniProject project);
     void addReference(Reference reference);
+
+    // Whole-list replacement, not incremental add/remove — mirrors how
+    // atlas-persistence already treats these three fields (delete
+    // every child row for this object, then reinsert the current list;
+    // see KnowledgeObjectRepository's design notes). An editing UI
+    // collects a full edited list and hands it here in one call,
+    // consistent with how every other field in KnowledgeObjectEdits is
+    // an optional full replacement, not an incremental patch.
+    void setExamples(std::vector<Example> examples);
+    void setMiniProjects(std::vector<MiniProject> projects);
+    void setReferences(std::vector<Reference> references);
     void setNotes(std::string notes);
     void setDifficulty(Difficulty difficulty);
     void setConfidence(ConfidenceLevel confidence);

@@ -166,25 +166,63 @@ void MainWindow::applyTheme(atlas::render::ThemeMode mode) {
     // specific widget classes this window actually contains; those
     // dialogs intentionally keep the OS default style until they get
     // their own theming pass.
+    //
+    // %1 panelBackground, %2 panelText, %3 panelAlternateBackground,
+    // %4 panelBorder, %5 accent — used both for interactive-hover
+    // feedback (buttons, splitter handle) and for the "this row is
+    // selected" list-item background, so hover and selection read as
+    // the same family of feedback rather than two competing colors.
     setStyleSheet(QString(R"(
         QMainWindow, QSplitter, QToolBar,
         atlas--ui--KnowledgeObjectPanel, atlas--ui--GraphWindow,
         atlas--ui--TopicSelectorWidget { background-color: %1; }
+
+        QLabel#panelHeading { color: %5; padding: 2px 0px 6px 0px; }
+
         QListView, QListWidget {
             background-color: %1; alternate-background-color: %3;
-            color: %2; border: 1px solid %4;
+            color: %2; border: 1px solid %4; border-radius: 6px;
+            outline: 0; padding: 2px;
         }
+        QListView::item, QListWidget::item {
+            padding: 6px 8px; border-radius: 4px; margin: 1px 0px;
+        }
+        QListView::item:selected, QListWidget::item:selected {
+            background-color: %5; color: %1;
+        }
+        QListView::item:hover:!selected, QListWidget::item:hover:!selected {
+            background-color: %4;
+        }
+
         QLineEdit {
-            background-color: %3; color: %2; border: 1px solid %4; padding: 4px; border-radius: 3px;
+            background-color: %3; color: %2; border: 1px solid %4;
+            padding: 6px 8px; border-radius: 6px;
         }
+        QLineEdit:focus { border-color: %5; }
+
         QPushButton {
-            background-color: %3; color: %2; border: 1px solid %4; padding: 4px 10px; border-radius: 3px;
+            background-color: %3; color: %2; border: 1px solid %4;
+            padding: 6px 14px; border-radius: 6px;
         }
         QPushButton:hover:!disabled { border-color: %5; }
+        QPushButton:pressed:!disabled { background-color: %4; }
         QPushButton:disabled { color: %4; }
-        QSplitter::handle { background-color: %4; }
+
+        QSplitter::handle { background-color: %4; margin: 0px 3px; }
+        QSplitter::handle:hover { background-color: %5; }
+
         QMenuBar, QMenu, QToolBar { background-color: %3; color: %2; }
+        QMenu { border: 1px solid %4; border-radius: 6px; padding: 4px; }
+        QMenu::item { padding: 6px 20px; border-radius: 4px; }
         QMenu::item:selected { background-color: %5; color: %1; }
+        QMenu::item:disabled { color: %4; }
+        QToolBar { border: none; padding: 4px; spacing: 4px; }
+
+        QToolTip {
+            background-color: %3; color: %2; border: 1px solid %5;
+            padding: 6px 8px; border-radius: 4px;
+        }
+
         atlas--ui--TopicSelectorWidget QLabel,
         atlas--ui--KnowledgeObjectPanel QLabel,
         atlas--ui--GraphWindow QLabel { color: %2; }

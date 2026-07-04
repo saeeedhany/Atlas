@@ -39,6 +39,7 @@ private slots:
     void refresh();
     void onNewTopicClicked();
     void onItemActivated();
+    void onContextMenuRequested(const QPoint& pos);
 
 private:
     void updateEmptyState();

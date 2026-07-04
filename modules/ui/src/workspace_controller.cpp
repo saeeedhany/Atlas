@@ -129,6 +129,9 @@ Result<void, ControllerFailure> WorkspaceController::updateKnowledgeObject(
         }
         updated.assignToTopic(*edits.topicId);
     }
+    if (edits.examples.has_value()) updated.setExamples(*edits.examples);
+    if (edits.miniProjects.has_value()) updated.setMiniProjects(*edits.miniProjects);
+    if (edits.references.has_value()) updated.setReferences(*edits.references);
 
     auto saveResult = objectRepository_.save(updated);
     if (!saveResult.hasValue()) {

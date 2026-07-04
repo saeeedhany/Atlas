@@ -65,10 +65,12 @@ private slots:
 
 private:
     void showControllerError(const QString& action, const ControllerFailure& failure);
+    void updateHeading();
 
     WorkspaceController* controller_;
     KnowledgeObjectListModel* model_;
     atlas::core::TopicId topicId_;
+    QLabel* headingLabel_;
     QLineEdit* searchEdit_;
     QListView* listView_;
     QLabel* emptyStateLabel_;

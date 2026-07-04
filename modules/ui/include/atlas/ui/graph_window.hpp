@@ -80,6 +80,7 @@ private slots:
     void refreshGraph();
     void onNodeClicked(const QString& id);
     void onNodeRightClicked(const QString& id);
+    void onNodeHovered(const QString& id);
 
 private:
     void updateHighlight();

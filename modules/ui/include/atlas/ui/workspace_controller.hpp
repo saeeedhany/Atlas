@@ -50,6 +50,14 @@ struct KnowledgeObjectEdits {
     // that actually exists) — see
     // WorkspaceController::updateKnowledgeObject.
     std::optional<TopicId> topicId;
+
+    // Same optional-whole-replacement convention as every other field
+    // above: nullopt leaves the object's current list untouched;
+    // present (even if empty) replaces it entirely. Mirrors
+    // KnowledgeObject::setExamples() et al.
+    std::optional<std::vector<atlas::core::Example>> examples;
+    std::optional<std::vector<atlas::core::MiniProject>> miniProjects;
+    std::optional<std::vector<atlas::core::Reference>> references;
 };
 
 // The bridge between persistence/graph and the Qt UI. Every mutating

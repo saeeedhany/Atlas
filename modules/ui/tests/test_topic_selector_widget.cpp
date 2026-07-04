@@ -116,3 +116,39 @@ TEST_CASE("Activating a row emits topicChosen with that row's TopicId") {
     REQUIRE(emitted.has_value());
     CHECK(*emitted == topicId);
 }
+
+TEST_CASE("the topic list has a custom context menu policy, so right-click can offer Rename/Delete") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    TopicSelectorWidget widget(controller);
+    auto* listWidget = widget.findChild<QListWidget*>();
+    REQUIRE(listWidget != nullptr);
+    CHECK(listWidget->contextMenuPolicy() == Qt::CustomContextMenu);
+}
+
+TEST_CASE("requesting a context menu at a position with no item does nothing, not a crash") {
+    // Deliberately does not attempt to drive the resulting QMenu::exec()
+    // for a right-click that DOES land on an item — QMenu::exec() is a
+    // blocking modal call, and the equivalent technique for
+    // TwoFieldItemDialog's own modal (QApplication::activeModalWidget()
+    // inside a QTimer::singleShot) proved unreliable under the
+    // `offscreen` Qt platform this whole binary runs under (see
+    // docs/DECISIONS.md and the comment left in
+    // test_knowledge_object_edit_dialog.cpp). The Rename/Delete
+    // business logic itself is already covered directly at the
+    // controller level (WorkspaceController's renameTopic/removeTopic
+    // tests); this test only confirms the empty-space guard clause
+    // doesn't crash.
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    TopicSelectorWidget widget(controller);
+    auto* listWidget = widget.findChild<QListWidget*>();
+    REQUIRE(listWidget != nullptr);
+
+    QMetaObject::invokeMethod(&widget, "onContextMenuRequested", Q_ARG(QPoint, QPoint(5000, 5000)));
+    CHECK(true);  // reaching this line without crashing is the assertion
+}

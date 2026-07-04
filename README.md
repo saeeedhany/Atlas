@@ -61,11 +61,11 @@ the duplicate-detection notes in `docs/DECISIONS.md`).
 
 | Feature | Status |
 |---|---|
-| Knowledge Object CRUD | **Built** |
+| Knowledge Object CRUD | **Built** — including Examples/Mini Projects/References editing, not just the core fields |
 | Relationship CRUD | **Built** (via list selection, not canvas clicks — see below) |
 | Topics (top-level grouping, scoped relationships) | **Built** |
 | SQLite storage, offline-first | **Built** |
-| Interactive graph canvas, pan/zoom | **Built** |
+| Interactive graph canvas, pan/zoom | **Built** — circular nodes with a permanent border, hover tooltips (title/difficulty/confidence/definition), distinct rings for selected/neighbor/hovered states |
 | Large graph support (10,000+ nodes) | **Built and load-tested** — see Current State below |
 | Dependency visualization (topological ordering) | **Built** — right-click a node on the canvas for a scoped, ordered dependency chain |
 | Fast search | **Built** — ranked, case-insensitive, ~200ms even at 10,000 nodes (see Current State) |
@@ -136,12 +136,12 @@ UndefinedBehaviorSanitizer. As of this writing:
 
 | Module | Test cases | Assertions |
 |---|---|---|
-| `atlas-core` | 48 | 171 |
+| `atlas-core` | 52 | 182 |
 | `atlas-persistence` | 26 | 186 |
 | `atlas-graph` | 36 | 20,726 |
 | `atlas-render` | 7 | 20,030 |
-| `atlas-ui` | 72 | 419 |
-| **Total** | **189** | **~41,500** |
+| `atlas-ui` | 85 | 476 |
+| **Total** | **206** | **~41,600** |
 
 (`atlas-graph` and `atlas-render`'s assertion counts are dominated by
 their 10,000-node scale tests, which assert per-node correctness, not
@@ -173,12 +173,16 @@ the app and have it all still be there.
 
 **Known, deliberate gaps — not oversights:**
 - No AI suggestions, no plugin system.
-- No UI for adding Examples/MiniProjects/References to a Knowledge
-  Object yet — `KnowledgeObject::addMiniProject()` etc. exist at the
-  domain layer and are fully persisted/queried, but the edit dialog
-  doesn't expose them, so populating them currently requires going
-  through `atlas-persistence`'s repositories directly (as the tests
-  for project suggestions do).
+- No per-node visual customization (custom color/icon overriding the
+  default difficulty-based color) — the canvas redesign made the
+  *default* appearance solid; letting a person override it per-node is
+  separate, larger scope, not yet built.
+- `GraphCanvasItem` (the Qt Quick canvas) has no dedicated test file —
+  a pre-existing gap, not introduced by any specific pass. Its
+  `updatePaintNode`/hover-event behavior needs a real `QQuickWindow` to
+  test properly (unlike everything else in `atlas-ui`, which is plain
+  `QWidget`-based and testable headlessly); that test infrastructure
+  doesn't exist in this project yet.
 - Cross-platform packaging hasn't been attempted — built and tested on
   Linux only so far.
 - No threading: all database/graph operations run synchronously on the
@@ -247,17 +251,16 @@ Linux).
 ## Roadmap
 
 The core interactive knowledge graph is complete: Topics, Knowledge
-Objects, typed Relationships, search, highlighting, dependency
-visualization, roadmap generation, project suggestions, a unified
-themed window. What remains:
+Objects (fully editable, including Examples/Mini Projects/References),
+typed Relationships, search, highlighting, dependency visualization,
+roadmap generation, project suggestions, a unified themed window. What
+remains:
 
-1. UI for Examples/MiniProjects/References on a Knowledge Object —
-   currently domain-complete but not editable through the app itself.
-2. AI-assisted relationship suggestions — local heuristics first,
+1. AI-assisted relationship suggestions — local heuristics first,
    optional online model when available (see the offline-first vs. AI
    posture decided early in this project).
-3. Plugin architecture — sandboxed, versioned, offline-safe.
-4. Cross-platform packaging.
+2. Plugin architecture — sandboxed, versioned, offline-safe.
+3. Cross-platform packaging.
 
 For the detailed "why does this specific thing look this way" history
 — every bug found, every algorithmic correction, every cross-module

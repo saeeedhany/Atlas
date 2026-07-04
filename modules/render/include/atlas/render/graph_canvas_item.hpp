@@ -65,11 +65,22 @@ signals:
     // a context menu). Not emitted for a right-click on empty space.
     void nodeRightClicked(QString id);
 
+    // Fired on every hover-move, not just on entering/leaving a node:
+    // `id` is empty when hovering empty space, and non-empty (possibly
+    // the same id repeated on every move within one node) while over a
+    // node. This dumb, stateless "here's what's under the cursor right
+    // now" signal keeps GraphCanvasItem ignorant of what a tooltip even
+    // is — GraphWindow decides what "hovering this id" means and shows
+    // whatever info makes sense; this class only reports geometry hits.
+    void nodeHovered(QString id);
+
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void hoverMoveEvent(QHoverEvent* event) override;
+    void hoverLeaveEvent(QHoverEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
 
@@ -86,6 +97,13 @@ private:
     QString selectedId_;
     std::unordered_set<QString> neighborIds_;
     bool highlightDirty_ = false;
+
+    // Hover state — deliberately separate from selectedId_/neighborIds_:
+    // hovering and selecting are different user intents (glancing at
+    // something vs. committing to look at its neighborhood), so they
+    // get independent visual treatment (see Theme::hoverRing) and
+    // independent dirty tracking. Empty means "nothing hovered."
+    QString hoveredId_;
 
     double offsetX_ = 0.0;
     double offsetY_ = 0.0;

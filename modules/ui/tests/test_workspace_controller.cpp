@@ -526,6 +526,59 @@ TEST_CASE("updateKnowledgeObject can move an object to a different topic") {
     CHECK(*found->topicId() == databases);
 }
 
+TEST_CASE("updateKnowledgeObject replaces examples/miniProjects/references and persists them") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    auto id = controller.createKnowledgeObject("Recursion").value();
+
+    KnowledgeObjectEdits edits;
+    edits.examples = std::vector<Example>{Example{"Factorial", std::nullopt}};
+    edits.miniProjects =
+        std::vector<MiniProject>{MiniProject{"Implement it", "From scratch, no libraries"}};
+    edits.references = std::vector<Reference>{Reference{"CLRS", std::nullopt}};
+    REQUIRE(controller.updateKnowledgeObject(id, edits).hasValue());
+
+    auto found = controller.findKnowledgeObject(id);
+    REQUIRE(found.has_value());
+    REQUIRE(found->examples().size() == 1);
+    REQUIRE(found->miniProjects().size() == 1);
+    REQUIRE(found->references().size() == 1);
+    CHECK(found->examples().front().description == "Factorial");
+
+    // Independently verify it actually reached the database, not just
+    // the in-memory graph — same pattern as every other persistence
+    // check in this file.
+    KnowledgeObjectRepository repo(db);
+    auto persisted = repo.findById(id);
+    REQUIRE(persisted.hasValue());
+    REQUIRE(persisted.value().has_value());
+    CHECK(persisted.value()->miniProjects().size() == 1);
+}
+
+TEST_CASE("updateKnowledgeObject with no list edits leaves existing lists untouched") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    auto id = controller.createKnowledgeObject("Recursion").value();
+    KnowledgeObjectEdits firstEdit;
+    firstEdit.examples = std::vector<Example>{Example{"Factorial", std::nullopt}};
+    REQUIRE(controller.updateKnowledgeObject(id, firstEdit).hasValue());
+
+    // A second, unrelated edit that doesn't touch examples at all —
+    // nullopt (the KnowledgeObjectEdits default), not an empty vector.
+    KnowledgeObjectEdits secondEdit;
+    secondEdit.notes = "unrelated change";
+    REQUIRE(controller.updateKnowledgeObject(id, secondEdit).hasValue());
+
+    auto found = controller.findKnowledgeObject(id);
+    REQUIRE(found.has_value());
+    REQUIRE(found->examples().size() == 1);  // still there — nullopt means "don't touch"
+    CHECK(found->notes() == "unrelated change");
+}
+
 TEST_CASE("suggestProjects resolves ids to full KnowledgeObjects with readiness/leverage") {
     auto db = openTestDatabase();
 

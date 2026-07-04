@@ -26,6 +26,19 @@ Theme makeDark() {
     theme.selectedRing    = QColor(kBeige);
     theme.neighborRing    = QColor(kCoffee);
     theme.neighborRing.setAlpha(230);
+    // Hover reads as "about to select" — brighter than the neighbor
+    // ring (which means "already related to the selection"), dimmer
+    // than the selected ring itself (which means "this is it").
+    theme.hoverRing = QColor(kBeige);
+    theme.hoverRing.setAlpha(160);
+    // Every node gets this thin border regardless of highlight state —
+    // on a pure-black background a flat-colored circle with no edge
+    // reads as a blurry smudge, not a distinct object. kCoffee (a warm
+    // dark brown, not pure black) gives every node a crisp silhouette
+    // against the black background without fighting the difficulty
+    // color for attention — a literal "darker than black" has no
+    // effect and would have been invisible.
+    theme.nodeBorder = QColor(kCoffee);
 
     // Difficulty stays a semantic traffic-light-ish scale (see
     // graph_window.cpp) — kept saturated/bright since it sits on black.
@@ -55,6 +68,12 @@ Theme makeLight() {
     theme.edgeDimmed.setAlpha(35);
     theme.selectedRing = QColor(kBlack);
     theme.neighborRing = QColor(kCoffee);
+    theme.hoverRing = QColor(kBrown);
+    theme.hoverRing.setAlpha(180);
+    // On a light beige background, the same "warm dark tone, not the
+    // background color itself" logic as dark mode — kBrown reads as a
+    // crisp outline without needing pure black (too harsh against beige).
+    theme.nodeBorder = QColor(kBrown);
 
     // Same semantic hues as dark, darkened/desaturated a bit so they
     // hold contrast against the light beige background instead of

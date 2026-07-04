@@ -91,6 +91,21 @@ void KnowledgeObject::addReference(Reference reference) {
     touch();
 }
 
+void KnowledgeObject::setExamples(std::vector<Example> examples) {
+    examples_ = std::move(examples);
+    touch();
+}
+
+void KnowledgeObject::setMiniProjects(std::vector<MiniProject> projects) {
+    miniProjects_ = std::move(projects);
+    touch();
+}
+
+void KnowledgeObject::setReferences(std::vector<Reference> references) {
+    references_ = std::move(references);
+    touch();
+}
+
 void KnowledgeObject::setNotes(std::string notes) {
     notes_ = std::move(notes);
     touch();

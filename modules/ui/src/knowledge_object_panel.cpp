@@ -24,6 +24,13 @@ using atlas::core::KnowledgeObjectId;
 KnowledgeObjectPanel::KnowledgeObjectPanel(WorkspaceController& controller,
                                              atlas::core::TopicId topicId, QWidget* parent)
     : QWidget(parent), controller_(&controller), topicId_(topicId) {
+    headingLabel_ = new QLabel(this);
+    headingLabel_->setObjectName("panelHeading");
+    auto headingFont = headingLabel_->font();
+    headingFont.setPointSize(headingFont.pointSize() + 4);
+    headingFont.setBold(true);
+    headingLabel_->setFont(headingFont);
+
     model_ = new KnowledgeObjectListModel(controller, this);
     model_->setTopicFilter(topicId_);
     searchEdit_ = new QLineEdit(this);
@@ -34,6 +41,7 @@ KnowledgeObjectPanel::KnowledgeObjectPanel(WorkspaceController& controller,
 
     emptyStateLabel_ = new QLabel(
         "No knowledge objects yet.\n\nClick \"New\" below to add your first one.", this);
+    emptyStateLabel_->setObjectName("emptyStateLabel");
     emptyStateLabel_->setAlignment(Qt::AlignCenter);
     emptyStateLabel_->setStyleSheet("color: gray;");
 
@@ -77,11 +85,21 @@ KnowledgeObjectPanel::KnowledgeObjectPanel(WorkspaceController& controller,
     buttonRow->addStretch();
 
     auto* layout = new QVBoxLayout(this);
+    layout->addWidget(headingLabel_);
     layout->addWidget(searchEdit_);
     layout->addWidget(listStack_);
     layout->addLayout(buttonRow);
 
+    // Renaming the active topic (via TopicSelectorWidget's context
+    // menu) should update this heading immediately, even though
+    // nothing about this panel's own KnowledgeObject data changed —
+    // same reasoning as TopicSelectorWidget itself listening for
+    // topicsChanged to refresh its per-row member counts.
+    connect(controller_, &WorkspaceController::topicsChanged, this,
+            &KnowledgeObjectPanel::updateHeading);
+
     updateEmptyState();
+    updateHeading();
 }
 
 void KnowledgeObjectPanel::setTopic(atlas::core::TopicId topicId) {
@@ -89,6 +107,13 @@ void KnowledgeObjectPanel::setTopic(atlas::core::TopicId topicId) {
     topicId_ = topicId;
     searchEdit_->clear();  // also triggers onSearchTextChanged -> model_->setSearchQuery("")
     model_->setTopicFilter(topicId_);
+    updateHeading();
+}
+
+void KnowledgeObjectPanel::updateHeading() {
+    auto topic = controller_->findTopic(topicId_);
+    headingLabel_->setText(topic.has_value() ? QString::fromStdString(topic->name())
+                                               : "Knowledge Objects");
 }
 
 void KnowledgeObjectPanel::onSearchTextChanged(const QString& text) {
@@ -158,6 +183,9 @@ void KnowledgeObjectPanel::onEditClicked() {
     edits.notes = dialog.notes().toStdString();
     edits.difficulty = dialog.difficulty();
     edits.confidence = dialog.confidence();
+    edits.examples = dialog.examples();
+    edits.miniProjects = dialog.miniProjects();
+    edits.references = dialog.references();
 
     auto result = controller_->updateKnowledgeObject(*id, std::move(edits));
     if (!result.hasValue()) {
