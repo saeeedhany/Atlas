@@ -4,7 +4,9 @@
 #include <QPointF>
 #include <QQuickItem>
 #include <QString>
+#include <QTimer>
 
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -20,10 +22,17 @@ struct RenderNode {
 };
 
 struct RenderEdge {
-    double x1 = 0.0;
-    double y1 = 0.0;
-    double x2 = 0.0;
-    double y2 = 0.0;
+    // Node ids, not raw coordinates — GraphCanvasItem resolves these
+    // to each node's current (possibly still-animating) position at
+    // render time, every frame. Storing coordinates directly, as this
+    // struct did before, meant an edge's endpoints were frozen at
+    // whatever the layout said when setGraphData() was called; once
+    // nodes started easing toward a new layout instead of snapping
+    // to it (see the animation state below), an edge built from stale
+    // coordinates would visibly detach from the node it's supposed to
+    // follow mid-animation.
+    QString sourceId;
+    QString targetId;
 };
 
 class GraphCanvasItem : public QQuickItem {
@@ -32,6 +41,15 @@ class GraphCanvasItem : public QQuickItem {
 public:
     explicit GraphCanvasItem(QQuickItem* parent = nullptr);
 
+    // Structural update: nodes/edges added, removed, or re-laid-out.
+    // Existing nodes don't jump to their new position — they ease
+    // toward it over a short animation (see tickAnimation()), the same
+    // "watch the graph settle" feel as Obsidian's graph view, without
+    // this canvas adopting continuous per-frame physics simulation
+    // (still explicitly out of scope at the node counts this app
+    // targets — see docs/DECISIONS.md). Brand-new nodes (an id not
+    // seen in the previous call) appear immediately at their target
+    // position; only *repositioning* of already-known nodes animates.
     void setGraphData(std::vector<RenderNode> nodes, std::vector<RenderEdge> edges);
 
     // Switches the canvas's own palette (background, dots, edges,
@@ -89,9 +107,28 @@ private:
     // or -1 if nothing was hit.
     int hitTest(double worldX, double worldY) const;
 
+    // Advances every node's displayed position one step closer to its
+    // target (exponential ease: current += (target - current) * factor),
+    // marks geometry dirty, and stops the timer once every node is
+    // within kAnimationEpsilon of its target — so this costs nothing
+    // once the graph has settled, not a permanently-running per-frame
+    // tick.
+    void tickAnimation();
+
     std::vector<RenderNode> nodes_;
     std::vector<RenderEdge> edges_;
     bool dataDirty_ = true;
+
+    // targetPositions_ is rebuilt from `nodes_` on every setGraphData()
+    // call — it's just an id -> position index for O(1) lookup instead
+    // of a linear scan over nodes_ per edge per frame. currentPositions_
+    // is the actual animated, currently-displayed position for each
+    // node; rendering and hit-testing both read from this, never from
+    // nodes_[i].x/y directly, so a click during an in-flight animation
+    // lands where the node visually is, not where it's headed.
+    std::unordered_map<QString, QPointF> targetPositions_;
+    std::unordered_map<QString, QPointF> currentPositions_;
+    QTimer* animationTimer_;
 
     // Highlight state. Empty selectedId_ means no selection active.
     QString selectedId_;

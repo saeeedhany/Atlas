@@ -65,7 +65,8 @@ the duplicate-detection notes in `docs/DECISIONS.md`).
 | Relationship CRUD | **Built** (via list selection, not canvas clicks — see below) |
 | Topics (top-level grouping, scoped relationships) | **Built** |
 | SQLite storage, offline-first | **Built** |
-| Interactive graph canvas, pan/zoom | **Built** — circular nodes with a permanent border, hover tooltips (title/difficulty/confidence/definition), distinct rings for selected/neighbor/hovered states |
+| Interactive graph canvas, pan/zoom | **Built** — circular nodes with a permanent border, hover tooltips (title/difficulty/confidence/definition), distinct rings for selected/neighbor/hovered states, nodes/edges ease into place on structural changes instead of snapping |
+| App-wide dark/light theming | **Built** — applies to every window and dialog, not just the main window (see Current State) |
 | Large graph support (10,000+ nodes) | **Built and load-tested** — see Current State below |
 | Dependency visualization (topological ordering) | **Built** — right-click a node on the canvas for a scoped, ordered dependency chain |
 | Fast search | **Built** — ranked, case-insensitive, ~200ms even at 10,000 nodes (see Current State) |
@@ -172,6 +173,13 @@ roadmap), switch between dark and light theme, delete things, restart
 the app and have it all still be there.
 
 **Known, deliberate gaps — not oversights:**
+- No continuous force-directed physics simulation (nodes don't drift
+  in real time while just sitting there, the way Obsidian's graph can).
+  Layout is still computed once per structural change and animated
+  *toward* that result with an easing curve — a deliberate middle
+  ground that gives most of the "graph feels alive" effect without
+  reopening the earlier, reasoned decision to avoid per-frame O(n²)
+  physics at the node counts this app targets (see `docs/DECISIONS.md`).
 - No AI suggestions, no plugin system.
 - No per-node visual customization (custom color/icon overriding the
   default difficulty-based color) — the canvas redesign made the

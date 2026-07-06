@@ -28,6 +28,18 @@ constexpr double kMinScale        = 0.05;
 constexpr double kMaxScale         = 10.0;
 constexpr double kDragThreshold    = 4.0;   // pixels — below this, treat as a click
 
+// Animation: exponential ease toward target each tick, not a fixed-
+// duration tween. Simpler to reason about (no need to track "when did
+// this node start moving" per node, since a node can get a new target
+// mid-flight if the graph changes again before settling) and reads as
+// a natural "glide, slowing as it arrives" motion without needing an
+// easing-curve library. kEaseFactor closer to 1.0 = snappier/faster;
+// closer to 0.0 = slower/floatier. 0.2 lands close to what Obsidian's
+// own settle animation feels like without being sluggish.
+constexpr double kEaseFactor = 0.2;
+constexpr double kAnimationEpsilonSq = 0.01;  // squared world-units; below this, snap and stop
+constexpr int kAnimationIntervalMs = 16;      // ~60fps
+
 // Dot grid, in screen pixels. Base spacing is a world-space value that
 // gets scaled by the current zoom (so dots feel attached to content,
 // the same illusion pan/zoom of nodes already gives), but clamped to a
@@ -88,13 +100,72 @@ GraphCanvasItem::GraphCanvasItem(QQuickItem* parent) : QQuickItem(parent) {
     setFlag(QQuickItem::ItemHasContents, true);
     setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton);
     setAcceptHoverEvents(true);
+
+    animationTimer_ = new QTimer(this);
+    animationTimer_->setInterval(kAnimationIntervalMs);
+    connect(animationTimer_, &QTimer::timeout, this, &GraphCanvasItem::tickAnimation);
 }
 
 void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<RenderEdge> edges) {
     nodes_ = std::move(nodes);
     edges_ = std::move(edges);
+
+    std::unordered_map<QString, QPointF> newTargets;
+    newTargets.reserve(nodes_.size());
+    for (const auto& n : nodes_) {
+        newTargets.emplace(n.id, QPointF(n.x, n.y));
+    }
+
+    // Existing nodes keep their current (possibly still mid-flight)
+    // displayed position and ease toward the new target from there.
+    // Brand-new ids appear immediately at their target — no prior
+    // position exists to animate from, and guessing one (e.g. the
+    // graph's centroid) was considered out of scope for this pass; a
+    // node popping in immediately still reads fine next to others
+    // gliding into place.
+    for (const auto& [id, target] : newTargets) {
+        if (!currentPositions_.contains(id)) {
+            currentPositions_[id] = target;
+        }
+    }
+    // Drop positions for nodes that no longer exist, so this map
+    // doesn't grow unboundedly across many topic switches/edits over
+    // a long-running session.
+    for (auto it = currentPositions_.begin(); it != currentPositions_.end();) {
+        if (!newTargets.contains(it->first)) {
+            it = currentPositions_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    targetPositions_ = std::move(newTargets);
+
     dataDirty_ = true;
     update();
+    if (!animationTimer_->isActive()) animationTimer_->start();
+}
+
+void GraphCanvasItem::tickAnimation() {
+    bool stillMoving = false;
+    for (auto& [id, current] : currentPositions_) {
+        auto targetIt = targetPositions_.find(id);
+        if (targetIt == targetPositions_.end()) continue;  // shouldn't happen; defensive
+        const QPointF& target = targetIt->second;
+
+        QPointF delta = target - current;
+        double distSq = delta.x() * delta.x() + delta.y() * delta.y();
+        if (distSq <= kAnimationEpsilonSq) {
+            current = target;  // snap the last little bit rather than asymptotically never arrive
+            continue;
+        }
+        stillMoving = true;
+        current += delta * kEaseFactor;
+    }
+
+    dataDirty_ = true;
+    update();
+
+    if (!stillMoving) animationTimer_->stop();
 }
 
 void GraphCanvasItem::setHighlight(const QString& selectedId,
@@ -127,11 +198,15 @@ int GraphCanvasItem::hitTest(double worldX, double worldY) const {
     // — matching the visual shape means a click just outside the
     // rendered circle (but inside its old bounding-box corners)
     // correctly misses, instead of feeling like it hit "nothing" when
-    // it visually looked like it should have.
+    // it visually looked like it should have. Reads currentPositions_,
+    // not the target x/y baked into `nodes_`, so a click during an
+    // in-flight animation is tested against where the node visually is.
     float radiusSq = kSelectRingRadius * kSelectRingRadius;
     for (int i = static_cast<int>(nodes_.size()) - 1; i >= 0; --i) {
-        double dx = worldX - nodes_[i].x;
-        double dy = worldY - nodes_[i].y;
+        auto it = currentPositions_.find(nodes_[i].id);
+        if (it == currentPositions_.end()) continue;
+        double dx = worldX - it->second.x();
+        double dy = worldY - it->second.y();
         if (dx * dx + dy * dy <= radiusSq) return i;
     }
     return -1;
@@ -269,6 +344,11 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
     if (dataDirty_) {
         bool hasHighlight = !selectedId_.isEmpty();
 
+        auto positionOf = [this](const QString& id) -> QPointF {
+            auto it = currentPositions_.find(id);
+            return it != currentPositions_.end() ? it->second : QPointF(0.0, 0.0);
+        };
+
         // --- Rings: selected / neighbor / hover ---
         // Priority per node, at most one ring each: selected outranks
         // neighbor outranks hover — a node that's both selected and
@@ -298,19 +378,26 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
                 QColor color = isSelected ? theme.selectedRing
                                 : isNeighbor ? theme.neighborRing
                                               : theme.hoverRing;
-                vi = appendCircleFan(rv, vi, static_cast<float>(n.x), static_cast<float>(n.y),
+                QPointF p = positionOf(n.id);
+                vi = appendCircleFan(rv, vi, static_cast<float>(p.x()), static_cast<float>(p.y()),
                                        radius, color);
             }
         }
         ringsNode->markDirty(QSGNode::DirtyGeometry);
 
         // --- Edges ---
+        // Resolved through currentPositions_ every rebuild, not stored
+        // as coordinates on RenderEdge — see RenderEdge's own doc
+        // comment for why: this is what makes an edge visually follow
+        // its nodes while they're still easing into place.
         auto* edgeGeom = edgesNode->geometry();
         edgeGeom->allocate(static_cast<int>(edges_.size()) * 2);
         auto* ev = edgeGeom->vertexDataAsPoint2D();
         for (size_t i = 0; i < edges_.size(); ++i) {
-            ev[i*2+0].set(static_cast<float>(edges_[i].x1), static_cast<float>(edges_[i].y1));
-            ev[i*2+1].set(static_cast<float>(edges_[i].x2), static_cast<float>(edges_[i].y2));
+            QPointF p1 = positionOf(edges_[i].sourceId);
+            QPointF p2 = positionOf(edges_[i].targetId);
+            ev[i*2+0].set(static_cast<float>(p1.x()), static_cast<float>(p1.y()));
+            ev[i*2+1].set(static_cast<float>(p2.x()), static_cast<float>(p2.y()));
         }
         // Edge material is flat-color; we can't dim individual edges
         // without switching to per-vertex color on edges too — that's
@@ -334,7 +421,8 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
                     bool isNeighbor = neighborIds_.count(n.id) > 0;
                     if (!isSelected && !isNeighbor) borderColor.setAlpha(60);
                 }
-                vi = appendCircleFan(bv, vi, static_cast<float>(n.x), static_cast<float>(n.y),
+                QPointF p = positionOf(n.id);
+                vi = appendCircleFan(bv, vi, static_cast<float>(p.x()), static_cast<float>(p.y()),
                                        kNodeRadius + kNodeBorderWidth, borderColor);
             }
         }
@@ -353,7 +441,8 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
                     bool isNeighbor = neighborIds_.count(n.id) > 0;
                     if (!isSelected && !isNeighbor) c.setAlpha(60);
                 }
-                vi = appendCircleFan(fv, vi, static_cast<float>(n.x), static_cast<float>(n.y),
+                QPointF p = positionOf(n.id);
+                vi = appendCircleFan(fv, vi, static_cast<float>(p.x()), static_cast<float>(p.y()),
                                        kNodeRadius, c);
             }
         }

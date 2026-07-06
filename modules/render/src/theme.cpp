@@ -49,10 +49,14 @@ Theme makeDark() {
         QColor(220, 90, 90),    // Expert
     };
 
-    theme.panelBackground          = QColor(kBrown);
-    theme.panelAlternateBackground = QColor(kBrown).lighter(130);
+    theme.panelBackground          = QColor(kCoffee);
+    theme.panelAlternateBackground = QColor(kCoffee).lighter(122);
     theme.panelText                = QColor(kBeige);
-    theme.panelBorder              = QColor(kCoffee);
+    // Border is the darkest of the two remaining tones, distinct from
+    // the now-lighter panelBackground — was kCoffee itself before this
+    // fix, which meant border and background were the same color and
+    // panels had no visible edge at all.
+    theme.panelBorder              = QColor(kBrown);
     theme.accent                   = QColor(kBeige);
     return theme;
 }

@@ -277,15 +277,13 @@ void GraphWindow::refreshGraph() {
 
     std::vector<atlas::render::RenderEdge> renderEdges;
     for (const auto& id : topicGraph.allNodeIds()) {
-        auto sourcePos = positions.find(id);
-        if (sourcePos == positions.end()) continue;
+        if (positions.find(id) == positions.end()) continue;
         for (const auto& neighborId : topicGraph.neighbors(
                  id, std::nullopt, atlas::graph::GraphEngine::Direction::Outgoing)) {
-            auto targetPos = positions.find(neighborId);
-            if (targetPos == positions.end()) continue;
+            if (positions.find(neighborId) == positions.end()) continue;
             renderEdges.push_back(atlas::render::RenderEdge{
-                sourcePos->second.x, sourcePos->second.y, targetPos->second.x,
-                targetPos->second.y});
+                QString::fromStdString(id.toString()),
+                QString::fromStdString(neighborId.toString())});
         }
     }
 

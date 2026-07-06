@@ -8,6 +8,92 @@ underneath it.
 
 Organized by module, roughly in the order each decision arose.
 
+## Dark-mode contrast, app-wide theming, and animated graph transitions
+
+- **The dark theme's actual bug: panel chrome and canvas background
+  were nearly the same color.** `panelBackground` was `kBrown`
+  (`0x1F150C`), barely distinguishable from the canvas's pure black —
+  everything read as "almost-black-on-black" with no depth, which is
+  what made dark mode look flat compared to light mode even with the
+  same palette applied. Fixed by swapping `panelBackground` to
+  `kCoffee` (a properly mid-dark brown, one full step up from black)
+  and re-deriving `panelAlternateBackground`/`panelBorder` from that,
+  entirely within the same four supplied colors — no new hues
+  introduced, just a different assignment of the existing ones.
+- **"The theme doesn't affect all windows" had one specific,
+  identifiable cause: `setStyleSheet()` was called on `MainWindow`
+  itself, not on `QApplication`.** Qt style sheets only cascade to
+  descendants that belong to the *same* top-level window.
+  `RelationshipsWindow` (explicitly `Qt::Window`) and every `QDialog`
+  (`KnowledgeObjectEditDialog`, `RelationshipEditDialog`,
+  `RoadmapDialog`, `ProjectSuggestionsDialog`, `TwoFieldItemDialog` —
+  `QDialog` is inherently its own top-level window regardless of
+  parent) were each invisible to a stylesheet set on `MainWindow`.
+  Fixed by applying via `qApp->setStyleSheet()` instead, which is
+  process-wide and ignores top-level-window boundaries entirely — the
+  only mechanism that actually solves this, short of manually
+  reapplying the same stylesheet string in every dialog's own
+  constructor (which would drift out of sync the first time only one
+  copy got edited).
+- **Going process-wide meant actually finishing the theming pass this
+  project had explicitly deferred earlier** (see the "UI enhancement
+  pass" entry above: "those dialogs intentionally keep the OS default
+  style until they get their own theming pass"). `QComboBox`,
+  `QPlainTextEdit`, and `QTabWidget`/`QTabBar` — all used by the edit
+  dialogs but never styled at all before this — got real rules for the
+  first time, including `QComboBox`'s popup list
+  (`QComboBox QAbstractItemView`), which is a separate top-level popup
+  in Qt and needed its own explicit background/selection colors or it
+  would have rendered as a stray white dropdown against an otherwise
+  dark dialog.
+- **`QLabel { color }` stayed an explicit, separate rule rather than
+  relying on inheritance from the new blanket `QWidget` rule.** Qt
+  style sheets don't reliably propagate the `color` property from an
+  ancestor type-selector down to `QLabel` the way CSS inheritance on
+  the web does; the project's own working stylesheet (verified by
+  passing tests) had always set `QLabel` explicitly, so that pattern
+  was kept rather than assumed to now work implicitly through a wider
+  blanket rule.
+- **Graph transitions animate by easing toward a newly-computed
+  layout, not by running continuous force-directed physics.** True
+  per-frame physics (what Obsidian's own graph view does) was
+  considered and explicitly not built: it directly reopens an earlier,
+  reasoned architecture decision (`ForceDirectedLayout` computes once
+  per structural change specifically to avoid O(n²) work every single
+  frame at the node counts this app targets). Instead,
+  `GraphCanvasItem` now keeps two id-keyed position maps —
+  `targetPositions_` (where the static layout says a node belongs) and
+  `currentPositions_` (what's actually rendered) — and a `QTimer`
+  exponentially eases the latter toward the former
+  (`current += (target - current) * 0.2` per tick, ~60fps) until every
+  node is within a small epsilon, then stops. This gets most of the
+  "graph feels alive, watch it settle" effect Obsidian is known for,
+  at a fraction of the ongoing computational cost, and the timer
+  costs nothing once the graph is at rest — it doesn't run permanently.
+- **`RenderEdge` changed from storing raw `x1/y1/x2/y2` coordinates to
+  storing `sourceId`/`targetId` node ids**, resolved to
+  `currentPositions_` fresh on every geometry rebuild. This was a
+  forced consequence of the animation work, not a separate choice: an
+  edge built from coordinates captured at `setGraphData()` time would
+  visibly detach from its nodes the instant they started easing toward
+  a new position, since the edge's own endpoints would stay frozen at
+  the stale layout. Every other call site (there was exactly one,
+  `GraphWindow::refreshGraph()`) was updated to pass ids instead of
+  pre-resolved positions.
+- **New nodes appear immediately at their target position; only
+  already-known nodes (repositioned by a layout change) animate.**
+  Guessing a plausible "was somewhere before" position for a brand-new
+  node (e.g. the graph's centroid, or its first neighbor's position)
+  was considered and deliberately left out of this pass — simpler, and
+  a node popping in instantly still reads fine next to others gliding
+  into their new spots, without extra logic to get subtly wrong.
+- **Hit-testing and rendering both read from `currentPositions_`, not
+  from the target coordinates baked into `nodes_`.** Without this, a
+  click during an in-flight animation would be tested against where a
+  node is *headed*, not where it visually *is* — a small but real
+  correctness gap that would have made clicking a moving node feel
+  broken during the ~1-second window most transitions take to settle.
+
 ## UI enhancement pass (canvas visuals, hover, topic management)
 
 - **Nodes became circles (triangle-fan geometry), not textured

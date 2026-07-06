@@ -1,6 +1,7 @@
 #include "atlas/ui/main_window.hpp"
 
 #include <QActionGroup>
+#include <QApplication>
 #include <QGraphicsOpacityEffect>
 #include <QMenu>
 #include <QMenuBar>
@@ -156,26 +157,38 @@ void MainWindow::applyTheme(atlas::render::ThemeMode mode) {
 
     // A hand-written stylesheet, not a QPalette swap: QPalette gets
     // overridden inconsistently by individual widgets' own styling
-    // (e.g. KnowledgeObjectPanel's empty-state label already sets
-    // "color: gray;" directly). Deliberately NOT a blanket `QWidget`
-    // selector: Qt stylesheets cascade to every descendant, and the
-    // edit/relationship/roadmap dialogs are all parented under this
-    // window — a blanket rule would silently theme their backgrounds
-    // dark while their own QLabels keep default-palette (often black)
-    // text, an unreadable combination no one asked for. Scoped to the
-    // specific widget classes this window actually contains; those
-    // dialogs intentionally keep the OS default style until they get
-    // their own theming pass.
+    // (e.g. KnowledgeObjectPanel's empty-state label sets "color:
+    // gray;" directly, which still wins due to higher specificity).
+    //
+    // Applied via qApp->setStyleSheet(), not this->setStyleSheet():
+    // Qt style sheets set on one widget only cascade to descendants
+    // that are part of the *same* top-level window. RelationshipsWindow
+    // (Qt::Window) and every QDialog (KnowledgeObjectEditDialog,
+    // RelationshipEditDialog, RoadmapDialog, ProjectSuggestionsDialog,
+    // TwoFieldItemDialog — QDialog is inherently its own top-level
+    // window regardless of parent) are each a separate top-level
+    // window from MainWindow's perspective, so a stylesheet set on
+    // `this` never reached them — the actual cause of "the theme
+    // doesn't affect all windows." An application-level stylesheet
+    // applies process-wide regardless of top-level-window boundaries,
+    // which is the only mechanism that actually fixes this without
+    // hand-applying the same stylesheet string in every dialog's own
+    // constructor (repeating it there would drift out of sync the
+    // first time only one of the copies gets edited).
+    //
+    // Now that every window is in scope, QDialog and every input
+    // widget dialogs actually use (QComboBox, QPlainTextEdit,
+    // QTabWidget) are styled too — previously absent entirely, so
+    // those widgets rendered in the OS default style even inside an
+    // otherwise-dark-themed dialog.
     //
     // %1 panelBackground, %2 panelText, %3 panelAlternateBackground,
-    // %4 panelBorder, %5 accent — used both for interactive-hover
-    // feedback (buttons, splitter handle) and for the "this row is
-    // selected" list-item background, so hover and selection read as
-    // the same family of feedback rather than two competing colors.
-    setStyleSheet(QString(R"(
-        QMainWindow, QSplitter, QToolBar,
-        atlas--ui--KnowledgeObjectPanel, atlas--ui--GraphWindow,
-        atlas--ui--TopicSelectorWidget { background-color: %1; }
+    // %4 panelBorder, %5 accent.
+    qApp->setStyleSheet(QString(R"(
+        QMainWindow, QDialog, QSplitter, QToolBar, QWidget {
+            background-color: %1; color: %2;
+        }
+        QLabel { color: %2; }
 
         QLabel#panelHeading { color: %5; padding: 2px 0px 6px 0px; }
 
@@ -194,11 +207,22 @@ void MainWindow::applyTheme(atlas::render::ThemeMode mode) {
             background-color: %4;
         }
 
-        QLineEdit {
+        QLineEdit, QPlainTextEdit {
             background-color: %3; color: %2; border: 1px solid %4;
             padding: 6px 8px; border-radius: 6px;
         }
-        QLineEdit:focus { border-color: %5; }
+        QLineEdit:focus, QPlainTextEdit:focus { border-color: %5; }
+
+        QComboBox {
+            background-color: %3; color: %2; border: 1px solid %4;
+            padding: 6px 8px; border-radius: 6px;
+        }
+        QComboBox:focus { border-color: %5; }
+        QComboBox QAbstractItemView {
+            background-color: %3; color: %2; border: 1px solid %4;
+            selection-background-color: %5; selection-color: %1;
+            outline: 0;
+        }
 
         QPushButton {
             background-color: %3; color: %2; border: 1px solid %4;
@@ -218,18 +242,24 @@ void MainWindow::applyTheme(atlas::render::ThemeMode mode) {
         QMenu::item:disabled { color: %4; }
         QToolBar { border: none; padding: 4px; spacing: 4px; }
 
+        QTabWidget::pane { border: 1px solid %4; border-radius: 6px; top: -1px; }
+        QTabBar::tab {
+            background-color: %1; color: %2; border: 1px solid %4;
+            padding: 6px 14px; border-top-left-radius: 6px; border-top-right-radius: 6px;
+        }
+        QTabBar::tab:selected { background-color: %3; border-color: %5; }
+        QTabBar::tab:!selected:hover { background-color: %4; }
+
+        QDialogButtonBox QPushButton { min-width: 70px; }
+
         QToolTip {
             background-color: %3; color: %2; border: 1px solid %5;
             padding: 6px 8px; border-radius: 4px;
         }
-
-        atlas--ui--TopicSelectorWidget QLabel,
-        atlas--ui--KnowledgeObjectPanel QLabel,
-        atlas--ui--GraphWindow QLabel { color: %2; }
     )")
-                         .arg(hex(theme.panelBackground), hex(theme.panelText),
-                              hex(theme.panelAlternateBackground), hex(theme.panelBorder),
-                              hex(theme.accent)));
+                             .arg(hex(theme.panelBackground), hex(theme.panelText),
+                                  hex(theme.panelAlternateBackground), hex(theme.panelBorder),
+                                  hex(theme.accent)));
 
     canvas_->setTheme(mode);
 
