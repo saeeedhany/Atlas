@@ -7,8 +7,12 @@ qt_add_qml_module(atlas_viewmodels
     URI Atlas.ViewModels
     VERSION 1.0
     SOURCES
+        include/atlas/viewmodels/clock.hpp
         include/atlas/viewmodels/controller_error.hpp
+        include/atlas/viewmodels/memory_controller.hpp
         include/atlas/viewmodels/workspace_controller.hpp
+        src/clock.cpp
+        src/memory_controller.cpp
         src/workspace_controller.cpp
 )
 
