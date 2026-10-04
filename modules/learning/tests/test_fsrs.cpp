@@ -10,12 +10,6 @@ using atlas::learning::testing::day;
 
 namespace {
 constexpr double kEps = 1e-8;
-
-MemoryState freshState() {
-    MemoryState state;
-    state.item = ItemRef::forConcept(KnowledgeObjectId::generate());
-    return state;
-}
 }
 
 TEST_CASE("retrievability follows the FSRS-6 power curve") {
@@ -62,7 +56,7 @@ TEST_CASE("the interval at 90 percent retention equals stability and is capped")
 
 TEST_CASE("a full review history follows the reference scenario") {
     Fsrs fsrs;
-    MemoryState state = freshState();
+    MemoryState state{ItemRef::forConcept(KnowledgeObjectId::generate())};
 
     state = fsrs.review(state, Grade::Good, day(0));
     CHECK(state.phase == Phase::Review);
@@ -85,7 +79,7 @@ TEST_CASE("a full review history follows the reference scenario") {
 
 TEST_CASE("a first review rated again starts the learning phase") {
     Fsrs fsrs;
-    auto state = fsrs.review(freshState(),
+    auto state = fsrs.review(MemoryState{ItemRef::forConcept(KnowledgeObjectId::generate())},
                              Grade::Again, day(0));
     CHECK(state.phase == Phase::Learning);
     CHECK(state.lapseCount == 0);
@@ -93,7 +87,7 @@ TEST_CASE("a first review rated again starts the learning phase") {
 
 TEST_CASE("the first review boost multiplies initial stability only") {
     Fsrs fsrs;
-    MemoryState fresh = freshState();
+    MemoryState fresh{ItemRef::forConcept(KnowledgeObjectId::generate())};
     auto boosted = fsrs.review(fresh, Grade::Good, day(0), 1.2);
     CHECK(boosted.stability == doctest::Approx(2.3065 * 1.2).epsilon(kEps));
 
@@ -104,7 +98,7 @@ TEST_CASE("the first review boost multiplies initial stability only") {
 
 TEST_CASE("a review dated before the previous one counts as zero elapsed days") {
     Fsrs fsrs;
-    auto state = fsrs.review(freshState(),
+    auto state = fsrs.review(MemoryState{ItemRef::forConcept(KnowledgeObjectId::generate())},
                              Grade::Good, day(5));
     auto earlier = fsrs.review(state, Grade::Good, day(4));
     CHECK(std::isfinite(earlier.stability));
@@ -114,6 +108,6 @@ TEST_CASE("a review dated before the previous one counts as zero elapsed days") 
 
 TEST_CASE("an item never reviewed has zero recall chance") {
     Fsrs fsrs;
-    MemoryState fresh = freshState();
+    MemoryState fresh{ItemRef::forConcept(KnowledgeObjectId::generate())};
     CHECK(fsrs.recallChance(fresh, day(0)) == 0.0);
 }

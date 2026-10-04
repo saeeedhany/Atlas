@@ -44,7 +44,7 @@ struct ReviewEvent {
     Certainty predicted = Certainty::Unsure;
     Grade grade = Grade::Good;
     int hintsUsed = 0;
-    std::optional<KnowledgeObjectId> wrongTarget;
+    std::optional<KnowledgeObjectId> wrongTarget{};
     std::chrono::milliseconds responseTime{0};
 };
 
@@ -53,8 +53,8 @@ struct MemoryState {
     Phase phase = Phase::New;
     double stability = 0.0;
     double difficulty = 0.0;
-    std::optional<TimePoint> lastReviewedAt;
-    std::optional<TimePoint> dueAt;
+    std::optional<TimePoint> lastReviewedAt{};
+    std::optional<TimePoint> dueAt{};
     int reviewCount = 0;
     int lapseCount = 0;
 
