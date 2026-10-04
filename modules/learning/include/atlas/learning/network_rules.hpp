@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 #include "atlas/graph/graph_engine.hpp"
@@ -36,6 +37,12 @@ public:
     int leverage(const KnowledgeObjectId& conceptId) const;
 
 private:
+    using Components = std::unordered_map<KnowledgeObjectId, int>;
+
+    Components dependencyComponents() const;
+    bool isOnFrontier(const KnowledgeObjectId& conceptId, TimePoint now, const StateMap& states,
+                      const Components& components) const;
+
     const GraphEngine* graph_;
     Fsrs fsrs_;
     NetworkConfig config_;

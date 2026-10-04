@@ -42,7 +42,7 @@ private:
     double conceptRecall(const KnowledgeObjectId& conceptId, const StateMap& states, TimePoint now) const;
     KnowledgeObjectId linkOwner(const Relationship& link, const StateMap& states, TimePoint now) const;
     std::optional<TopicId> topicOf(const KnowledgeObjectId& conceptId) const;
-    std::vector<FocusUnit> interleaveByTopic(std::vector<FocusUnit> units) const;
+    std::vector<FocusUnit> interleaveByTopic(std::vector<FocusUnit> units, size_t focusLimit) const;
 
     const GraphEngine* graph_;
     const NetworkRules* rules_;

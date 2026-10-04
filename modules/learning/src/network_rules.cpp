@@ -1,6 +1,7 @@
 #include "atlas/learning/network_rules.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 #include <utility>
 
 namespace atlas::learning {
@@ -13,10 +14,6 @@ namespace {
 
 bool byIdText(const KnowledgeObjectId& a, const KnowledgeObjectId& b) {
     return a.toString() < b.toString();
-}
-
-bool contains(const std::vector<KnowledgeObjectId>& ids, const KnowledgeObjectId& id) {
-    return std::find(ids.begin(), ids.end(), id) != ids.end();
 }
 
 }  // namespace
@@ -48,20 +45,86 @@ bool NetworkRules::isSolid(const KnowledgeObjectId& conceptId, TimePoint now,
     return fsrs_.recallChance(it->second, now) >= config_.solidThreshold;
 }
 
+NetworkRules::Components NetworkRules::dependencyComponents() const {
+    struct Visit {
+        KnowledgeObjectId id;
+        std::vector<KnowledgeObjectId> prerequisites;
+        size_t next = 0;
+    };
+    Components components;
+    std::unordered_map<KnowledgeObjectId, int> order;
+    std::unordered_map<KnowledgeObjectId, int> lowLink;
+    std::unordered_set<KnowledgeObjectId> onStack;
+    std::vector<KnowledgeObjectId> stack;
+    std::vector<Visit> visits;
+    int nextOrder = 0;
+    int nextComponent = 0;
+
+    auto enter = [&](const KnowledgeObjectId& id) {
+        order[id] = lowLink[id] = nextOrder++;
+        stack.push_back(id);
+        onStack.insert(id);
+        visits.push_back(Visit{id, graph_->dependsOn(id)});
+    };
+
+    for (const auto& root : graph_->allNodeIds()) {
+        if (order.contains(root)) continue;
+        enter(root);
+        while (!visits.empty()) {
+            auto& visit = visits.back();
+            if (visit.next < visit.prerequisites.size()) {
+                auto prerequisite = visit.prerequisites[visit.next++];
+                if (!order.contains(prerequisite)) {
+                    enter(prerequisite);
+                } else if (onStack.contains(prerequisite)) {
+                    lowLink[visit.id] = std::min(lowLink[visit.id], order[prerequisite]);
+                }
+                continue;
+            }
+            auto id = visit.id;
+            visits.pop_back();
+            if (!visits.empty()) {
+                auto& parentLow = lowLink[visits.back().id];
+                parentLow = std::min(parentLow, lowLink[id]);
+            }
+            if (lowLink[id] != order[id]) continue;
+            while (true) {
+                auto member = stack.back();
+                stack.pop_back();
+                onStack.erase(member);
+                components[member] = nextComponent;
+                if (member == id) break;
+            }
+            ++nextComponent;
+        }
+    }
+    return components;
+}
+
 bool NetworkRules::isOnFrontier(const KnowledgeObjectId& conceptId, TimePoint now,
                                 const StateMap& states) const {
+    return isOnFrontier(conceptId, now, states, dependencyComponents());
+}
+
+bool NetworkRules::isOnFrontier(const KnowledgeObjectId& conceptId, TimePoint now, const StateMap& states,
+                                const Components& components) const {
     if (isIntroduced(ItemRef::forConcept(conceptId), states)) return false;
+    auto own = components.find(conceptId);
     for (const auto& prerequisite : graph_->dependsOn(conceptId)) {
         if (isSolid(prerequisite, now, states)) continue;
-        if (!contains(graph_->transitiveDependencies(prerequisite), conceptId)) return false;
+        auto other = components.find(prerequisite);
+        if (own == components.end() || other == components.end() || own->second != other->second) {
+            return false;
+        }
     }
     return true;
 }
 
 std::vector<KnowledgeObjectId> NetworkRules::frontier(TimePoint now, const StateMap& states) const {
-    std::vector<std::pair<int, KnowledgeObjectId>> ranked;
+    auto components = dependencyComponents();
+    std::vector<std::pair<size_t, KnowledgeObjectId>> ranked;
     for (const auto& id : graph_->allNodeIds()) {
-        if (isOnFrontier(id, now, states)) ranked.emplace_back(leverage(id), id);
+        if (isOnFrontier(id, now, states, components)) ranked.emplace_back(graph_->usedBy(id).size(), id);
     }
     std::sort(ranked.begin(), ranked.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;

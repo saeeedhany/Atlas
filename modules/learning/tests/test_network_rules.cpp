@@ -66,6 +66,34 @@ TEST_CASE("concepts in a dependency cycle do not block each other") {
     CHECK(rules.isOnFrontier(b, day(0), {}));
 }
 
+TEST_CASE("every concept in a three way dependency cycle is on the frontier") {
+    GraphEngine graph;
+    auto a = addConcept(graph, "A");
+    auto b = addConcept(graph, "B");
+    auto c = addConcept(graph, "C");
+    addLink(graph, a, b, RelationshipType::DependsOn);
+    addLink(graph, b, c, RelationshipType::DependsOn);
+    addLink(graph, c, a, RelationshipType::DependsOn);
+    NetworkRules rules(graph);
+    CHECK(rules.isOnFrontier(a, day(0), {}));
+    CHECK(rules.isOnFrontier(b, day(0), {}));
+    CHECK(rules.isOnFrontier(c, day(0), {}));
+    CHECK(rules.frontier(day(0), {}).size() == 3);
+}
+
+TEST_CASE("an unsolid prerequisite outside a cycle blocks only the concept that needs it") {
+    GraphEngine graph;
+    auto a = addConcept(graph, "A");
+    auto b = addConcept(graph, "B");
+    auto x = addConcept(graph, "X");
+    addLink(graph, a, b, RelationshipType::DependsOn);
+    addLink(graph, b, a, RelationshipType::DependsOn);
+    addLink(graph, a, x, RelationshipType::DependsOn);
+    NetworkRules rules(graph);
+    CHECK_FALSE(rules.isOnFrontier(a, day(0), {}));
+    CHECK(rules.isOnFrontier(b, day(0), {}));
+}
+
 TEST_CASE("the schema boost grows with the recall chance of prerequisites") {
     Fixture f;
     CHECK(f.rules.schemaBoost(ItemRef::forConcept(f.tree), day(0), f.states) == 1.0);

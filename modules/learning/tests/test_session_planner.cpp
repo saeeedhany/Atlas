@@ -180,3 +180,26 @@ TEST_CASE("interleaving counts the focuses of a contrast pair, not just unit fro
     auto plan = w.planner.plan(w.states, day(10), 2, SessionLimits{});
     CHECK(w.order(plan) == std::vector<KnowledgeObjectId>{a1, a2, b1, a3});
 }
+
+TEST_CASE("due concepts with equal recall are ordered by transitive leverage") {
+    for (bool firstLeads : {true, false}) {
+        World w;
+        auto first = addConcept(w.graph, "First");
+        auto second = addConcept(w.graph, "Second");
+        auto leader = firstLeads ? first : second;
+        auto follower = firstLeads ? second : first;
+        auto middle = addConcept(w.graph, "Middle");
+        auto top = addConcept(w.graph, "Top");
+        auto single = addConcept(w.graph, "Single");
+        addLink(w.graph, middle, leader, RelationshipType::DependsOn);
+        addLink(w.graph, top, middle, RelationshipType::DependsOn);
+        addLink(w.graph, single, follower, RelationshipType::DependsOn);
+        w.review(leader, Grade::Good, day(0));
+        w.review(follower, Grade::Good, day(0));
+
+        auto plan = w.planner.plan(w.states, day(30), 0, SessionLimits{});
+        REQUIRE(plan.focuses.size() >= 2);
+        CHECK(plan.focuses[0].conceptId == leader);
+        CHECK(plan.focuses[1].conceptId == follower);
+    }
+}

@@ -14,7 +14,43 @@ struct DueGroup {
     KnowledgeObjectId conceptId;
     std::vector<ItemRef> items{};
     double lowestRecall = 1.0;
-    int leverage = 0;
+};
+
+// Counts transitive dependents like NetworkRules::leverage over an index built once per plan.
+class DependentCounter {
+public:
+    explicit DependentCounter(const GraphEngine& graph) {
+        auto ids = graph.allNodeIds();
+        for (size_t i = 0; i < ids.size(); ++i) positions_.emplace(ids[i], i);
+        dependents_.resize(ids.size());
+        for (size_t i = 0; i < ids.size(); ++i) {
+            for (const auto& dependent : graph.usedBy(ids[i])) dependents_[i].push_back(positions_.at(dependent));
+        }
+        seenInSearch_.assign(ids.size(), 0);
+    }
+
+    int count(const KnowledgeObjectId& conceptId) {
+        auto found = positions_.find(conceptId);
+        if (found == positions_.end()) return 0;
+        ++search_;
+        seenInSearch_[found->second] = search_;
+        queue_.assign(1, found->second);
+        for (size_t head = 0; head < queue_.size(); ++head) {
+            for (size_t next : dependents_[queue_[head]]) {
+                if (seenInSearch_[next] == search_) continue;
+                seenInSearch_[next] = search_;
+                queue_.push_back(next);
+            }
+        }
+        return static_cast<int>(queue_.size()) - 1;
+    }
+
+private:
+    std::unordered_map<KnowledgeObjectId, size_t> positions_;
+    std::vector<std::vector<size_t>> dependents_;
+    std::vector<int> seenInSearch_;
+    std::vector<size_t> queue_;
+    int search_ = 0;
 };
 
 bool isDue(const MemoryState& state, TimePoint now) {
@@ -45,10 +81,11 @@ std::optional<TopicId> SessionPlanner::topicOf(const KnowledgeObjectId& conceptI
     return object->topicId();
 }
 
-std::vector<SessionPlanner::FocusUnit> SessionPlanner::interleaveByTopic(std::vector<FocusUnit> units) const {
+std::vector<SessionPlanner::FocusUnit> SessionPlanner::interleaveByTopic(std::vector<FocusUnit> units,
+                                                                       size_t focusLimit) const {
     std::vector<FocusUnit> result;
     std::vector<std::optional<TopicId>> topics;
-    while (!units.empty()) {
+    while (!units.empty() && topics.size() < focusLimit) {
         size_t pick = 0;
         if (topics.size() >= 2 && topics.back() == topics[topics.size() - 2]) {
             for (size_t i = 0; i < units.size(); ++i) {
@@ -92,13 +129,22 @@ SessionPlan SessionPlanner::plan(const StateMap& states, TimePoint now, int intr
     }
 
     std::vector<DueGroup*> ordered;
-    for (auto& [conceptId, group] : groups) {
-        group.leverage = rules_->leverage(conceptId);
-        ordered.push_back(&group);
-    }
-    std::sort(ordered.begin(), ordered.end(), [](const DueGroup* a, const DueGroup* b) {
+    for (auto& [conceptId, group] : groups) ordered.push_back(&group);
+    std::optional<DependentCounter> counter;
+    std::unordered_map<KnowledgeObjectId, int> leverageCache;
+    auto leverageOf = [&](const KnowledgeObjectId& conceptId) {
+        auto [it, inserted] = leverageCache.try_emplace(conceptId, 0);
+        if (inserted) {
+            if (!counter) counter.emplace(*graph_);
+            it->second = counter->count(conceptId);
+        }
+        return it->second;
+    };
+    std::sort(ordered.begin(), ordered.end(), [&](const DueGroup* a, const DueGroup* b) {
         if (a->lowestRecall != b->lowestRecall) return a->lowestRecall < b->lowestRecall;
-        if (a->leverage != b->leverage) return a->leverage > b->leverage;
+        int leverageA = leverageOf(a->conceptId);
+        int leverageB = leverageOf(b->conceptId);
+        if (leverageA != leverageB) return leverageA > leverageB;
         return a->conceptId.toString() < b->conceptId.toString();
     });
 
@@ -130,7 +176,7 @@ SessionPlan SessionPlanner::plan(const StateMap& states, TimePoint now, int intr
 
     SessionPlan plan;
     auto maxFocus = static_cast<size_t>(std::max(0, limits.maxFocus));
-    for (auto& unit : interleaveByTopic(std::move(units))) {
+    for (auto& unit : interleaveByTopic(std::move(units), maxFocus)) {
         size_t remaining = maxFocus - plan.focuses.size();
         if (remaining == 0) break;
         bool truncated = unit.size() > remaining;
