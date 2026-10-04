@@ -1,5 +1,7 @@
 #include "atlas/viewmodels/placement_controller.hpp"
 
+#include <cmath>
+#include <functional>
 #include <iterator>
 
 namespace atlas::viewmodels {
@@ -12,6 +14,29 @@ namespace {
 
 Result<void, ControllerFailure> persistenceFailure(const atlas::persistence::PersistenceError& error) {
     return Result<void, ControllerFailure>::err({ControllerErrorCode::PersistenceFailed, error.detail});
+}
+
+constexpr double kMaxStartingOffset = 40.0;
+
+struct Centroid {
+    double sumX = 0.0;
+    double sumY = 0.0;
+    int count = 0;
+
+    void add(const Placement& placement) {
+        sumX += placement.x;
+        sumY += placement.y;
+        ++count;
+    }
+    atlas::render::Point2D center() const { return {sumX / count, sumY / count}; }
+};
+
+atlas::render::Point2D offsetFor(const KnowledgeObjectId& id) {
+    constexpr double kTwoPi = 6.283185307179586;
+    size_t hash = std::hash<std::string>{}(id.toString());
+    double angle = kTwoPi * static_cast<double>(hash % 360) / 360.0;
+    double radius = kMaxStartingOffset * static_cast<double>((hash / 360) % 101) / 100.0;
+    return {radius * std::cos(angle), radius * std::sin(angle)};
 }
 
 }  // namespace
@@ -30,7 +55,32 @@ Result<void, ControllerFailure> PlacementController::load() {
     if (!stored.hasValue()) return persistenceFailure(stored.error());
     placements_.clear();
     for (const auto& placement : stored.value()) placements_.insert_or_assign(placement.conceptId, placement);
+    loaded_ = true;
     return arrange();
+}
+
+atlas::render::Point2D PlacementController::startingPointFor(const KnowledgeObjectId& id) const {
+    const auto& graph = workspace_->graph();
+    Centroid neighbors;
+    for (const auto& neighbor : graph.neighbors(id, std::nullopt, atlas::graph::GraphEngine::Direction::Both)) {
+        auto placed = placements_.find(neighbor);
+        if (placed != placements_.end()) neighbors.add(placed->second);
+    }
+    Centroid peers;
+    Centroid everything;
+    const auto* object = graph.findNode(id);
+    auto topic = object != nullptr ? object->topicId() : std::nullopt;
+    for (const auto& [placedId, placement] : placements_) {
+        everything.add(placement);
+        const auto* placedObject = graph.findNode(placedId);
+        if (topic && placedObject != nullptr && placedObject->topicId() == topic) peers.add(placement);
+    }
+    atlas::render::Point2D base;
+    if (neighbors.count > 0) base = neighbors.center();
+    else if (peers.count > 0) base = peers.center();
+    else if (everything.count > 0) base = everything.center();
+    auto offset = offsetFor(id);
+    return {base.x + offset.x, base.y + offset.y};
 }
 
 void PlacementController::forgetRemovedConcepts() {
@@ -41,20 +91,24 @@ void PlacementController::forgetRemovedConcepts() {
 }
 
 Result<void, ControllerFailure> PlacementController::arrange() {
+    if (!loaded_) return Result<void, ControllerFailure>::ok();
     forgetRemovedConcepts();
     const auto& graph = workspace_->graph();
     LayoutHints hints;
-    bool anyUnplaced = false;
+    std::vector<KnowledgeObjectId> unplaced;
     for (const auto& id : graph.allNodeIds()) {
         auto saved = placements_.find(id);
         if (saved == placements_.end()) {
-            anyUnplaced = true;
+            unplaced.push_back(id);
             continue;
         }
         hints.initial[id] = {saved->second.x, saved->second.y};
         hints.pinned.insert(id);
     }
-    if (!anyUnplaced) return Result<void, ControllerFailure>::ok();
+    if (unplaced.empty()) return Result<void, ControllerFailure>::ok();
+    if (!placements_.empty()) {
+        for (const auto& id : unplaced) hints.initial[id] = startingPointFor(id);
+    }
 
     std::vector<Placement> added;
     for (const auto& [id, point] : ForceDirectedLayout::compute(graph, {}, hints)) {

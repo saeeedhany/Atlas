@@ -37,10 +37,12 @@ signals:
 private:
     Result<void, ControllerFailure> save(const std::vector<atlas::core::Placement>& changed);
     void forgetRemovedConcepts();
+    atlas::render::Point2D startingPointFor(const KnowledgeObjectId& id) const;
 
     atlas::persistence::PlacementRepository repository_;
     WorkspaceController* workspace_;
     std::unordered_map<KnowledgeObjectId, atlas::core::Placement> placements_;
+    bool loaded_ = false;
 };
 
 }  // namespace atlas::viewmodels

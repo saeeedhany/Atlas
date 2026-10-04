@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/placement_repository.hpp"
 #include "atlas/viewmodels/placement_controller.hpp"
@@ -31,6 +33,14 @@ struct Fixture {
 
 bool samePoint(const atlas::render::Point2D& left, const atlas::render::Point2D& right) {
     return left.x == right.x && left.y == right.y;
+}
+
+double distance(const atlas::render::Point2D& point, double x, double y) {
+    return std::hypot(point.x - x, point.y - y);
+}
+
+void saveAt(Database& db, const KnowledgeObjectId& id, double x, double y) {
+    REQUIRE(PlacementRepository(db).saveAll({Placement{id, x, y, false}}).hasValue());
 }
 
 }  // namespace
@@ -96,4 +106,72 @@ TEST_CASE("placementsChanged fires when new concepts are placed") {
     REQUIRE(placements.load().hasValue());
     f.workspace.createKnowledgeObject("E");
     CHECK(fired == 2);
+}
+
+TEST_CASE("a new concept starts near the center of its topic") {
+    Fixture f;
+    auto os = f.workspace.createTopic("OS").value();
+    auto paging = f.workspace.createKnowledgeObject("Paging", os).value();
+    auto threads = f.workspace.createKnowledgeObject("Threads", os).value();
+    saveAt(f.db, paging, 950.0, 1000.0);
+    saveAt(f.db, threads, 1050.0, 1000.0);
+    saveAt(f.db, f.a, -1000.0, -1000.0);
+    saveAt(f.db, f.b, -1000.0, -900.0);
+    saveAt(f.db, f.c, -900.0, -1000.0);
+    PlacementController placements(f.db, f.workspace);
+    REQUIRE(placements.load().hasValue());
+
+    auto added = f.workspace.createKnowledgeObject("Scheduling", os).value();
+    auto placed = placements.position(added);
+    REQUIRE(placed.has_value());
+    CHECK(distance(*placed, 1000.0, 1000.0) < 150.0);
+}
+
+TEST_CASE("a new concept with no topic peers starts near the center of everything") {
+    Fixture f;
+    saveAt(f.db, f.a, 0.0, 0.0);
+    saveAt(f.db, f.b, 1000.0, 0.0);
+    saveAt(f.db, f.c, 500.0, 900.0);
+    PlacementController placements(f.db, f.workspace);
+    REQUIRE(placements.load().hasValue());
+
+    auto empty = f.workspace.createTopic("Empty").value();
+    auto added = f.workspace.createKnowledgeObject("Lonely", empty).value();
+    auto placed = placements.position(added);
+    REQUIRE(placed.has_value());
+    CHECK(distance(*placed, 500.0, 300.0) < 150.0);
+}
+
+TEST_CASE("graph changes before load write no placements") {
+    Fixture f;
+    PlacementController placements(f.db, f.workspace);
+    f.workspace.createKnowledgeObject("Early");
+    CHECK(PlacementRepository(f.db).findAll().value().empty());
+}
+
+TEST_CASE("tidy moves concepts that are not pinned") {
+    Fixture f;
+    saveAt(f.db, f.a, 0.0, 0.0);
+    saveAt(f.db, f.b, 1.0, 0.0);
+    saveAt(f.db, f.c, 0.0, 1.0);
+    PlacementController placements(f.db, f.workspace);
+    REQUIRE(placements.load().hasValue());
+    REQUIRE(placements.tidy().hasValue());
+    bool moved = !samePoint(*placements.position(f.a), {0.0, 0.0}) ||
+                 !samePoint(*placements.position(f.b), {1.0, 0.0}) ||
+                 !samePoint(*placements.position(f.c), {0.0, 1.0});
+    CHECK(moved);
+}
+
+TEST_CASE("a pinned concept stays pinned after a restart") {
+    Fixture f;
+    {
+        PlacementController first(f.db, f.workspace);
+        REQUIRE(first.load().hasValue());
+        REQUIRE(first.setPinned(f.a, true).hasValue());
+    }
+    PlacementController second(f.db, f.workspace);
+    REQUIRE(second.load().hasValue());
+    CHECK(second.isPinned(f.a));
+    CHECK_FALSE(second.isPinned(f.b));
 }
