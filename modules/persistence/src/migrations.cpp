@@ -124,6 +124,7 @@ constexpr std::array<Migration, 3> kMigrations{{
             response_ms INTEGER NOT NULL
         );
         CREATE INDEX idx_review_events_item ON review_events(item_kind, item_id, reviewed_at);
+        CREATE INDEX idx_review_events_wrong_target ON review_events(wrong_target_id) WHERE wrong_target_id IS NOT NULL;
 
         CREATE TABLE memory_states (
             item_kind TEXT NOT NULL,
