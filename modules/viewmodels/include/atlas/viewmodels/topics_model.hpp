@@ -27,6 +27,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     int count() const { return static_cast<int>(rows_.size()); }
 
+    using ProvidedSingleton<TopicsModel>::create;
     Q_INVOKABLE QString create(const QString& name);
     Q_INVOKABLE bool rename(const QString& id, const QString& name);
     Q_INVOKABLE bool remove(const QString& id);

@@ -1,4 +1,5 @@
 add_executable(atlas_viewmodels_tests
+    test_app_context.cpp
     test_appearance.cpp
     test_concept_editor.cpp
     test_concept_links_model.cpp
