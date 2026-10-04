@@ -656,3 +656,18 @@ Organized by module, roughly in the order each decision arose.
   M2), but `GraphEngine` does; checking it first means that rejection
   happens before any database write, not as an inconsistency
   discovered after one already succeeded.
+
+## Learning engine (plan 1)
+
+- The review log is the source of truth. `memory_states` is a cache that `MemoryLedger::replay` can rebuild at any time.
+- One `LearningRepository` covers events, states, and cache metadata, because they always change in one transaction.
+- Learning data for a deleted concept or link is removed by SQL triggers. They run inside the delete itself, including relationship cascades, so no caller can forget them.
+- `due_at` is the exact moment recall chance reaches the target retention. "Due" means `due_at <= now`, equivalent to `R(now) < target`.
+- New items follow a simplified FSRS phase model: a first `again` enters learning, any other first grade enters review. There are no intra-day learning steps; the in-session requeue is the hypercorrection rule.
+- A prerequisite that depends back on the concept (a cycle) does not block it from the frontier.
+- Links between topics are allowed. The topic view draws only links with both ends in the topic until ghost nodes arrive with the new canvas.
+- Layout processes nodes in id order, so results no longer depend on hash map order.
+- Links that are ready but never reviewed join the due set with recall 0 and do not count toward the daily new limit, which counts frontier concepts only.
+- `max_focus` is a hard cap: a contrast unit that does not fit is truncated to the remaining slots and planning stops.
+- Topic interleaving looks at the last two placed focuses, not at whole units.
+- Structs that are brace-initialized with fewer fields than they have give the remaining members a `{}` default, so `-Wextra -Werror` accepts them.
