@@ -16,6 +16,7 @@ qt_add_qml_module(atlas_viewmodels
         include/atlas/viewmodels/palette.hpp
         include/atlas/viewmodels/placement_controller.hpp
         include/atlas/viewmodels/provided_singleton.hpp
+        include/atlas/viewmodels/topics_model.hpp
         include/atlas/viewmodels/workspace_controller.hpp
         src/app_settings.cpp
         src/clock.cpp
@@ -24,6 +25,7 @@ qt_add_qml_module(atlas_viewmodels
         src/memory_controller.cpp
         src/palette.cpp
         src/placement_controller.cpp
+        src/topics_model.cpp
         src/workspace_controller.cpp
 )
 
