@@ -693,3 +693,8 @@ Organized by module, roughly in the order each decision arose.
 - Selection, neighbor, and hover highlights are thin rings drawn outside the memory ring, and links stop at the memory ring's outer edge, so neither hides the other.
 - The canvas only collapses into topics when at least one node has a topic key, so views without topics never go blank when zoomed out.
 - Tests that add reviews after the memory cache is loaded record the resulting memory states with the events, matching how the app records sessions.
+- Map refreshes are coalesced into one queued refresh per event loop turn, and concepts appear on the map only once they have a saved position.
+- A corrupt memory cache is rebuilt from the log at startup instead of blocking it.
+- New concepts start near their linked neighbors, else near their topic's center, so topics form regions on the map.
+- Ghost nodes are drawn at their own saved positions rather than at the edge of the view.
+- Canvas labels are cached across scene updates, and hover or selection changes rebuild only the highlight layer.
