@@ -5,6 +5,7 @@ add_executable(atlas_learning_tests
     test_network_rules.cpp
     test_rebuild_grader.cpp
     test_session_planner.cpp
+    test_calibration.cpp
 )
 
 target_link_libraries(atlas_learning_tests PRIVATE atlas_learning)
