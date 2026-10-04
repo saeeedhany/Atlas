@@ -3,6 +3,7 @@ add_executable(atlas_qml_tests
     test_components.cpp
     test_foundation.cpp
     test_main.cpp
+    test_shell.cpp
 )
 
 target_link_libraries(atlas_qml_tests PRIVATE

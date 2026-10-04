@@ -13,11 +13,16 @@ qt_add_qml_module(atlas_qml
         AppTextArea.qml
         AppTextField.qml
         ListEditor.qml
+        Main.qml
+        MapOverlay.qml
+        NavRail.qml
         Motion.qml
         Ring.qml
         SectionLabel.qml
+        SettingsScreen.qml
         StartupError.qml
         Theme.qml
+        TodayOverlay.qml
         Toast.qml
 )
 

@@ -9,6 +9,7 @@ qt_add_qml_module(atlas_viewmodels
     SOURCES
         include/atlas/viewmodels/app_context.hpp
         include/atlas/viewmodels/app_settings.hpp
+        include/atlas/viewmodels/app_startup.hpp
         include/atlas/viewmodels/clock.hpp
         include/atlas/viewmodels/concept_editor.hpp
         include/atlas/viewmodels/concept_links_model.hpp
@@ -24,6 +25,7 @@ qt_add_qml_module(atlas_viewmodels
         include/atlas/viewmodels/workspace_controller.hpp
         src/app_context.cpp
         src/app_settings.cpp
+        src/app_startup.cpp
         src/clock.cpp
         src/concept_editor.cpp
         src/concept_links_model.cpp
