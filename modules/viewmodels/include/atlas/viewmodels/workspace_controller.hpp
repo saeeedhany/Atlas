@@ -75,6 +75,8 @@ public:
         const KnowledgeObjectId& sourceId, const KnowledgeObjectId& targetId, RelationshipType type,
         std::optional<std::string> note);
     Result<void, ControllerFailure> removeRelationship(const RelationshipId& id);
+    Result<void, ControllerFailure> setRelationshipNote(const RelationshipId& id,
+                                                       std::optional<std::string> note);
 
     std::vector<KnowledgeObject> allKnowledgeObjects() const;
     std::vector<Relationship> allRelationships() const;

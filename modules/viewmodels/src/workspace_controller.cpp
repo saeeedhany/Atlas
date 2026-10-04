@@ -205,6 +205,30 @@ Result<void, ControllerFailure> WorkspaceController::removeRelationship(
     return Result<void, ControllerFailure>::ok();
 }
 
+Result<void, ControllerFailure> WorkspaceController::setRelationshipNote(
+    const RelationshipId& id, std::optional<std::string> note) {
+    using Out = Result<void, ControllerFailure>;
+    const Relationship* current = graph_.findEdge(id);
+    if (current == nullptr) return Out::err({ControllerErrorCode::NotFound, "No link with that id"});
+    if (note && note->empty()) note.reset();
+
+    auto written = relationshipRepository_.updateNote(id, note);
+    if (!written.hasValue()) return Out::err({ControllerErrorCode::PersistenceFailed, written.error().detail});
+
+    Relationship::StorageRecord record{current->id(),   current->sourceId(), current->targetId(),
+                                       current->type(), note,                current->createdAt()};
+    auto updated = Relationship::reconstruct(std::move(record));
+    if (!updated.hasValue()) {
+        return Out::err({ControllerErrorCode::GraphInconsistency, "The link could not be updated"});
+    }
+    graph_.removeEdge(id);
+    if (!graph_.addEdge(std::move(updated).value()).hasValue()) {
+        return Out::err({ControllerErrorCode::GraphInconsistency, "The link could not be updated"});
+    }
+    emit graphChanged();
+    return Out::ok();
+}
+
 std::vector<KnowledgeObject> WorkspaceController::allKnowledgeObjects() const {
     std::vector<KnowledgeObject> objects;
     for (const auto& id : graph_.allNodeIds()) {

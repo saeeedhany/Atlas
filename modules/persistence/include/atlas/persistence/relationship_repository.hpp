@@ -23,6 +23,8 @@ public:
     // with a different id - is rejected by the database's UNIQUE
     // constraint and surfaces as PersistenceErrorCode::ConstraintViolation.
     Result<void, PersistenceError> save(const Relationship& relationship);
+    Result<void, PersistenceError> updateNote(const RelationshipId& id,
+                                             const std::optional<std::string>& note);
 
     Result<std::optional<Relationship>, PersistenceError> findById(const RelationshipId& id);
 

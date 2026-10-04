@@ -1,5 +1,7 @@
+#include "atlas/core/memory.hpp"
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/knowledge_object_repository.hpp"
+#include "atlas/persistence/learning_repository.hpp"
 #include "atlas/persistence/relationship_repository.hpp"
 #include "atlas/persistence/topic_repository.hpp"
 #include "atlas/viewmodels/workspace_controller.hpp"
@@ -617,4 +619,33 @@ TEST_CASE("suggestProjects on a topic with nothing suggestable returns an empty 
     auto topicId = controller.createTopic("Empty Topic").value();
     auto suggestions = controller.suggestProjects(topicId);
     CHECK(suggestions.empty());
+}
+
+TEST_CASE("setting a link note keeps its reviews") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+    auto a = controller.createKnowledgeObject("A").value();
+    auto b = controller.createKnowledgeObject("B").value();
+    auto link = controller.createRelationship(a, b, RelationshipType::DependsOn, std::nullopt).value();
+
+    ReviewEvent event;
+    event.id = Uuid::generate();
+    event.item = ItemRef::forLink(link);
+    event.sessionId = Uuid::generate();
+    event.deviceId = "test";
+    event.reviewedAt = std::chrono::system_clock::now();
+    LearningRepository learning(db);
+    REQUIRE(learning.record({event}, {}).hasValue());
+
+    int changes = 0;
+    QObject::connect(&controller, &WorkspaceController::graphChanged, [&] { ++changes; });
+    REQUIRE(controller.setRelationshipNote(link, std::string("B comes first")).hasValue());
+    CHECK(changes == 1);
+    CHECK(controller.graph().findEdge(link)->note() == std::optional<std::string>("B comes first"));
+    CHECK(learning.allEvents().value().size() == 1);
+
+    REQUIRE(controller.setRelationshipNote(link, std::string()).hasValue());
+    CHECK_FALSE(controller.graph().findEdge(link)->note().has_value());
+    CHECK_FALSE(controller.setRelationshipNote(RelationshipId::generate(), std::string("x")).hasValue());
 }

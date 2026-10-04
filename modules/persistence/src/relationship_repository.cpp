@@ -94,6 +94,20 @@ Result<void, PersistenceError> RelationshipRepository::save(const Relationship& 
     return Result<void, PersistenceError>::ok();
 }
 
+Result<void, PersistenceError> RelationshipRepository::updateNote(
+    const RelationshipId& id, const std::optional<std::string>& note) {
+    auto stmtResult = detail::Statement::prepare(database_->handle(),
+                                                 "UPDATE relationships SET note = ? WHERE id = ?;");
+    if (!stmtResult.hasValue()) return Result<void, PersistenceError>::err(std::move(stmtResult).error());
+    auto statement = std::move(stmtResult).value();
+    statement.bindOptionalText(1, note);
+    statement.bindText(2, id.toString());
+
+    auto stepResult = statement.step();
+    if (!stepResult.hasValue()) return Result<void, PersistenceError>::err(stepResult.error());
+    return Result<void, PersistenceError>::ok();
+}
+
 Result<std::optional<Relationship>, PersistenceError> RelationshipRepository::findById(
     const RelationshipId& id) {
     sqlite3* db = database_->handle();

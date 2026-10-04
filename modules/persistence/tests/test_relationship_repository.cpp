@@ -117,3 +117,18 @@ TEST_CASE("removing a KnowledgeObject cascades and removes relationships touchin
     REQUIRE(found.hasValue());
     CHECK(!found.value().has_value());  // gone via ON DELETE CASCADE, not orphaned
 }
+
+TEST_CASE("updating a note keeps the row and its learning history") {
+    auto db = openTestDatabase();
+    KnowledgeObjectRepository objects(db);
+    auto a = saveStubObject(objects, "A");
+    auto b = saveStubObject(objects, "B");
+    RelationshipRepository repository(db);
+    auto link = Relationship::create(a, b, RelationshipType::DependsOn).value();
+    REQUIRE(repository.save(link).hasValue());
+
+    REQUIRE(repository.updateNote(link.id(), std::string("needs order")).hasValue());
+    CHECK(repository.findById(link.id()).value()->note() == std::optional<std::string>("needs order"));
+    REQUIRE(repository.updateNote(link.id(), std::nullopt).hasValue());
+    CHECK_FALSE(repository.findById(link.id()).value()->note().has_value());
+}
