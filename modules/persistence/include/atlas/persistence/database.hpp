@@ -39,6 +39,7 @@ private:
     friend class RelationshipRepository;
     friend class TopicRepository;
     friend class LearningRepository;
+    friend class PlacementRepository;
 
     explicit Database(sqlite3* handle);
     sqlite3* handle() const { return handle_; }
