@@ -131,3 +131,52 @@ TEST_CASE("states for concepts and links no longer in the graph are ignored") {
     CHECK(plan.focuses.empty());
     CHECK(plan.estimatedDuration == std::chrono::seconds(0));
 }
+
+TEST_CASE("a symmetric link goes to the weaker concept even when it is the target") {
+    World w;
+    auto btree = addConcept(w.graph, "B-Tree");
+    auto hash = addConcept(w.graph, "Hash Table");
+    auto link = addLink(w.graph, btree, hash, RelationshipType::AlternativeTo);
+    w.review(btree, Grade::Good, day(0));
+    w.review(hash, Grade::Hard, day(0));
+
+    auto plan = w.planner.plan(w.states, day(0.5), 2, SessionLimits{});
+    CHECK(w.order(plan) == std::vector<KnowledgeObjectId>{hash, btree});
+    CHECK(plan.focuses[0].items == std::vector<ItemRef>{ItemRef::forLink(link)});
+}
+
+TEST_CASE("maxFocus is a hard cap even when a contrast pair straddles it") {
+    World w;
+    auto a = addConcept(w.graph, "A");
+    auto b = addConcept(w.graph, "B");
+    addLink(w.graph, a, b, RelationshipType::AlternativeTo);
+    w.review(a, Grade::Again, day(0));
+    w.review(b, Grade::Easy, day(0));
+
+    SessionLimits one;
+    one.maxFocus = 1;
+    auto plan = w.planner.plan(w.states, day(1), 2, one);
+    CHECK(w.order(plan) == std::vector<KnowledgeObjectId>{a});
+
+    SessionLimits none;
+    none.maxFocus = 0;
+    CHECK(w.planner.plan(w.states, day(1), 2, none).focuses.empty());
+}
+
+TEST_CASE("interleaving counts the focuses of a contrast pair, not just unit fronts") {
+    World w;
+    auto ta = TopicId::generate();
+    auto tb = TopicId::generate();
+    auto a1 = addConcept(w.graph, "A1", ta);
+    auto a2 = addConcept(w.graph, "A2", ta);
+    auto a3 = addConcept(w.graph, "A3", ta);
+    auto b1 = addConcept(w.graph, "B1", tb);
+    addLink(w.graph, a1, a2, RelationshipType::AlternativeTo);
+    w.review(a1, Grade::Again, day(0));
+    w.review(a3, Grade::Hard, day(0));
+    w.review(a2, Grade::Good, day(0));
+    w.review(b1, Grade::Easy, day(0));
+
+    auto plan = w.planner.plan(w.states, day(10), 2, SessionLimits{});
+    CHECK(w.order(plan) == std::vector<KnowledgeObjectId>{a1, a2, b1, a3});
+}

@@ -47,19 +47,18 @@ std::optional<TopicId> SessionPlanner::topicOf(const KnowledgeObjectId& conceptI
 
 std::vector<SessionPlanner::FocusUnit> SessionPlanner::interleaveByTopic(std::vector<FocusUnit> units) const {
     std::vector<FocusUnit> result;
+    std::vector<std::optional<TopicId>> topics;
     while (!units.empty()) {
         size_t pick = 0;
-        if (result.size() >= 2) {
-            auto last = topicOf(result.back().front().conceptId);
-            if (last == topicOf(result[result.size() - 2].front().conceptId)) {
-                for (size_t i = 0; i < units.size(); ++i) {
-                    if (topicOf(units[i].front().conceptId) != last) {
-                        pick = i;
-                        break;
-                    }
+        if (topics.size() >= 2 && topics.back() == topics[topics.size() - 2]) {
+            for (size_t i = 0; i < units.size(); ++i) {
+                if (topicOf(units[i].front().conceptId) != topics.back()) {
+                    pick = i;
+                    break;
                 }
             }
         }
+        for (const auto& focus : units[pick]) topics.push_back(topicOf(focus.conceptId));
         result.push_back(std::move(units[pick]));
         units.erase(units.begin() + static_cast<long>(pick));
     }
@@ -130,10 +129,14 @@ SessionPlan SessionPlanner::plan(const StateMap& states, TimePoint now, int intr
     }
 
     SessionPlan plan;
+    auto maxFocus = static_cast<size_t>(std::max(0, limits.maxFocus));
     for (auto& unit : interleaveByTopic(std::move(units))) {
-        bool full = plan.focuses.size() + unit.size() > static_cast<size_t>(limits.maxFocus);
-        if (!plan.focuses.empty() && full) break;
+        size_t remaining = maxFocus - plan.focuses.size();
+        if (remaining == 0) break;
+        bool truncated = unit.size() > remaining;
+        if (truncated) unit.erase(unit.begin() + static_cast<long>(remaining), unit.end());
         for (auto& focus : unit) plan.focuses.push_back(std::move(focus));
+        if (truncated) break;
     }
     auto perFocus = medianFocusTime ? std::chrono::duration_cast<std::chrono::seconds>(*medianFocusTime)
                                     : limits.defaultFocusTime;
