@@ -1,0 +1,182 @@
+#include <QSettings>
+#include <QTemporaryDir>
+
+#include "atlas/persistence/database.hpp"
+#include "atlas/persistence/learning_repository.hpp"
+#include "atlas/viewmodels/ids.hpp"
+#include "atlas/viewmodels/map_view_model.hpp"
+#include "doctest.h"
+
+using namespace atlas::core;
+using namespace atlas::persistence;
+using namespace atlas::viewmodels;
+
+namespace {
+
+Database openTestDatabase() {
+    auto result = Database::open(":memory:");
+    REQUIRE(result.hasValue());
+    return std::move(result).value();
+}
+
+struct Fixture {
+    Database db = openTestDatabase();
+    WorkspaceController workspace{db};
+    bool loaded = workspace.load().hasValue();
+    QTemporaryDir dir;
+    QSettings store{dir.filePath("settings.ini"), QSettings::IniFormat};
+    AppSettings settings{store};
+    Palette palette{settings};
+    TimePoint now = std::chrono::system_clock::now();
+    MemoryController memory{db, workspace, [this] { return now; }};
+    PlacementController placements{db, workspace};
+    MapViewModel map{workspace, memory, placements, palette};
+    int errors = 0;
+
+    Fixture() {
+        REQUIRE(loaded);
+        REQUIRE(placements.load().hasValue());
+        REQUIRE(memory.load().hasValue());
+        QObject::connect(&map, &MapViewModel::errorOccurred, [this] { ++errors; });
+    }
+
+    TopicId topic(const char* name) { return workspace.createTopic(name).value(); }
+    KnowledgeObjectId addConcept(const char* title, TopicId topicId) {
+        return workspace.createKnowledgeObject(title, topicId).value();
+    }
+    const atlas::render::RenderNode* node(const KnowledgeObjectId& id) const {
+        for (const auto& node : map.nodes()) {
+            if (node.id == idString(id)) return &node;
+        }
+        return nullptr;
+    }
+};
+
+}  // namespace
+
+TEST_CASE("ids round trip and reject garbage") {
+    auto id = KnowledgeObjectId::generate();
+    CHECK(parseId<KnowledgeObjectId>(idString(id)) == id);
+    CHECK_FALSE(parseId<KnowledgeObjectId>("not an id").has_value());
+}
+
+TEST_CASE("an empty database gives an empty scene without errors") {
+    Fixture f;
+    CHECK(f.map.nodes().empty());
+    CHECK(f.map.conceptCount() == 0);
+    CHECK(f.errors == 0);
+}
+
+TEST_CASE("a topic scope shows outside neighbors as ghosts") {
+    Fixture f;
+    auto os = f.topic("Operating Systems");
+    auto databases = f.topic("Databases");
+    auto paging = f.addConcept("Paging", os);
+    auto indexing = f.addConcept("Indexing", databases);
+    REQUIRE(f.workspace.createRelationship(indexing, paging, RelationshipType::Uses, std::nullopt).hasValue());
+
+    CHECK(f.map.nodes().size() == 2);
+    CHECK_FALSE(f.node(indexing)->ghost);
+
+    f.map.setTopicId(idString(os));
+    CHECK(f.map.conceptCount() == 1);
+    REQUIRE(f.node(indexing) != nullptr);
+    CHECK(f.node(indexing)->ghost);
+    CHECK_FALSE(f.node(paging)->ghost);
+    CHECK(f.node(paging)->groupLabel == "Operating Systems");
+    REQUIRE(f.map.edges().size() == 1);
+    CHECK(f.map.edges()[0].ghost);
+    CHECK(f.map.edges()[0].directed);
+}
+
+TEST_CASE("links carry their style and nodes carry recall") {
+    Fixture f;
+    auto topic = uncategorizedTopicId();
+    auto btree = f.addConcept("B-Tree", topic);
+    auto hash = f.addConcept("Hash Table", topic);
+    REQUIRE(f.workspace.createRelationship(btree, hash, RelationshipType::AlternativeTo, std::nullopt).hasValue());
+    CHECK(f.map.edges()[0].contrast);
+    CHECK_FALSE(f.map.edges()[0].directed);
+    CHECK(f.node(btree)->recall < 0.0);
+
+    ReviewEvent review;
+    review.id = Uuid::generate();
+    review.item = ItemRef::forConcept(btree);
+    review.sessionId = Uuid::generate();
+    review.deviceId = "test";
+    review.reviewedAt = f.now;
+    review.grade = Grade::Good;
+    MemoryState state{review.item};
+    state.phase = Phase::Review;
+    state.stability = 2.3065;
+    state.difficulty = 5.0;
+    state.lastReviewedAt = f.now;
+    REQUIRE(LearningRepository(f.db).record({review}, {state}).hasValue());
+    REQUIRE(f.memory.load().hasValue());
+    CHECK(f.node(btree)->recall == doctest::Approx(1.0));
+}
+
+TEST_CASE("deleting the selected concept clears the selection") {
+    Fixture f;
+    auto tree = f.addConcept("Tree", uncategorizedTopicId());
+    int selectionChanges = 0;
+    QObject::connect(&f.map, &MapViewModel::selectedIdChanged, [&] { ++selectionChanges; });
+    f.map.setSelectedId(idString(tree));
+    REQUIRE(f.workspace.removeKnowledgeObject(tree).hasValue());
+    CHECK(f.map.selectedId().isEmpty());
+    CHECK(selectionChanges == 2);
+}
+
+TEST_CASE("the attached canvas follows the scene and the theme") {
+    Fixture f;
+    f.addConcept("Tree", uncategorizedTopicId());
+    atlas::render::GraphCanvasItem canvas;
+    f.map.attach(&canvas);
+    CHECK(canvas.nodes().size() == 1);
+    f.settings.setDarkTheme(false);
+    CHECK(canvas.theme() == atlas::render::ThemeMode::Light);
+    f.addConcept("Hash", uncategorizedTopicId());
+    CHECK(canvas.nodes().size() == 2);
+}
+
+TEST_CASE("clicking a collapsed topic opens it and clicking a node selects it") {
+    Fixture f;
+    auto os = f.topic("OS");
+    auto paging = f.addConcept("Paging", os);
+    atlas::render::GraphCanvasItem canvas;
+    f.map.attach(&canvas);
+    emit canvas.groupClicked(idString(os));
+    CHECK(f.map.topicId() == idString(os));
+    emit canvas.nodeClicked(idString(paging));
+    CHECK(f.map.selectedId() == idString(paging));
+}
+
+TEST_CASE("search and new concepts stay inside the topic scope") {
+    Fixture f;
+    auto os = f.topic("OS");
+    f.addConcept("Paging", os);
+    f.addConcept("Indexing", uncategorizedTopicId());
+    f.map.setTopicId(idString(os));
+
+    auto results = f.map.search("");
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].toMap().value("title").toString() == "Paging");
+
+    QString created = f.map.createConcept("Segmentation");
+    REQUIRE_FALSE(created.isEmpty());
+    auto object = f.workspace.findKnowledgeObject(*parseId<KnowledgeObjectId>(created));
+    REQUIRE(object.has_value());
+    CHECK(object->topicId() == os);
+    CHECK(f.map.selectedId() == created);
+}
+
+TEST_CASE("bad input is reported, not ignored") {
+    Fixture f;
+    f.map.setTopicId("garbage");
+    CHECK(f.map.topicId().isEmpty());
+    CHECK(f.map.createConcept("").isEmpty());
+    CHECK(f.errors == 1);
+    QQuickItem notACanvas;
+    f.map.attach(&notACanvas);
+    CHECK(f.errors == 2);
+}

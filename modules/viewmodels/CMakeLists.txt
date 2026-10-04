@@ -10,6 +10,8 @@ qt_add_qml_module(atlas_viewmodels
         include/atlas/viewmodels/app_settings.hpp
         include/atlas/viewmodels/clock.hpp
         include/atlas/viewmodels/controller_error.hpp
+        include/atlas/viewmodels/ids.hpp
+        include/atlas/viewmodels/map_view_model.hpp
         include/atlas/viewmodels/memory_controller.hpp
         include/atlas/viewmodels/palette.hpp
         include/atlas/viewmodels/placement_controller.hpp
@@ -17,6 +19,8 @@ qt_add_qml_module(atlas_viewmodels
         include/atlas/viewmodels/workspace_controller.hpp
         src/app_settings.cpp
         src/clock.cpp
+        src/ids.cpp
+        src/map_view_model.cpp
         src/memory_controller.cpp
         src/palette.cpp
         src/placement_controller.cpp
