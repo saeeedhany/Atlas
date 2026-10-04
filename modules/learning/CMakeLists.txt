@@ -3,6 +3,7 @@ add_library(atlas_learning STATIC
     src/memory_ledger.cpp
     src/network_rules.cpp
     src/rebuild_grader.cpp
+    src/session_planner.cpp
 )
 
 target_include_directories(atlas_learning PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
