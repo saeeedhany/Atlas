@@ -68,7 +68,7 @@ constexpr int kDimmedAlpha = 60;
 constexpr int kDimmedRingAlphaPercent = 40;
 constexpr double kEaseFactor = 0.2;
 constexpr double kFitMarginPx = 80.0;
-constexpr double kFitMaxScale = 1.6;
+constexpr double kFitMaxScale = 2.5;
 constexpr double kLinkHoverPx = 6.0;
 constexpr double kCameraEpsilon = 0.25;
 constexpr double kAnimationEpsilonSq = 0.01;
@@ -262,7 +262,7 @@ void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<Re
     targets.reserve(nodes_.size());
     for (const auto& node : nodes_) targets.emplace(node.id, QPointF(node.x, node.y));
     for (const auto& [id, target] : targets) {
-        if (!currentPositions_.contains(id)) currentPositions_[id] = target;
+        if (!animated_ || !currentPositions_.contains(id)) currentPositions_[id] = target;
     }
     for (auto it = currentPositions_.begin(); it != currentPositions_.end();) {
         it = targets.contains(it->first) ? std::next(it) : currentPositions_.erase(it);

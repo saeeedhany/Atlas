@@ -132,6 +132,18 @@ TEST_CASE("centerOn puts the node in the middle of the view") {
     CHECK_FALSE(canvas.screenPositionOf("missing").isValid());
 }
 
+TEST_CASE("without animation a moved node jumps straight to its new position") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    canvas.setGraphData({makeNode("a", 0, 0, ""), makeNode("b", 100, 0, "")}, {});
+    QPointF before = canvas.screenPositionOf("b").toPointF();
+    canvas.setGraphData({makeNode("a", 0, 0, ""), makeNode("b", 300, 50, "")}, {});
+    QPointF after = canvas.screenPositionOf("b").toPointF();
+    CHECK(after.x() - before.x() == doctest::Approx(200.0 * canvas.zoom()));
+    CHECK(after.y() - before.y() == doctest::Approx(50.0 * canvas.zoom()));
+}
+
 TEST_CASE("fitToContent shows every node") {
     GraphCanvasItem canvas;
     canvas.setSize(QSizeF(800, 600));
