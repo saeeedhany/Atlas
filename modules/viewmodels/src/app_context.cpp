@@ -12,7 +12,8 @@ AppContext::AppContext(atlas::persistence::Database& database, QSettings& store,
       map_(workspace_, memory_, placements_, palette_),
       conceptEditor_(workspace_, memory_, placements_),
       links_(workspace_, memory_),
-      today_(workspace_, memory_, settings_) {}
+      today_(workspace_, memory_, settings_),
+      session_(workspace_, memory_, map_, settings_) {}
 
 AppContext::~AppContext() {
     AppSettings::provide(nullptr);
@@ -22,6 +23,7 @@ AppContext::~AppContext() {
     ConceptEditor::provide(nullptr);
     ConceptLinksModel::provide(nullptr);
     TodayViewModel::provide(nullptr);
+    SessionController::provide(nullptr);
 }
 
 Result<void, ControllerFailure> AppContext::load() {
@@ -40,6 +42,7 @@ void AppContext::provideSingletons() {
     ConceptEditor::provide(&conceptEditor_);
     ConceptLinksModel::provide(&links_);
     TodayViewModel::provide(&today_);
+    SessionController::provide(&session_);
 }
 
 }  // namespace atlas::viewmodels

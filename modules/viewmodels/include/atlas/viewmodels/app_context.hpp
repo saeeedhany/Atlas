@@ -10,6 +10,7 @@
 #include "atlas/viewmodels/memory_controller.hpp"
 #include "atlas/viewmodels/palette.hpp"
 #include "atlas/viewmodels/placement_controller.hpp"
+#include "atlas/viewmodels/session_controller.hpp"
 #include "atlas/viewmodels/today_view_model.hpp"
 #include "atlas/viewmodels/topics_model.hpp"
 #include "atlas/viewmodels/workspace_controller.hpp"
@@ -36,6 +37,7 @@ public:
     ConceptEditor& conceptEditor() { return conceptEditor_; }
     ConceptLinksModel& links() { return links_; }
     TodayViewModel& today() { return today_; }
+    SessionController& session() { return session_; }
 
 private:
     WorkspaceController workspace_;
@@ -48,6 +50,7 @@ private:
     ConceptEditor conceptEditor_;
     ConceptLinksModel links_;
     TodayViewModel today_;
+    SessionController session_;
 };
 
 }  // namespace atlas::viewmodels
