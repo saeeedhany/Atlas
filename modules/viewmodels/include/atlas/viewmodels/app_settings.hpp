@@ -29,6 +29,7 @@ public:
     void setReducedMotion(bool reduced);
     int newPerDay() const;
     void setNewPerDay(int count);
+    QString deviceId() const;
 
 signals:
     void darkThemeChanged();

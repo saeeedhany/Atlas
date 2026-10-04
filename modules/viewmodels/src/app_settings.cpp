@@ -2,12 +2,15 @@
 
 #include <algorithm>
 
+#include "atlas/core/uuid.hpp"
+
 namespace atlas::viewmodels {
 
 namespace {
 constexpr auto kDarkThemeKey = "appearance/darkTheme";
 constexpr auto kReducedMotionKey = "appearance/reducedMotion";
 constexpr auto kNewPerDayKey = "learning/newPerDay";
+constexpr auto kDeviceIdKey = "device/id";
 }  // namespace
 
 AppSettings::AppSettings(QSettings& store, QObject* parent) : QObject(parent), store_(&store) {}
@@ -37,6 +40,15 @@ void AppSettings::setNewPerDay(int count) {
     if (clamped == newPerDay()) return;
     store_->setValue(kNewPerDayKey, clamped);
     emit newPerDayChanged();
+}
+
+QString AppSettings::deviceId() const {
+    QString id = store_->value(kDeviceIdKey).toString();
+    if (id.isEmpty()) {
+        id = QString::fromStdString(atlas::core::Uuid::generate().toString());
+        store_->setValue(kDeviceIdKey, id);
+    }
+    return id;
 }
 
 }  // namespace atlas::viewmodels

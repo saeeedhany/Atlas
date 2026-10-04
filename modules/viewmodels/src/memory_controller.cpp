@@ -2,7 +2,9 @@
 
 #include <QDateTime>
 
+#include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "atlas/learning/rebuild_grader.hpp"
 
@@ -66,6 +68,37 @@ Result<void, ControllerFailure> MemoryController::load() {
         if (!replaced.hasValue()) return Out::err(persistenceFailure(replaced.error()));
     }
 
+    emit memoryChanged();
+    return Out::ok();
+}
+
+double MemoryController::elapsedDaysFor(const ItemRef& item, TimePoint at) const {
+    auto it = states_.find(item);
+    if (it == states_.end() || !it->second.lastReviewedAt) return 0.0;
+    using Days = std::chrono::duration<double, std::ratio<86400>>;
+    return std::max(0.0, std::chrono::duration_cast<Days>(at - *it->second.lastReviewedAt).count());
+}
+
+Result<void, ControllerFailure> MemoryController::record(std::vector<atlas::core::ReviewEvent> events) {
+    using Out = Result<void, ControllerFailure>;
+    if (events.empty()) return Out::ok();
+    TimePoint now = clock_();
+    auto next = states_;
+    auto boost = rules_.boostFn();
+    std::unordered_set<ItemRef> touched;
+    for (auto& event : events) {
+        event.reviewedAt = std::min(event.reviewedAt, now);
+        event.elapsedDays = std::max(0.0, event.elapsedDays);
+        ledger_.apply(next, event, boost);
+        touched.insert(event.item);
+    }
+    std::vector<MemoryState> changed;
+    changed.reserve(touched.size());
+    for (const auto& item : touched) changed.push_back(next.at(item));
+    auto written = repository_.record(events, changed);
+    if (!written.hasValue()) return Out::err(persistenceFailure(written.error()));
+    states_ = std::move(next);
+    events_.insert(events_.end(), events.begin(), events.end());
     emit memoryChanged();
     return Out::ok();
 }

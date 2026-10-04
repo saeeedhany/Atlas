@@ -176,3 +176,61 @@ TEST_CASE("memoryChanged fires on load and on every graph change") {
     f.addConcept("New");
     CHECK(fired == 2);
 }
+
+TEST_CASE("record writes events and states and updates memory") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    MemoryController memory(f.db, f.workspace, f.clock);
+    REQUIRE(memory.load().hasValue());
+    int changes = 0;
+    QObject::connect(&memory, &MemoryController::memoryChanged, [&] { ++changes; });
+
+    REQUIRE(memory.record({reviewOf(tree, f.now, Grade::Good)}).hasValue());
+    CHECK(changes == 1);
+    CHECK(memory.events().size() == 1);
+    REQUIRE(memory.recallChance(ItemRef::forConcept(tree)).has_value());
+
+    MemoryController reloaded(f.db, f.workspace, f.clock);
+    REQUIRE(reloaded.load().hasValue());
+    CHECK(reloaded.states() == memory.states());
+}
+
+TEST_CASE("record clamps future timestamps and negative gaps") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    MemoryController memory(f.db, f.workspace, f.clock);
+    REQUIRE(memory.load().hasValue());
+    auto event = reviewOf(tree, f.now + std::chrono::hours(5), Grade::Good);
+    event.elapsedDays = -3.0;
+    REQUIRE(memory.record({event}).hasValue());
+    CHECK(memory.events().front().reviewedAt == f.now);
+    CHECK(memory.events().front().elapsedDays == 0.0);
+    CHECK(memory.states().at(ItemRef::forConcept(tree)).lastReviewedAt == f.now);
+}
+
+TEST_CASE("a failed write leaves memory untouched") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    MemoryController memory(f.db, f.workspace, f.clock);
+    REQUIRE(memory.load().hasValue());
+    REQUIRE(executeRawSql(f.path, "DROP TABLE review_events"));
+    int changes = 0;
+    QObject::connect(&memory, &MemoryController::memoryChanged, [&] { ++changes; });
+
+    CHECK_FALSE(memory.record({reviewOf(tree, f.now, Grade::Good)}).hasValue());
+    CHECK(changes == 0);
+    CHECK(memory.events().empty());
+    CHECK(memory.states().empty());
+}
+
+TEST_CASE("elapsed days count from the last review") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    MemoryController memory(f.db, f.workspace, f.clock);
+    REQUIRE(memory.load().hasValue());
+    auto item = ItemRef::forConcept(tree);
+    CHECK(memory.elapsedDaysFor(item, f.now) == 0.0);
+    REQUIRE(memory.record({reviewOf(tree, f.now, Grade::Good)}).hasValue());
+    CHECK(memory.elapsedDaysFor(item, f.now + std::chrono::hours(36)) == doctest::Approx(1.5));
+    CHECK(memory.elapsedDaysFor(item, f.now - std::chrono::hours(2)) == 0.0);
+}

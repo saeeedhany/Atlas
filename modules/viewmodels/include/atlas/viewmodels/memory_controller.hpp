@@ -23,6 +23,8 @@ public:
                      QObject* parent = nullptr);
 
     Result<void, ControllerFailure> load();
+    Result<void, ControllerFailure> record(std::vector<atlas::core::ReviewEvent> events);
+    double elapsedDaysFor(const atlas::core::ItemRef& item, atlas::core::TimePoint at) const;
 
     std::optional<double> recallChance(const atlas::core::ItemRef& item) const;
     int introducedToday() const;

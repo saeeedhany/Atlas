@@ -79,3 +79,17 @@ TEST_CASE("QML sees the provided settings and palette instances") {
     CHECK(object->property("perDay").toInt() == 7);
     CHECK(object->property("bg").value<QColor>() == palette.background());
 }
+
+TEST_CASE("the device id is created once and kept") {
+    QTemporaryDir dir;
+    QSettings store(dir.filePath("settings.ini"), QSettings::IniFormat);
+    QString first;
+    {
+        AppSettings settings(store);
+        first = settings.deviceId();
+        CHECK_FALSE(first.isEmpty());
+        CHECK(settings.deviceId() == first);
+    }
+    AppSettings again(store);
+    CHECK(again.deviceId() == first);
+}
