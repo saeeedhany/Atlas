@@ -9,10 +9,16 @@ qt_add_qml_module(atlas_qml
     URI Atlas.Ui
     VERSION 1.0
     QML_FILES
+        AppButton.qml
+        AppTextArea.qml
+        AppTextField.qml
+        ListEditor.qml
         Motion.qml
         Ring.qml
+        SectionLabel.qml
         StartupError.qml
         Theme.qml
+        Toast.qml
 )
 
 target_link_libraries(atlas_qml PRIVATE
