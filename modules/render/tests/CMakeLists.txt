@@ -2,6 +2,7 @@ add_executable(atlas_render_tests
     test_main.cpp
     test_force_directed_layout.cpp
     test_force_directed_layout_scale.cpp
+    test_canvas_geometry.cpp
 )
 
 target_link_libraries(atlas_render_tests PRIVATE atlas_render)

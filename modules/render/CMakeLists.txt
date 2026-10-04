@@ -4,6 +4,7 @@
 
 add_library(atlas_render STATIC
     src/force_directed_layout.cpp
+    src/canvas_geometry.cpp
 )
 
 target_include_directories(atlas_render PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
