@@ -8,6 +8,7 @@ add_executable(atlas_core_tests
     test_knowledge_object.cpp
     test_relationship.cpp
     test_topic.cpp
+    test_memory.cpp
 )
 
 target_link_libraries(atlas_core_tests PRIVATE atlas_core)

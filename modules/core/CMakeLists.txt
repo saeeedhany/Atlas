@@ -9,6 +9,7 @@ add_library(atlas_core STATIC
     src/relationship.cpp
     src/topic.cpp
     src/search.cpp
+    src/memory.cpp
 )
 
 target_include_directories(atlas_core PUBLIC
