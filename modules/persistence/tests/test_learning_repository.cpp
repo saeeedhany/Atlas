@@ -1,3 +1,5 @@
+#include <limits>
+
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/knowledge_object_repository.hpp"
 #include "atlas/persistence/learning_repository.hpp"
@@ -118,6 +120,64 @@ TEST_CASE("the cache is fresh only after a rebuild with the same replay version"
 
     REQUIRE(repository.record({makeEvent(item, 100, Grade::Good)}, {makeState(item)}).hasValue());
     CHECK(repository.isCacheFresh(1).value());
+}
+
+TEST_CASE("recording into a stale cache leaves it stale") {
+    auto db = openTestDatabase();
+    KnowledgeObjectRepository objects(db);
+    LearningRepository learning(db);
+    auto kept = KnowledgeObject::create("Kept").value();
+    auto removed = KnowledgeObject::create("Removed").value();
+    REQUIRE(objects.save(kept).hasValue());
+    REQUIRE(objects.save(removed).hasValue());
+    auto keptItem = ItemRef::forConcept(kept.id());
+    auto removedItem = ItemRef::forConcept(removed.id());
+
+    REQUIRE(learning.record({makeEvent(keptItem, 10, Grade::Good), makeEvent(removedItem, 20, Grade::Good)}, {})
+                .hasValue());
+    REQUIRE(learning.replaceStates({makeState(keptItem), makeState(removedItem)}, 1).hasValue());
+    REQUIRE(learning.isCacheFresh(1).value());
+
+    REQUIRE(objects.remove(removed.id()).hasValue());
+    REQUIRE_FALSE(learning.isCacheFresh(1).value());
+
+    REQUIRE(learning.record({makeEvent(keptItem, 30, Grade::Good)}, {makeState(keptItem)}).hasValue());
+    CHECK_FALSE(learning.isCacheFresh(1).value());
+}
+
+TEST_CASE("an empty log after a rebuild is fresh") {
+    auto db = openTestDatabase();
+    KnowledgeObjectRepository objects(db);
+    LearningRepository learning(db);
+    auto object = KnowledgeObject::create("Only").value();
+    REQUIRE(objects.save(object).hasValue());
+    auto item = ItemRef::forConcept(object.id());
+
+    REQUIRE(learning.record({makeEvent(item, 10, Grade::Good)}, {}).hasValue());
+    REQUIRE(learning.replaceStates({}, 1).hasValue());
+    REQUIRE(objects.remove(object.id()).hasValue());
+    REQUIRE(learning.replaceStates({}, 1).hasValue());
+    CHECK(learning.isCacheFresh(1).value());
+}
+
+TEST_CASE("a stored state with invalid numbers is rejected as malformed") {
+    auto db = openTestDatabase();
+    LearningRepository learning(db);
+    auto item = ItemRef::forConcept(KnowledgeObjectId::generate());
+
+    auto zero = makeState(item);
+    zero.stability = 0.0;
+    REQUIRE(learning.record({}, {zero}).hasValue());
+    CHECK_FALSE(learning.allStates().hasValue());
+
+    auto infinite = makeState(item);
+    infinite.difficulty = std::numeric_limits<double>::infinity();
+    REQUIRE(learning.record({}, {infinite}).hasValue());
+    CHECK_FALSE(learning.allStates().hasValue());
+
+    MemoryState fresh{item};
+    REQUIRE(learning.record({}, {fresh}).hasValue());
+    CHECK(learning.allStates().hasValue());
 }
 
 TEST_CASE("deleting a concept removes its learning data and that of its links") {

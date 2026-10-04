@@ -65,7 +65,9 @@ Result<void, PersistenceError> inTransaction(sqlite3* db, Body&& body) {
         execute(db, "ROLLBACK;");
         return result;
     }
-    return execute(db, "COMMIT;");
+    auto commit = execute(db, "COMMIT;");
+    if (!commit.hasValue()) execute(db, "ROLLBACK;");
+    return commit;
 }
 
 }  // namespace atlas::persistence::detail

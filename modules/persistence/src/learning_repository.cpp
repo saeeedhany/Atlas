@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 
+#include <cmath>
 #include <string>
 #include <utility>
 
@@ -131,11 +132,27 @@ Result<void, PersistenceError> setMeta(sqlite3* db, const char* key, const std::
     return run(statement);
 }
 
+Result<void, PersistenceError> deleteMeta(sqlite3* db, const char* key) {
+    auto prepared = detail::Statement::prepare(db, "DELETE FROM memory_meta WHERE key = ?;");
+    if (!prepared.hasValue()) return Result<void, PersistenceError>::err(std::move(prepared).error());
+    auto statement = std::move(prepared).value();
+    statement.bindText(1, key);
+    return run(statement);
+}
+
 Result<void, PersistenceError> syncLastEventId(sqlite3* db) {
     auto newest = newestEventId(db);
     if (!newest.hasValue()) return Result<void, PersistenceError>::err(newest.error());
-    if (!newest.value()) return Result<void, PersistenceError>::ok();
+    if (!newest.value()) return deleteMeta(db, kLastEventKey);
     return setMeta(db, kLastEventKey, *newest.value());
+}
+
+Result<bool, PersistenceError> lastEventIdMatchesLog(sqlite3* db) {
+    auto stored = metaValue(db, kLastEventKey);
+    if (!stored.hasValue()) return Result<bool, PersistenceError>::err(stored.error());
+    auto newest = newestEventId(db);
+    if (!newest.hasValue()) return Result<bool, PersistenceError>::err(newest.error());
+    return Result<bool, PersistenceError>::ok(stored.value() == newest.value());
 }
 
 Result<ReviewEvent, PersistenceError> readEvent(const detail::Statement& row) {
@@ -182,6 +199,9 @@ Result<MemoryState, PersistenceError> readState(const detail::Statement& row) {
     state.phase = *phase;
     state.stability = row.columnDouble(3);
     state.difficulty = row.columnDouble(4);
+    bool invalidNumbers = !std::isfinite(state.stability) || !std::isfinite(state.difficulty) ||
+                          (state.phase != atlas::core::Phase::New && state.stability <= 0.0);
+    if (invalidNumbers) return Out::err(malformed("memory_states row " + row.columnText(1)));
     state.lastReviewedAt = fromOptionalMillis(row.columnOptionalInt64(5));
     state.dueAt = fromOptionalMillis(row.columnOptionalInt64(6));
     state.reviewCount = static_cast<int>(row.columnInt64(7));
@@ -215,12 +235,15 @@ Result<void, PersistenceError> LearningRepository::record(const std::vector<Revi
                                                           const std::vector<MemoryState>& states) {
     sqlite3* db = database_->handle();
     return detail::inTransaction(db, [&]() -> Result<void, PersistenceError> {
+        auto wasFresh = lastEventIdMatchesLog(db);
+        if (!wasFresh.hasValue()) return Result<void, PersistenceError>::err(wasFresh.error());
         for (const auto& event : events) {
             if (auto inserted = insertEvent(db, event); !inserted.hasValue()) return inserted;
         }
         for (const auto& state : states) {
             if (auto upserted = upsertState(db, state); !upserted.hasValue()) return upserted;
         }
+        if (!wasFresh.value()) return Result<void, PersistenceError>::ok();
         return syncLastEventId(db);
     });
 }
