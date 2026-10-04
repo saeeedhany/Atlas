@@ -90,7 +90,9 @@ void ConceptEditor::onGraphChanged() {
     auto id = parseId<KnowledgeObjectId>(conceptId_);
     bool stillThere = id && workspace_->findKnowledgeObject(*id).has_value();
     if (!stillThere) {
-        if (exists_) load();
+        if (!exists_) return;
+        conceptId_.clear();
+        load();
         return;
     }
     if (!dirty_) load();
@@ -157,8 +159,7 @@ bool ConceptEditor::save() {
 
     auto updated = workspace_->updateKnowledgeObject(*id, std::move(edits));
     if (!updated.hasValue()) return fail(toQString(updated.error().detail));
-    dirty_ = false;
-    emit edited();
+    load();
     return true;
 }
 

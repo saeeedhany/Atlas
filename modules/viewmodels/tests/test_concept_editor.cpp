@@ -74,6 +74,8 @@ TEST_CASE("edits are saved, including lists with optional parts") {
     CHECK(saved->miniProjects()[0].description == "Autocomplete");
     REQUIRE(saved->references().size() == 1);
     CHECK_FALSE(saved->references()[0].url.has_value());
+    CHECK(f.editor.references().size() == 1);
+    CHECK(f.editor.examples().size() == 2);
 }
 
 TEST_CASE("an empty title is refused and reported") {
@@ -105,6 +107,7 @@ TEST_CASE("a concept deleted anywhere clears the editor") {
     REQUIRE(f.workspace.removeKnowledgeObject(f.tree).hasValue());
     CHECK_FALSE(f.editor.exists());
     CHECK(f.editor.title().isEmpty());
+    CHECK(f.editor.conceptId().isEmpty());
 }
 
 TEST_CASE("remove deletes the concept") {
