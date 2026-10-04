@@ -192,8 +192,7 @@ public:
     // tie-break (by id string). Concepts with no MiniProjects are
     // never suggested regardless of how well-connected they are -
     // there's nothing to actually go *do*. This is a pure function of
-    // graph structure + each object's own fields; no AI involved (that
-    // is deliberately a separate, later feature - see docs/DECISIONS.md).
+    // graph structure + each object's own fields.
     std::vector<ProjectSuggestion> suggestProjects(const TopicId& topicId) const;
 
 private:

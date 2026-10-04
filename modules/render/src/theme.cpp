@@ -4,11 +4,6 @@ namespace atlas::render {
 
 namespace {
 
-constexpr QRgb kBlack = 0x000000;
-constexpr QRgb kBrown = 0x1F150C;
-constexpr QRgb kCoffee = 0x412D15;
-constexpr QRgb kBeige = 0xE1DCC9;
-
 QColor withAlpha(QRgb rgb, int alpha) {
     QColor color(rgb);
     color.setAlpha(alpha);
@@ -25,12 +20,7 @@ Theme makeDark() {
     theme.neighborRing = withAlpha(0xa1a1aa, 160);
     theme.hoverRing = withAlpha(0xe4e4e7, 120);
     theme.nodeBorder = QColor(0x3f3f46);
-    theme.nodeDifficulty = {QColor(100, 200, 120), QColor(100, 160, 220), QColor(230, 170, 60), QColor(220, 90, 90)};
 
-    theme.panelBackground = QColor(kCoffee);
-    theme.panelAlternateBackground = QColor(kCoffee).lighter(122);
-    theme.panelText = QColor(kBeige);
-    theme.panelBorder = QColor(kBrown);
     theme.accent = QColor(0xa3e635);
 
     theme.surface = QColor(0x1f1f23);
@@ -59,12 +49,7 @@ Theme makeLight() {
     theme.neighborRing = withAlpha(0x52525b, 160);
     theme.hoverRing = withAlpha(0x18181b, 110);
     theme.nodeBorder = QColor(0xd4d4d8);
-    theme.nodeDifficulty = {QColor(60, 140, 80), QColor(50, 100, 165), QColor(180, 120, 20), QColor(175, 60, 60)};
 
-    theme.panelBackground = QColor(kBeige);
-    theme.panelAlternateBackground = QColor(kBeige).darker(107);
-    theme.panelText = QColor(kBlack);
-    theme.panelBorder = QColor(kCoffee);
     theme.accent = QColor(0x4d7c0f);
 
     theme.surface = QColor(0xf4f4f5);

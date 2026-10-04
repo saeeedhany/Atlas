@@ -247,14 +247,10 @@ Organized by module, roughly in the order each decision arose.
   `transitiveDependents()` - the same category as
   `topologicalOrder()`/`learningRoadmapFor()`, and for the same reason:
   keeping it testable with synthetic graphs, no Qt or SQLite involved.
-- **No AI in v1, on purpose - not a placeholder for "AI later," a
-  deliberate separate milestone.** The whole ranking (readiness ×
-  leverage, filtered to concepts with a MiniProject and not already
-  Mastered) is computable from data already in the graph. AI-assisted
-  suggestions are explicitly the *next* roadmap item, not this one -
-  conflating them would have meant either shipping nothing until an AI
-  integration existed, or building a heuristic and quietly calling it
-  "AI" when it isn't.
+- **Project suggestions use only data already in the graph.** The whole
+  ranking (readiness x leverage, filtered to concepts with a MiniProject
+  and not already Mastered) is computable from the graph itself.
+  Relationship suggestions are not built.
 - **`transitiveDependents()` is the mirror of `transitiveDependencies()`
   - added as a new public primitive, not inlined into
   `suggestProjects()`.** Both are BFS over `DependsOn` edges in
@@ -681,7 +677,7 @@ Organized by module, roughly in the order each decision arose.
 ## View models and canvas (plan 2)
 
 - The C++ layer between the engine and QML lives in `atlas-viewmodels`, a static QML module (`Atlas.ViewModels`). QML reaches app objects as singletons provided from C++; those classes are never default-constructible, because QML builds its own copy of a default-constructible singleton.
-- `WorkspaceController` moved to `atlas-viewmodels`; `atlas-ui` keeps forwarding headers until the Widgets UI is removed.
+- `WorkspaceController` moved to `atlas-viewmodels`; The Widgets UI was removed in plan 4; the QML app is the only app.
 - `MemoryController` loads the review log at startup and rebuilds the memory cache when it is stale or the replay version changed.
 - `PlacementController` follows the layout contract: saved positions never move on normal loads, physics only places new concepts, and tidy is an explicit action that keeps pinned concepts fixed.
 - Canvas labels are laid out on the GUI thread when data changes and only drawn on the render thread.

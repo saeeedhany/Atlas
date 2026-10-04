@@ -2,7 +2,6 @@
 
 #include <QColor>
 
-#include <array>
 
 namespace atlas::render {
 
@@ -20,12 +19,7 @@ struct Theme {
     QColor neighborRing;
     QColor hoverRing;
     QColor nodeBorder;
-    std::array<QColor, 4> nodeDifficulty;
 
-    QColor panelBackground;
-    QColor panelAlternateBackground;
-    QColor panelText;
-    QColor panelBorder;
     QColor accent;
 
     QColor surface;
