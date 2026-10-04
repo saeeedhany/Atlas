@@ -38,6 +38,7 @@ private:
     friend class KnowledgeObjectRepository;
     friend class RelationshipRepository;
     friend class TopicRepository;
+    friend class LearningRepository;
 
     explicit Database(sqlite3* handle);
     sqlite3* handle() const { return handle_; }

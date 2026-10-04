@@ -26,6 +26,7 @@ add_library(atlas_persistence STATIC
     src/knowledge_object_repository.cpp
     src/relationship_repository.cpp
     src/topic_repository.cpp
+    src/learning_repository.cpp
 )
 
 target_include_directories(atlas_persistence
