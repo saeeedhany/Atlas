@@ -219,7 +219,7 @@ Rectangle {
                         }
                     }
                     Text {
-                        text: "Ready " + Math.round(idea.modelData.readiness * 100) + "%  -  unlocks "
+                        text: "Ready " + Math.round(idea.modelData.readiness * 100) + "%  ·  unlocks "
                               + idea.modelData.leverage
                         color: Theme.textMuted
                         font.family: Theme.mono
