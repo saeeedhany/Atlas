@@ -12,7 +12,7 @@ target_compile_features(atlas_render PUBLIC cxx_std_20)
 target_link_libraries(atlas_render PUBLIC atlas_core atlas_graph)
 
 if (ATLAS_BUILD_UI)
-    find_package(Qt6 REQUIRED COMPONENTS Quick)
+    find_package(Qt6 6.7 REQUIRED COMPONENTS Quick)
     set(CMAKE_AUTOMOC ON)
 
     add_library(atlas_render_canvas STATIC

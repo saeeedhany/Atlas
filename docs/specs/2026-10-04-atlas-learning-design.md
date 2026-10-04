@@ -293,7 +293,7 @@ Rules:
 
 - `atlas-learning` never reads the clock. `now` is always a parameter.
 - The database is written first, in-memory state is updated only after a successful commit (existing invariant).
-- Requires Qt 6.5 or newer (developed on 6.11).
+- Requires Qt 6.7 or newer (developed on 6.11).
 
 ### Data flow for one focus submit
 

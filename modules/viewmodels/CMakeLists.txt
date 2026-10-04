@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
+find_package(Qt6 6.7 REQUIRED COMPONENTS Core Gui Qml Quick)
 
 set(CMAKE_AUTOMOC ON)
 

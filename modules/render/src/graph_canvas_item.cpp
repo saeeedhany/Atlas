@@ -40,14 +40,17 @@ namespace {
 
 constexpr float kNodeRadius = 8.0f;
 constexpr float kNodeBorderWidth = 2.2f;
-constexpr float kSelectRingRadius = 15.0f;
-constexpr float kNeighborRingRadius = 13.0f;
-constexpr float kHoverRingRadius = 12.0f;
+constexpr float kHitRadius = 15.0f;
+constexpr float kSelectRingRadius = 17.5f;
+constexpr float kSelectRingThickness = 2.0f;
+constexpr float kNeighborRingRadius = 16.5f;
+constexpr float kHoverRingRadius = 16.5f;
+constexpr float kHighlightThickness = 1.5f;
 constexpr float kMemoryRingRadius = 12.5f;
 constexpr float kMemoryRingThickness = 2.0f;
 constexpr int kNewRingDashes = 12;
-constexpr float kArrowLength = 6.0f;
-constexpr float kArrowHalfWidth = 3.0f;
+constexpr float kArrowLength = 7.0f;
+constexpr float kArrowHalfWidth = 3.5f;
 constexpr float kDashLength = 4.0f;
 constexpr float kDashGap = 3.0f;
 constexpr int kCircleSegments = 16;
@@ -150,8 +153,10 @@ void upload(QSGNode* node, const std::vector<ColoredVertex>& vertices) {
     auto* data = geometry->vertexDataAsColoredPoint2D();
     for (size_t i = 0; i < vertices.size(); ++i) {
         const auto& vertex = vertices[i];
-        data[i].set(vertex.x, vertex.y, static_cast<uchar>(vertex.color.red()), static_cast<uchar>(vertex.color.green()),
-                    static_cast<uchar>(vertex.color.blue()), static_cast<uchar>(vertex.color.alpha()));
+        int alpha = vertex.color.alpha();
+        auto premultiplied = [alpha](int channel) { return static_cast<uchar>((channel * alpha + 127) / 255); };
+        data[i].set(vertex.x, vertex.y, premultiplied(vertex.color.red()), premultiplied(vertex.color.green()),
+                    premultiplied(vertex.color.blue()), static_cast<uchar>(alpha));
     }
     geometryNode->markDirty(QSGNode::DirtyGeometry);
 }
@@ -215,6 +220,7 @@ GraphCanvasItem::GraphCanvasItem(QQuickItem* parent) : QQuickItem(parent) {
 GraphCanvasItem::LabelLayout GraphCanvasItem::makeLabel(const QString& text) {
     LabelLayout label;
     label.layout = std::make_shared<QTextLayout>(text, labelFont());
+    label.layout->setCacheEnabled(true);
     label.layout->beginLayout();
     QTextLine line = label.layout->createLine();
     if (line.isValid()) {
@@ -250,9 +256,12 @@ void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<Re
                               makeLabel(QStringLiteral("%1 (%2)").arg(elideLabel(group.label)).arg(group.memberCount)));
     }
 
+    bool hadGroups = hasGroups_;
+    hasGroups_ = std::any_of(nodes_.begin(), nodes_.end(), [](const RenderNode& node) { return !node.groupKey.isEmpty(); });
     dataDirty_ = true;
     labelsDirty_ = true;
     update();
+    if (hadGroups != hasGroups_ && scale_ < kCollapseZoom) emit zoomChanged();
     if (!animationTimer_->isActive()) animationTimer_->start();
 }
 
@@ -330,7 +339,7 @@ QString GraphCanvasItem::groupAt(double screenX, double screenY) const {
 }
 
 int GraphCanvasItem::hitTest(double worldX, double worldY) const {
-    double radiusSq = kSelectRingRadius * kSelectRingRadius;
+    double radiusSq = kHitRadius * kHitRadius;
     for (int i = static_cast<int>(nodes_.size()) - 1; i >= 0; --i) {
         auto found = currentPositions_.find(nodes_[static_cast<size_t>(i)].id);
         if (found == currentPositions_.end()) continue;
@@ -348,9 +357,9 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
         bool isSelected = node.id == selectedId_;
         bool isNeighbor = hasHighlight && neighborIds_.contains(node.id);
         bool isHovered = !isSelected && node.id == hoveredId_;
-        if (isSelected) appendDisc(out.highlight, center, kSelectRingRadius, theme.selectedRing);
-        else if (isNeighbor) appendDisc(out.highlight, center, kNeighborRingRadius, theme.neighborRing);
-        else if (isHovered) appendDisc(out.highlight, center, kHoverRingRadius, theme.hoverRing);
+        if (isSelected) appendTriangles(out.highlight, ringArc(center, kSelectRingRadius, kSelectRingThickness, 1.0), theme.selectedRing);
+        else if (isNeighbor) appendTriangles(out.highlight, ringArc(center, kNeighborRingRadius, kHighlightThickness, 1.0), theme.neighborRing);
+        else if (isHovered) appendTriangles(out.highlight, ringArc(center, kHoverRingRadius, kHighlightThickness, 1.0), theme.hoverRing);
 
         int alpha = node.ghost ? kGhostAlphaPercent : 100;
         bool dimmed = hasHighlight && !isSelected && !isNeighbor;
@@ -369,7 +378,7 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
 
 void GraphCanvasItem::buildEdges(SceneVertices& out, const Theme& theme) const {
     bool hasHighlight = !selectedId_.isEmpty();
-    float trim = kNodeRadius + kNodeBorderWidth + 1.0f;
+    float trim = kMemoryRingRadius + kMemoryRingThickness / 2 + 2.0f;
     for (const auto& edge : edges_) {
         Vec2 from = positionOf(edge.sourceId);
         Vec2 to = positionOf(edge.targetId);

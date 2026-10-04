@@ -17,7 +17,7 @@
 ## Global Constraints
 
 - C++20, `CMAKE_CXX_EXTENSIONS OFF`. Every target builds with `-Wall -Wextra -Wpedantic -Werror` and passes under ASan + UBSan (`asan` preset).
-- Requires Qt 6.5 or newer (developed on 6.11).
+- Requires Qt 6.7 or newer (developed on 6.11).
 - Fallible boundaries return `atlas::core::Result<T, E>`. No exceptions. View models report failures through an `errorOccurred(QString)` signal, never silently.
 - Database writes happen before in-memory updates (existing `WorkspaceController` invariant).
 - Classes exposed to QML as singletons derive from `ProvidedSingleton<T>` and must not be default-constructible: QML only uses the provided instance when `T` has no default constructor.

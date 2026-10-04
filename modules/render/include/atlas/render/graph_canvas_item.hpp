@@ -77,7 +77,7 @@ public:
     double zoom() const { return scale_; }
     void setZoom(double zoom);
     Q_INVOKABLE void zoomBy(double factor);
-    bool collapsed() const { return scale_ < kCollapseZoom; }
+    bool collapsed() const { return hasGroups_ && scale_ < kCollapseZoom; }
     Q_INVOKABLE QString groupAt(double screenX, double screenY) const;
 
 signals:
@@ -136,6 +136,7 @@ private:
 
     ThemeMode themeMode_ = ThemeMode::Dark;
     bool backgroundDirty_ = true;
+    bool hasGroups_ = false;
     bool dataDirty_ = true;
     bool labelsDirty_ = true;
 };

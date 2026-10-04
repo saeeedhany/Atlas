@@ -50,6 +50,7 @@ TEST_CASE("a group with no learned members has no recall and falls back to node 
 
 TEST_CASE("zoom is clamped and collapses below the threshold") {
     GraphCanvasItem canvas;
+    canvas.setGraphData({makeNode("a", 0, 0, "t1")}, {});
     int changes = 0;
     QObject::connect(&canvas, &GraphCanvasItem::zoomChanged, [&] { ++changes; });
     CHECK_FALSE(canvas.collapsed());
@@ -85,4 +86,12 @@ TEST_CASE("groupAt finds the collapsed topic under the cursor") {
     canvas.setZoom(0.2);
     CHECK(canvas.groupAt(22, 20) == "t1");
     CHECK(canvas.groupAt(200, 200).isEmpty());
+}
+
+TEST_CASE("without group keys the canvas never collapses") {
+    GraphCanvasItem canvas;
+    canvas.setGraphData({makeNode("a", 100, 100, ""), makeNode("b", 100, 100, "")}, {});
+    canvas.setZoom(0.2);
+    CHECK_FALSE(canvas.collapsed());
+    CHECK(canvas.groupAt(22, 20).isEmpty());
 }
