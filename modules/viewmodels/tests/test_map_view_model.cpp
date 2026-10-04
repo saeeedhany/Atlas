@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include <QSettings>
 #include <QTemporaryDir>
 
@@ -38,7 +39,10 @@ struct Fixture {
         REQUIRE(placements.load().hasValue());
         REQUIRE(memory.load().hasValue());
         QObject::connect(&map, &MapViewModel::errorOccurred, [this] { ++errors; });
+        settle();
     }
+
+    static void settle() { QCoreApplication::processEvents(); }
 
     TopicId topic(const char* name) { return workspace.createTopic(name).value(); }
     KnowledgeObjectId addConcept(const char* title, TopicId topicId) {
@@ -74,6 +78,7 @@ TEST_CASE("a topic scope shows outside neighbors as ghosts") {
     auto paging = f.addConcept("Paging", os);
     auto indexing = f.addConcept("Indexing", databases);
     REQUIRE(f.workspace.createRelationship(indexing, paging, RelationshipType::Uses, std::nullopt).hasValue());
+    f.settle();
 
     CHECK(f.map.nodes().size() == 2);
     CHECK_FALSE(f.node(indexing)->ghost);
@@ -95,6 +100,8 @@ TEST_CASE("links carry their style and nodes carry recall") {
     auto btree = f.addConcept("B-Tree", topic);
     auto hash = f.addConcept("Hash Table", topic);
     REQUIRE(f.workspace.createRelationship(btree, hash, RelationshipType::AlternativeTo, std::nullopt).hasValue());
+    f.settle();
+    REQUIRE(f.map.edges().size() == 1);
     CHECK(f.map.edges()[0].contrast);
     CHECK_FALSE(f.map.edges()[0].directed);
     CHECK(f.node(btree)->recall < 0.0);
@@ -113,16 +120,19 @@ TEST_CASE("links carry their style and nodes carry recall") {
     state.lastReviewedAt = f.now;
     REQUIRE(LearningRepository(f.db).record({review}, {state}).hasValue());
     REQUIRE(f.memory.load().hasValue());
+    f.settle();
     CHECK(f.node(btree)->recall == doctest::Approx(1.0));
 }
 
 TEST_CASE("deleting the selected concept clears the selection") {
     Fixture f;
     auto tree = f.addConcept("Tree", uncategorizedTopicId());
+    f.settle();
     int selectionChanges = 0;
     QObject::connect(&f.map, &MapViewModel::selectedIdChanged, [&] { ++selectionChanges; });
     f.map.setSelectedId(idString(tree));
     REQUIRE(f.workspace.removeKnowledgeObject(tree).hasValue());
+    f.settle();
     CHECK(f.map.selectedId().isEmpty());
     CHECK(selectionChanges == 2);
 }
@@ -134,8 +144,10 @@ TEST_CASE("the attached canvas follows the scene and the theme") {
     f.map.attach(&canvas);
     CHECK(canvas.nodes().size() == 1);
     f.settings.setDarkTheme(false);
+    f.settle();
     CHECK(canvas.theme() == atlas::render::ThemeMode::Light);
     f.addConcept("Hash", uncategorizedTopicId());
+    f.settle();
     CHECK(canvas.nodes().size() == 2);
 }
 
@@ -143,6 +155,7 @@ TEST_CASE("clicking a collapsed topic opens it and clicking a node selects it") 
     Fixture f;
     auto os = f.topic("OS");
     auto paging = f.addConcept("Paging", os);
+    f.settle();
     atlas::render::GraphCanvasItem canvas;
     f.map.attach(&canvas);
     emit canvas.groupClicked(idString(os));
@@ -179,4 +192,29 @@ TEST_CASE("bad input is reported, not ignored") {
     QQuickItem notACanvas;
     f.map.attach(&notACanvas);
     CHECK(f.errors == 2);
+}
+
+TEST_CASE("one new concept gives one scene change and never flies in from the origin") {
+    Fixture f;
+    f.addConcept("Tree", uncategorizedTopicId());
+    f.settle();
+    int sceneChanges = 0;
+    std::vector<atlas::render::RenderNode> seen;
+    QObject::connect(&f.map, &MapViewModel::sceneChanged, [&] {
+        ++sceneChanges;
+        seen.insert(seen.end(), f.map.nodes().begin(), f.map.nodes().end());
+    });
+
+    auto added = f.workspace.createKnowledgeObject("Hash", uncategorizedTopicId()).value();
+    f.settle();
+
+    CHECK(sceneChanges == 1);
+    auto placed = f.placements.position(added);
+    REQUIRE(placed.has_value());
+    REQUIRE(f.node(added) != nullptr);
+    for (const auto& node : seen) {
+        if (node.id != idString(added)) continue;
+        CHECK(node.x == placed->x);
+        CHECK(node.y == placed->y);
+    }
 }

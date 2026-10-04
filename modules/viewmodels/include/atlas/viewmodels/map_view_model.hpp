@@ -56,6 +56,7 @@ signals:
 
 private:
     std::optional<atlas::core::TopicId> scope() const;
+    void scheduleRefresh();
     void pushToCanvas();
     void applySelection();
 
@@ -69,6 +70,7 @@ private:
     std::vector<atlas::render::RenderNode> nodes_;
     std::vector<atlas::render::RenderEdge> edges_;
     int conceptCount_ = 0;
+    bool refreshPending_ = false;
 };
 
 }  // namespace atlas::viewmodels

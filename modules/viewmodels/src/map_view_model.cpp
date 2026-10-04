@@ -21,13 +21,19 @@ using atlas::render::RenderNode;
 MapViewModel::MapViewModel(WorkspaceController& workspace, MemoryController& memory, PlacementController& placements,
                            Palette& palette, QObject* parent)
     : QObject(parent), workspace_(&workspace), memory_(&memory), placements_(&placements), palette_(&palette) {
-    connect(workspace_, &WorkspaceController::graphChanged, this, &MapViewModel::refresh);
-    connect(workspace_, &WorkspaceController::topicsChanged, this, &MapViewModel::refresh);
-    connect(memory_, &MemoryController::memoryChanged, this, &MapViewModel::refresh);
-    connect(placements_, &PlacementController::placementsChanged, this, &MapViewModel::refresh);
+    connect(workspace_, &WorkspaceController::graphChanged, this, &MapViewModel::scheduleRefresh);
+    connect(workspace_, &WorkspaceController::topicsChanged, this, &MapViewModel::scheduleRefresh);
+    connect(memory_, &MemoryController::memoryChanged, this, &MapViewModel::scheduleRefresh);
+    connect(placements_, &PlacementController::placementsChanged, this, &MapViewModel::scheduleRefresh);
     connect(placements_, &PlacementController::failed, this, &MapViewModel::errorOccurred);
-    connect(palette_, &Palette::changed, this, &MapViewModel::refresh);
+    connect(palette_, &Palette::changed, this, &MapViewModel::scheduleRefresh);
     refresh();
+}
+
+void MapViewModel::scheduleRefresh() {
+    if (refreshPending_) return;
+    refreshPending_ = true;
+    QMetaObject::invokeMethod(this, [this] { if (refreshPending_) refresh(); }, Qt::QueuedConnection);
 }
 
 std::optional<TopicId> MapViewModel::scope() const {
@@ -51,6 +57,7 @@ void MapViewModel::setSelectedId(const QString& conceptId) {
 }
 
 void MapViewModel::refresh() {
+    refreshPending_ = false;
     std::unordered_map<std::string, std::string> topicNames;
     for (const auto& topic : workspace_->allTopics()) topicNames.emplace(topic.id().toString(), topic.name());
 
@@ -61,34 +68,28 @@ void MapViewModel::refresh() {
         if (!topic || object.topicId() == topic) members.insert(object.id());
     }
 
+    auto relationships = workspace_->allRelationships();
     std::unordered_set<KnowledgeObjectId> ghosts;
-    edges_.clear();
-    for (const auto& link : workspace_->allRelationships()) {
+    for (const auto& link : relationships) {
         bool sourceIn = members.contains(link.sourceId());
         bool targetIn = members.contains(link.targetId());
-        if (!sourceIn && !targetIn) continue;
-        if (!sourceIn) ghosts.insert(link.sourceId());
-        if (!targetIn) ghosts.insert(link.targetId());
-        RenderEdge edge;
-        edge.sourceId = idString(link.sourceId());
-        edge.targetId = idString(link.targetId());
-        edge.directed = !atlas::core::isSymmetric(link.type());
-        edge.contrast = link.type() == RelationshipType::AlternativeTo || link.type() == RelationshipType::OppositeOf;
-        edge.ghost = !sourceIn || !targetIn;
-        edges_.push_back(edge);
+        if (sourceIn && !targetIn) ghosts.insert(link.targetId());
+        if (targetIn && !sourceIn) ghosts.insert(link.sourceId());
     }
 
+    std::unordered_set<KnowledgeObjectId> shown;
     nodes_.clear();
     for (const auto& object : objects) {
         bool member = members.contains(object.id());
         if (!member && !ghosts.contains(object.id())) continue;
+        auto point = placements_->position(object.id());
+        if (!point) continue;
+        shown.insert(object.id());
         RenderNode node;
         node.id = idString(object.id());
         node.label = toQString(object.title());
-        if (auto point = placements_->position(object.id())) {
-            node.x = point->x;
-            node.y = point->y;
-        }
+        node.x = point->x;
+        node.y = point->y;
         node.color = palette_->nodeFill();
         node.recall = memory_->recallChance(ItemRef::forConcept(object.id())).value_or(-1.0);
         node.ghost = !member;
@@ -98,6 +99,21 @@ void MapViewModel::refresh() {
             if (name != topicNames.end()) node.groupLabel = toQString(name->second);
         }
         nodes_.push_back(std::move(node));
+    }
+
+    edges_.clear();
+    for (const auto& link : relationships) {
+        if (!shown.contains(link.sourceId()) || !shown.contains(link.targetId())) continue;
+        bool sourceIn = members.contains(link.sourceId());
+        bool targetIn = members.contains(link.targetId());
+        if (!sourceIn && !targetIn) continue;
+        RenderEdge edge;
+        edge.sourceId = idString(link.sourceId());
+        edge.targetId = idString(link.targetId());
+        edge.directed = !atlas::core::isSymmetric(link.type());
+        edge.contrast = link.type() == RelationshipType::AlternativeTo || link.type() == RelationshipType::OppositeOf;
+        edge.ghost = !sourceIn || !targetIn;
+        edges_.push_back(edge);
     }
     conceptCount_ = static_cast<int>(members.size());
 
@@ -143,7 +159,8 @@ void MapViewModel::attach(QQuickItem* item) {
     canvas_ = canvas;
     connect(canvas, &GraphCanvasItem::nodeClicked, this, &MapViewModel::setSelectedId, Qt::UniqueConnection);
     connect(canvas, &GraphCanvasItem::groupClicked, this, &MapViewModel::setTopicId, Qt::UniqueConnection);
-    pushToCanvas();
+    if (refreshPending_) refresh();
+    else pushToCanvas();
 }
 
 QVariantList MapViewModel::search(const QString& query) const {
@@ -164,6 +181,7 @@ QString MapViewModel::createConcept(const QString& title) {
         return {};
     }
     QString id = idString(created.value());
+    refresh();
     setSelectedId(id);
     return id;
 }
