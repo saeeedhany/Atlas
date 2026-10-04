@@ -671,3 +671,9 @@ Organized by module, roughly in the order each decision arose.
 - `max_focus` is a hard cap: a contrast unit that does not fit is truncated to the remaining slots and planning stops.
 - Topic interleaving looks at the last two placed focuses, not at whole units.
 - Structs that are brace-initialized with fewer fields than they have give the remaining members a `{}` default, so `-Wextra -Werror` accepts them.
+- Strongly connected components of DependsOn decide the cycle rule, so planning stays near linear at 10k concepts. New concepts are ordered by direct dependents; transitive leverage only breaks ties between due items, as the spec defines it.
+- Same-day reviews floor the stability increase at 1 for hard, good and easy, matching the py-fsrs reference.
+- Replay computes the schema boost from the current graph, so editing prerequisites changes rebuilt stabilities.
+- `record` only refreshes the cache marker when the cache was fresh before the write, so a stale cache is never hidden.
+- Plan 2 contract: saved placements are fixed during normal loads, physics runs only for unplaced nodes, and a full warm pass happens only on an explicit tidy action, so the map never drifts.
+- Plan 2 contract: the links hidden in a rebuild are exactly the link items in `FocusPlan::items`; the caller sets `ReviewEvent::elapsedDays`; a `NetworkRules` must outlive any `BoostFn` it returns.
