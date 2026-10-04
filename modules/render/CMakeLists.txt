@@ -16,8 +16,10 @@ if (ATLAS_BUILD_UI)
     set(CMAKE_AUTOMOC ON)
 
     add_library(atlas_render_canvas STATIC
+        include/atlas/render/canvas_view.hpp
         include/atlas/render/graph_canvas_item.hpp
         include/atlas/render/theme.hpp
+        src/canvas_view.cpp
         src/graph_canvas_item.cpp
         src/theme.cpp
     )

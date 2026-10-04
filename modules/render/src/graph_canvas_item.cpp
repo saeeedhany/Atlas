@@ -1,5 +1,7 @@
 #include "atlas/render/graph_canvas_item.hpp"
 
+#include "atlas/render/canvas_view.hpp"
+
 #include <QFont>
 #include <QHoverEvent>
 #include <QMatrix4x4>
@@ -65,6 +67,10 @@ constexpr int kGhostAlphaPercent = 35;
 constexpr int kDimmedAlpha = 60;
 constexpr int kDimmedRingAlphaPercent = 40;
 constexpr double kEaseFactor = 0.2;
+constexpr double kFitMarginPx = 80.0;
+constexpr double kFitMaxScale = 1.6;
+constexpr double kLinkHoverPx = 6.0;
+constexpr double kCameraEpsilon = 0.25;
 constexpr double kAnimationEpsilonSq = 0.01;
 constexpr int kAnimationIntervalMs = 16;
 constexpr float kBaseDotSpacingWorld = 40.0f;
@@ -281,22 +287,50 @@ void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<Re
     update();
     if (hadGroups != hasGroups_ && scale_ < kCollapseZoom) emit zoomChanged();
     if (!animationTimer_->isActive()) animationTimer_->start();
+    fitOnce();
+}
+
+void GraphCanvasItem::fitOnce() {
+    if (fitted_ || nodes_.empty() || width() <= 0.0 || height() <= 0.0) return;
+    fitted_ = true;
+    bool wasAnimated = animated_;
+    animated_ = false;
+    fitToContent();
+    animated_ = wasAnimated;
 }
 
 void GraphCanvasItem::tickAnimation() {
     bool stillMoving = false;
+    bool nodesChanged = false;
     for (auto& [id, current] : currentPositions_) {
         auto target = targetPositions_.find(id);
         if (target == targetPositions_.end()) continue;
         QPointF delta = target->second - current;
         if (delta.x() * delta.x() + delta.y() * delta.y() <= kAnimationEpsilonSq) {
+            if (current != target->second) nodesChanged = true;
             current = target->second;
             continue;
         }
         stillMoving = true;
+        nodesChanged = true;
         current += delta * kEaseFactor;
     }
-    dataDirty_ = true;
+    if (cameraMoving_) {
+        double nextScale = scale_ + (targetScale_ - scale_) * kEaseFactor;
+        double nextX = offsetX_ + (targetOffsetX_ - offsetX_) * kEaseFactor;
+        double nextY = offsetY_ + (targetOffsetY_ - offsetY_) * kEaseFactor;
+        bool arrived = std::abs(targetOffsetX_ - nextX) < kCameraEpsilon && std::abs(targetOffsetY_ - nextY) < kCameraEpsilon &&
+                       std::abs(targetScale_ - nextScale) < 1e-3;
+        if (arrived) {
+            nextScale = targetScale_;
+            nextX = targetOffsetX_;
+            nextY = targetOffsetY_;
+            cameraMoving_ = false;
+        }
+        applyCamera(nextScale, nextX, nextY);
+        stillMoving = stillMoving || cameraMoving_;
+    }
+    if (nodesChanged) dataDirty_ = true;
     update();
     if (!stillMoving) animationTimer_->stop();
 }
@@ -325,17 +359,113 @@ void GraphCanvasItem::setTheme(ThemeMode mode) {
     update();
 }
 
+void GraphCanvasItem::setAnimated(bool animated) {
+    if (animated == animated_) return;
+    animated_ = animated;
+    emit animatedChanged();
+}
+
+bool GraphCanvasItem::insideCull(QPointF world) const { return cullRect_.contains(world); }
+
+void GraphCanvasItem::viewMoved() {
+    backgroundDirty_ = true;
+    labelsDirty_ = true;
+    QRectF viewport = viewportInWorld(offsetX_, offsetY_, scale_, width(), height());
+    if (!cullRect_.contains(viewport)) dataDirty_ = true;
+    update();
+    emit viewChanged();
+}
+
+void GraphCanvasItem::applyCamera(double scale, double offsetX, double offsetY) {
+    bool zoomed = scale != scale_;
+    bool wasCollapsed = collapsed();
+    scale_ = scale;
+    offsetX_ = offsetX;
+    offsetY_ = offsetY;
+    if (collapsed() != wasCollapsed) dataDirty_ = true;
+    viewMoved();
+    if (zoomed) emit zoomChanged();
+}
+
+void GraphCanvasItem::moveCamera(double scale, double offsetX, double offsetY) {
+    scale = std::clamp(scale, kMinScale, kMaxScale);
+    if (!animated_) {
+        cameraMoving_ = false;
+        applyCamera(scale, offsetX, offsetY);
+        return;
+    }
+    targetScale_ = scale;
+    targetOffsetX_ = offsetX;
+    targetOffsetY_ = offsetY;
+    cameraMoving_ = true;
+    if (!animationTimer_->isActive()) animationTimer_->start();
+}
+
+void GraphCanvasItem::centerOn(const QString& id) {
+    auto target = targetPositions_.find(id);
+    if (target == targetPositions_.end()) return;
+    double scale = cameraMoving_ ? targetScale_ : scale_;
+    moveCamera(scale, width() / 2.0 - target->second.x() * scale, height() / 2.0 - target->second.y() * scale);
+}
+
+void GraphCanvasItem::fitToContent() {
+    if (width() <= 0.0 || height() <= 0.0) return;
+    double minX = 0.0, maxX = 0.0, minY = 0.0, maxY = 0.0;
+    bool any = false;
+    for (const auto& node : nodes_) {
+        if (node.ghost && nodes_.size() > 1) continue;
+        auto position = targetPositions_.find(node.id);
+        if (position == targetPositions_.end()) continue;
+        double x = position->second.x();
+        double y = position->second.y();
+        minX = any ? std::min(minX, x) : x;
+        maxX = any ? std::max(maxX, x) : x;
+        minY = any ? std::min(minY, y) : y;
+        maxY = any ? std::max(maxY, y) : y;
+        any = true;
+    }
+    if (!any) return;
+    double spanX = std::max(maxX - minX, 1.0);
+    double spanY = std::max(maxY - minY, 1.0);
+    double scale = std::min((width() - 2.0 * kFitMarginPx) / spanX, (height() - 2.0 * kFitMarginPx) / spanY);
+    scale = std::clamp(scale, kMinScale, kFitMaxScale);
+    QPointF center((minX + maxX) / 2.0, (minY + maxY) / 2.0);
+    moveCamera(scale, width() / 2.0 - center.x() * scale, height() / 2.0 - center.y() * scale);
+}
+
+void GraphCanvasItem::zoomAt(double factor, double screenX, double screenY) {
+    double scale = std::clamp(scale_ * factor, kMinScale, kMaxScale);
+    double worldX = (screenX - offsetX_) / scale_;
+    double worldY = (screenY - offsetY_) / scale_;
+    cameraMoving_ = false;
+    applyCamera(scale, screenX - worldX * scale, screenY - worldY * scale);
+}
+
+QVariant GraphCanvasItem::screenPositionOf(const QString& id) const {
+    auto position = currentPositions_.find(id);
+    if (position == currentPositions_.end()) return {};
+    return toScreen(position->second);
+}
+
+QString GraphCanvasItem::linkAt(double screenX, double screenY) const {
+    if (collapsed()) return {};
+    QPointF point(screenX, screenY);
+    for (const auto& edge : edges_) {
+        auto from = currentPositions_.find(edge.sourceId);
+        auto to = currentPositions_.find(edge.targetId);
+        if (from == currentPositions_.end() || to == currentPositions_.end()) continue;
+        if (distanceToSegment(point, toScreen(from->second), toScreen(to->second)) <= kLinkHoverPx) return edge.id;
+    }
+    return {};
+}
+
 void GraphCanvasItem::setZoom(double zoom) {
     double clamped = std::clamp(zoom, kMinScale, kMaxScale);
     if (clamped == scale_) return;
-    scale_ = clamped;
-    backgroundDirty_ = true;
-    dataDirty_ = true;
-    update();
-    emit zoomChanged();
+    zoomAt(clamped / scale_, width() / 2.0, height() / 2.0);
 }
 
-void GraphCanvasItem::zoomBy(double factor) { setZoom(scale_ * factor); }
+void GraphCanvasItem::zoomBy(double factor) { zoomAt(factor, width() / 2.0, height() / 2.0); }
 
 Vec2 GraphCanvasItem::positionOf(const QString& id) const {
     auto found = currentPositions_.find(id);
@@ -387,6 +517,7 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
     bool hasHighlight = !selectedId_.isEmpty();
     for (const auto& node : nodes_) {
         Vec2 center = positionOf(node.id);
+        if (!insideCull(QPointF(center.x, center.y))) continue;
         bool isSelected = node.id == selectedId_;
         bool isNeighbor = hasHighlight && neighborIds_.contains(node.id);
         int alpha = node.ghost ? kGhostAlphaPercent : 100;
@@ -410,6 +541,7 @@ void GraphCanvasItem::buildEdges(SceneVertices& out, const Theme& theme) const {
     for (const auto& edge : edges_) {
         Vec2 from = positionOf(edge.sourceId);
         Vec2 to = positionOf(edge.targetId);
+        if (!segmentMayCross(cullRect_, QPointF(from.x, from.y), QPointF(to.x, to.y))) continue;
         bool touchesSelection = edge.sourceId == selectedId_ || edge.targetId == selectedId_;
         QColor color = hasHighlight && !touchesSelection ? theme.edgeDimmed : theme.edge;
         if (edge.ghost) color = faded(color, kGhostAlphaPercent);
@@ -509,6 +641,7 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         backgroundDirty_ = false;
     }
     if (dataDirty_) {
+        cullRect_ = cullRectFor(viewportInWorld(offsetX_, offsetY_, scale_, width(), height()));
         SceneVertices scene;
         if (collapsed()) {
             buildGroups(scene, theme);
@@ -555,12 +688,11 @@ void GraphCanvasItem::mouseMoveEvent(QMouseEvent* event) {
     if (!dragging_) return;
     QPointF delta = event->position() - lastMousePos_;
     if (std::abs(delta.x()) > kDragThreshold || std::abs(delta.y()) > kDragThreshold) dragMoved_ = true;
+    cameraMoving_ = false;
     offsetX_ += delta.x();
     offsetY_ += delta.y();
     lastMousePos_ = event->position();
-    backgroundDirty_ = true;
-    labelsDirty_ = true;
-    update();
+    viewMoved();
     event->accept();
 }
 
@@ -596,6 +728,11 @@ void GraphCanvasItem::hoverMoveEvent(QHoverEvent* event) {
         update();
         emit nodeHovered(hoveredId_);
     }
+    QString link = hovered.isEmpty() ? linkAt(event->position().x(), event->position().y()) : QString();
+    if (link != hoveredLinkId_) {
+        hoveredLinkId_ = link;
+        emit linkHovered(hoveredLinkId_);
+    }
     event->accept();
 }
 
@@ -606,11 +743,15 @@ void GraphCanvasItem::hoverLeaveEvent(QHoverEvent* event) {
         update();
         emit nodeHovered(QString{});
     }
+    if (!hoveredLinkId_.isEmpty()) {
+        hoveredLinkId_.clear();
+        emit linkHovered(QString{});
+    }
     event->accept();
 }
 
 void GraphCanvasItem::wheelEvent(QWheelEvent* event) {
-    zoomBy(event->angleDelta().y() > 0 ? kWheelStep : 1.0 / kWheelStep);
+    zoomAt(event->angleDelta().y() > 0 ? kWheelStep : 1.0 / kWheelStep, event->position().x(), event->position().y());
     event->accept();
 }
 
@@ -619,6 +760,7 @@ void GraphCanvasItem::geometryChange(const QRectF& newGeometry, const QRectF& ol
     backgroundDirty_ = true;
     labelsDirty_ = true;
     update();
+    fitOnce();
 }
 
 void registerGraphCanvasQmlType() { qmlRegisterType<GraphCanvasItem>("Atlas.Render", 1, 0, "GraphCanvas"); }

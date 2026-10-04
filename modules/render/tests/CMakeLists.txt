@@ -17,6 +17,7 @@ set_tests_properties(atlas_render_scale_tests PROPERTIES LABELS scale)
 if (ATLAS_BUILD_UI)
     add_executable(atlas_render_canvas_tests
         test_canvas_main.cpp
+        test_canvas_view.cpp
         test_graph_canvas_item.cpp
     )
     target_link_libraries(atlas_render_canvas_tests PRIVATE atlas_render_canvas)

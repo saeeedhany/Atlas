@@ -6,6 +6,7 @@
 #include <QString>
 #include <QTextLayout>
 #include <QTimer>
+#include <QVariant>
 
 #include <memory>
 #include <unordered_map>
@@ -32,6 +33,7 @@ struct RenderNode {
 };
 
 struct RenderEdge {
+    QString id{};
     QString sourceId;
     QString targetId;
     bool directed = true;
@@ -57,6 +59,7 @@ class GraphCanvasItem : public QQuickItem {
     Q_OBJECT
     Q_PROPERTY(double zoom READ zoom WRITE setZoom NOTIFY zoomChanged)
     Q_PROPERTY(bool collapsed READ collapsed NOTIFY zoomChanged)
+    Q_PROPERTY(bool animated READ animated WRITE setAnimated NOTIFY animatedChanged)
 
 public:
     static constexpr double kCollapseZoom = 0.35;
@@ -80,6 +83,14 @@ public:
     bool collapsed() const { return hasGroups_ && scale_ < kCollapseZoom; }
     Q_INVOKABLE QString groupAt(double screenX, double screenY) const;
 
+    bool animated() const { return animated_; }
+    void setAnimated(bool animated);
+    Q_INVOKABLE void centerOn(const QString& id);
+    Q_INVOKABLE void fitToContent();
+    Q_INVOKABLE void zoomAt(double factor, double screenX, double screenY);
+    Q_INVOKABLE QVariant screenPositionOf(const QString& id) const;
+    Q_INVOKABLE QString linkAt(double screenX, double screenY) const;
+
     const QTextLayout* labelLayoutFor(const QString& id) const;
 
 signals:
@@ -88,6 +99,9 @@ signals:
     void nodeHovered(QString id);
     void groupClicked(QString key);
     void zoomChanged();
+    void linkHovered(QString id);
+    void viewChanged();
+    void animatedChanged();
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
@@ -113,6 +127,11 @@ private:
     Vec2 positionOf(const QString& id) const;
     QPointF toScreen(QPointF world) const;
     void tickAnimation();
+    void moveCamera(double scale, double offsetX, double offsetY);
+    void applyCamera(double scale, double offsetX, double offsetY);
+    void viewMoved();
+    bool insideCull(QPointF world) const;
+    void fitOnce();
     void buildHighlight(SceneVertices& out, const Theme& theme) const;
     void buildNodes(SceneVertices& out, const Theme& theme) const;
     void buildEdges(SceneVertices& out, const Theme& theme) const;
@@ -146,6 +165,15 @@ private:
     bool dataDirty_ = true;
     bool highlightDirty_ = true;
     bool labelsDirty_ = true;
+
+    bool animated_ = true;
+    bool fitted_ = false;
+    bool cameraMoving_ = false;
+    double targetScale_ = 1.0;
+    double targetOffsetX_ = 0.0;
+    double targetOffsetY_ = 0.0;
+    QRectF cullRect_;
+    QString hoveredLinkId_;
 };
 
 void registerGraphCanvasQmlType();

@@ -119,3 +119,60 @@ TEST_CASE("label layouts are reused across scene updates and rebuilt only when t
     canvas.setGraphData({makeNode("a", 5, 5, "t1")}, {});
     CHECK(canvas.labelLayoutFor("b") == nullptr);
 }
+
+TEST_CASE("centerOn puts the node in the middle of the view") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    canvas.setGraphData({makeNode("a", 0, 0, ""), makeNode("b", 500, 300, "")}, {});
+    canvas.centerOn("b");
+    QPointF screen = canvas.screenPositionOf("b").toPointF();
+    CHECK(screen.x() == doctest::Approx(400.0));
+    CHECK(screen.y() == doctest::Approx(300.0));
+    CHECK_FALSE(canvas.screenPositionOf("missing").isValid());
+}
+
+TEST_CASE("fitToContent shows every node") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    canvas.setGraphData({makeNode("a", -1000, -500, ""), makeNode("b", 1000, 500, "")}, {});
+    canvas.fitToContent();
+    for (const char* id : {"a", "b"}) {
+        QPointF screen = canvas.screenPositionOf(id).toPointF();
+        CHECK(screen.x() >= 0.0);
+        CHECK(screen.x() <= 800.0);
+        CHECK(screen.y() >= 0.0);
+        CHECK(screen.y() <= 600.0);
+    }
+}
+
+TEST_CASE("zoomAt keeps the point under the cursor fixed") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    canvas.setGraphData({makeNode("a", 100, 100, "")}, {});
+    QPointF before = canvas.screenPositionOf("a").toPointF();
+    canvas.zoomAt(2.0, before.x(), before.y());
+    QPointF after = canvas.screenPositionOf("a").toPointF();
+    CHECK(after.x() == doctest::Approx(before.x()));
+    CHECK(after.y() == doctest::Approx(before.y()));
+    CHECK(canvas.zoom() > 1.0);
+}
+
+TEST_CASE("linkAt finds the link under the cursor") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    RenderEdge edge;
+    edge.id = "link";
+    edge.sourceId = "a";
+    edge.targetId = "b";
+    canvas.setGraphData({makeNode("a", 0, 0, ""), makeNode("b", 400, 0, "")}, {edge});
+    canvas.centerOn("a");
+    QPointF a = canvas.screenPositionOf("a").toPointF();
+    QPointF b = canvas.screenPositionOf("b").toPointF();
+    QPointF middle = (a + b) / 2.0;
+    CHECK(canvas.linkAt(middle.x(), middle.y() + 3) == "link");
+    CHECK(canvas.linkAt(middle.x(), middle.y() + 40).isEmpty());
+}

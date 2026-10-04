@@ -271,8 +271,8 @@ void GraphWindow::refreshGraph() {
                  id, std::nullopt, atlas::graph::GraphEngine::Direction::Outgoing)) {
             if (positions.find(neighborId) == positions.end()) continue;
             renderEdges.push_back(atlas::render::RenderEdge{
-                QString::fromStdString(id.toString()),
-                QString::fromStdString(neighborId.toString())});
+                .sourceId = QString::fromStdString(id.toString()),
+                .targetId = QString::fromStdString(neighborId.toString())});
         }
     }
 
