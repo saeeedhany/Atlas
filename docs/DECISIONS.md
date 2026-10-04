@@ -672,12 +672,12 @@ Organized by module, roughly in the order each decision arose.
 - Replay computes the schema boost from the current graph, so editing prerequisites changes rebuilt stabilities.
 - `record` only refreshes the cache marker when the cache was fresh before the write, so a stale cache is never hidden.
 - Plan 2 contract: saved placements are fixed during normal loads, physics runs only for unplaced nodes, and a full warm pass happens only on an explicit tidy action, so the map never drifts.
-- Plan 2 contract: the links hidden in a rebuild are exactly the link items in `FocusPlan::items`; the caller sets `ReviewEvent::elapsedDays`; a `NetworkRules` must outlive any `BoostFn` it returns.
+- Plan 2 contract: the links graded in a rebuild are exactly the link items in `FocusPlan::items` (hidden links are all introduced links of the focus); the caller sets `ReviewEvent::elapsedDays`; a `NetworkRules` must outlive any `BoostFn` it returns.
 
 ## View models and canvas (plan 2)
 
 - The C++ layer between the engine and QML lives in `atlas-viewmodels`, a static QML module (`Atlas.ViewModels`). QML reaches app objects as singletons provided from C++; those classes are never default-constructible, because QML builds its own copy of a default-constructible singleton.
-- `WorkspaceController` moved to `atlas-viewmodels`; The Widgets UI was removed in plan 4; the QML app is the only app.
+- `WorkspaceController` moved to `atlas-viewmodels`. The Widgets UI was removed in plan 4; the QML app is the only app.
 - `MemoryController` loads the review log at startup and rebuilds the memory cache when it is stale or the replay version changed.
 - `PlacementController` follows the layout contract: saved positions never move on normal loads, physics only places new concepts, and tidy is an explicit action that keeps pinned concepts fixed.
 - Canvas labels are laid out on the GUI thread when data changes and only drawn on the render thread.
@@ -709,3 +709,19 @@ Organized by module, roughly in the order each decision arose.
 - A topic change fits the view to the new scope; focusing a concept from search or creation centers on it instead.
 - Search on the map finds concepts in the current topic; choose All topics to search everywhere.
 - Single topic views keep topic labels on nodes but never collapse into topic bubbles.
+
+## Sessions (plan 4)
+
+- A focus is recorded when its explain step is graded. Rebuild grades wait in memory until then, so quitting drops only the unfinished focus.
+- When a focus has no concept item, the explain step uses its weakest link, so that link gets a rebuild event and an explain event in one transaction; the second has 0 elapsed days.
+- Concept prompts alternate between "What is A?" and "What problem does A solve?" by review count.
+- A session shows all topics and restores the previous topic when it ends.
+- Clicking a node during a rebuild names it. The selection stays on the focus, and neighbors are never highlighted while a session runs.
+- Rebuild suggestions match the start of a title, ignoring case, after three characters.
+- Missed links turn rose; the one-time pulse from the spec is not drawn yet.
+- Memory rings ease at a fixed rate on the canvas timer and snap when motion is reduced.
+- Link notes are updated in place, so a link's review history is never deleted.
+- Each install has a device id, a UUID kept in `settings.ini`.
+- The Widgets app is gone. `atlas` keeps the application name `atlas_app`, so existing data stays where it was.
+- A rebuild hides every introduced link of the focus, in either direction, but grades only its due links; this follows the spec over the earlier plan 2 contract.
+- The learning roadmap moved into the concept panel ("Learn first") and project suggestions into the topic bar ("Ideas").

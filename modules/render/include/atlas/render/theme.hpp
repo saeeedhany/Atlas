@@ -2,7 +2,6 @@
 
 #include <QColor>
 
-
 namespace atlas::render {
 
 enum class ThemeMode {
