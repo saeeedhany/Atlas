@@ -3,6 +3,7 @@ add_executable(atlas_qml_tests
     test_components.cpp
     test_concept_panel.cpp
     test_foundation.cpp
+    test_links_editor.cpp
     test_main.cpp
     test_map.cpp
     test_shell.cpp

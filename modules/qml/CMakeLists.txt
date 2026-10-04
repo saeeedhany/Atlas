@@ -14,6 +14,7 @@ qt_add_qml_module(atlas_qml
         AppTextField.qml
         ConceptPanel.qml
         HoverCard.qml
+        LinksEditor.qml
         ListEditor.qml
         Main.qml
         MapOverlay.qml

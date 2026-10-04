@@ -44,6 +44,7 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.AllButtons
+        onWheel: wheel => wheel.accepted = true
     }
 
     ScrollView {
@@ -189,6 +190,11 @@ Rectangle {
                 secondaryLabel: "Link"
                 items: Concept.references
                 onItemsEdited: list => Concept.references = list
+            }
+
+            LinksEditor {
+                Layout.fillWidth: true
+                onFocusRequested: id => panel.focusRequested(id)
             }
 
             RowLayout {
