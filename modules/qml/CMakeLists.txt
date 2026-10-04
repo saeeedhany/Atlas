@@ -12,6 +12,7 @@ qt_add_qml_module(atlas_qml
         AppButton.qml
         AppTextArea.qml
         AppTextField.qml
+        HoverCard.qml
         ListEditor.qml
         Main.qml
         MapOverlay.qml
@@ -24,6 +25,7 @@ qt_add_qml_module(atlas_qml
         Theme.qml
         TodayOverlay.qml
         Toast.qml
+        TopicBar.qml
 )
 
 target_link_libraries(atlas_qml PRIVATE

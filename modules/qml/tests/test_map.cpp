@@ -1,0 +1,85 @@
+#include <string>
+
+#include "atlas/viewmodels/ids.hpp"
+#include "doctest.h"
+#include "qml_fixture.hpp"
+
+using namespace atlas::core;
+using namespace atlas::viewmodels;
+
+TEST_CASE("adding a concept from the bar selects it") {
+    QmlFixture f;
+    auto window = f.create("Main");
+    auto* bar = QmlFixture::child(window.get(), "topicBar");
+    REQUIRE(QMetaObject::invokeMethod(bar, "addConcept", Q_ARG(QString, "  Recursion ")));
+    QmlFixture::settle();
+    CHECK(f.context().map().conceptCount() == 1);
+    REQUIRE_FALSE(f.context().map().selectedId().isEmpty());
+    CHECK(f.context().map().conceptInfo(f.context().map().selectedId()).value("title").toString() == "Recursion");
+    CHECK(QmlFixture::child(window.get(), "newConceptField")->property("text").toString().isEmpty());
+}
+
+TEST_CASE("creating a topic opens it and the picker follows") {
+    QmlFixture f;
+    auto window = f.create("Main");
+    auto* bar = QmlFixture::child(window.get(), "topicBar");
+    REQUIRE(QMetaObject::invokeMethod(bar, "createTopic", Q_ARG(QString, "Databases")));
+    QmlFixture::settle();
+    CHECK(f.context().topics().count() == 2);
+    CHECK(f.context().topics().nameOf(f.context().map().topicId()) == "Databases");
+    CHECK(QmlFixture::child(window.get(), "topicBox")->property("currentText").toString() == "Databases");
+    CHECK(bar->property("canEditTopic").toBool());
+
+    REQUIRE(QMetaObject::invokeMethod(bar, "deleteTopic"));
+    QmlFixture::settle();
+    CHECK(f.context().topics().count() == 1);
+    CHECK(f.context().map().topicId().isEmpty());
+    CHECK(QmlFixture::child(window.get(), "topicBox")->property("currentText").toString() == "All topics");
+}
+
+TEST_CASE("picking a search result outside the topic shows all topics and selects it") {
+    QmlFixture f;
+    auto os = f.context().topics().createTopic("OS");
+    auto databases = f.context().topics().createTopic("Databases");
+    f.context().map().setTopicId(databases);
+    QString tree = f.context().map().createConcept("Binary tree");
+    f.context().map().setTopicId(QString());
+    auto window = f.create("Main");
+    QmlFixture::settle();
+
+    auto* bar = QmlFixture::child(window.get(), "topicBar");
+    REQUIRE(QMetaObject::invokeMethod(bar, "searchFor", Q_ARG(QString, "binary")));
+    CHECK(bar->property("results").toList().size() == 1);
+    f.context().map().setTopicId(os);
+    REQUIRE(QMetaObject::invokeMethod(bar, "pick", Q_ARG(QString, tree)));
+    QmlFixture::settle();
+    CHECK(f.context().map().topicId().isEmpty());
+    CHECK(f.context().map().selectedId() == tree);
+}
+
+TEST_CASE("the hover card describes concepts and links") {
+    QmlFixture f;
+    QString tree = f.context().map().createConcept("Tree");
+    QString btree = f.context().map().createConcept("B-Tree");
+    auto link = f.context()
+                    .workspace()
+                    .createRelationship(*parseId<KnowledgeObjectId>(btree), *parseId<KnowledgeObjectId>(tree),
+                                        RelationshipType::DependsOn, std::string("balanced"))
+                    .value();
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto* card = QmlFixture::child(window.get(), "hoverCard");
+
+    REQUIRE(QMetaObject::invokeMethod(card, "showConcept", Q_ARG(QString, tree)));
+    CHECK(card->property("shown").toBool());
+    CHECK(card->property("title").toString() == "Tree");
+    CHECK(card->property("detail").toString().startsWith("Not learned yet"));
+
+    REQUIRE(QMetaObject::invokeMethod(card, "showConcept", Q_ARG(QString, QString())));
+    REQUIRE(QMetaObject::invokeMethod(card, "showLink", Q_ARG(QString, idString(link))));
+    CHECK(card->property("title").toString() == "B-Tree depends on Tree");
+    CHECK(card->property("detail").toString() == "balanced");
+
+    REQUIRE(QMetaObject::invokeMethod(card, "showLink", Q_ARG(QString, QString())));
+    CHECK_FALSE(card->property("shown").toBool());
+}
