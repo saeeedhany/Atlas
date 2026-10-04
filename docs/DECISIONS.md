@@ -677,3 +677,19 @@ Organized by module, roughly in the order each decision arose.
 - `record` only refreshes the cache marker when the cache was fresh before the write, so a stale cache is never hidden.
 - Plan 2 contract: saved placements are fixed during normal loads, physics runs only for unplaced nodes, and a full warm pass happens only on an explicit tidy action, so the map never drifts.
 - Plan 2 contract: the links hidden in a rebuild are exactly the link items in `FocusPlan::items`; the caller sets `ReviewEvent::elapsedDays`; a `NetworkRules` must outlive any `BoostFn` it returns.
+
+## View models and canvas (plan 2)
+
+- The C++ layer between the engine and QML lives in `atlas-viewmodels`, a static QML module (`Atlas.ViewModels`). QML reaches app objects as singletons provided from C++; those classes are never default-constructible, because QML builds its own copy of a default-constructible singleton.
+- `WorkspaceController` moved to `atlas-viewmodels`; `atlas-ui` keeps forwarding headers until the Widgets UI is removed.
+- `MemoryController` loads the review log at startup and rebuilds the memory cache when it is stale or the replay version changed.
+- `PlacementController` follows the layout contract: saved positions never move on normal loads, physics only places new concepts, and tidy is an explicit action that keeps pinned concepts fixed.
+- Canvas labels are laid out on the GUI thread when data changes and only drawn on the render thread.
+- Below zoom 0.35 each topic collapses into one node with its mean recall ring; clicking it opens that topic.
+- In a topic view, concepts from other topics that link to a member appear as faded ghost nodes.
+- The self-rated Confidence field stays in the data model but no view model exposes it.
+- Atlas now requires Qt 6.7 or newer, because canvas labels use `QSGTextNode`.
+- Canvas vertex colors are premultiplied by alpha before upload, as `QSGVertexColorMaterial` expects; faded colors would otherwise draw nearly opaque.
+- Selection, neighbor, and hover highlights are thin rings drawn outside the memory ring, and links stop at the memory ring's outer edge, so neither hides the other.
+- The canvas only collapses into topics when at least one node has a topic key, so views without topics never go blank when zoomed out.
+- Tests that add reviews after the memory cache is loaded record the resulting memory states with the events, matching how the app records sessions.
