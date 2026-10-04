@@ -1,0 +1,26 @@
+#include "doctest.h"
+#include "qml_fixture.hpp"
+
+TEST_CASE("settings controls write and follow the app settings") {
+    QmlFixture f;
+    auto screen = f.create("SettingsScreen", {{"shown", true}});
+
+    auto* dark = QmlFixture::child(screen.get(), "darkThemeSwitch");
+    CHECK(dark->property("checked").toBool());
+    REQUIRE(QMetaObject::invokeMethod(dark, "toggle"));
+    REQUIRE(QMetaObject::invokeMethod(dark, "toggled"));
+    CHECK_FALSE(f.context().settings().darkTheme());
+    f.context().settings().setDarkTheme(true);
+    CHECK(dark->property("checked").toBool());
+
+    auto* motion = QmlFixture::child(screen.get(), "reducedMotionSwitch");
+    REQUIRE(QMetaObject::invokeMethod(motion, "toggle"));
+    REQUIRE(QMetaObject::invokeMethod(motion, "toggled"));
+    CHECK(f.context().settings().reducedMotion());
+
+    auto* perDay = QmlFixture::child(screen.get(), "newPerDayBox");
+    CHECK(perDay->property("value").toInt() == 5);
+    perDay->setProperty("value", 8);
+    REQUIRE(QMetaObject::invokeMethod(perDay, "valueModified"));
+    CHECK(f.context().settings().newPerDay() == 8);
+}
