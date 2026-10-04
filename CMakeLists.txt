@@ -27,6 +27,7 @@ enable_testing()
 add_subdirectory(modules/core)
 add_subdirectory(modules/persistence)
 add_subdirectory(modules/graph)
+add_subdirectory(modules/learning)
 add_subdirectory(modules/render)
 
 if (ATLAS_BUILD_UI)
