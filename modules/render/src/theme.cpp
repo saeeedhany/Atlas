@@ -4,105 +4,108 @@ namespace atlas::render {
 
 namespace {
 
-// The four palette colors, named once so the two themes below read as
-// "which role gets which palette color" rather than repeating hex
-// literals.
-constexpr QRgb kBlack  = 0x000000;
-constexpr QRgb kBrown  = 0x1F150C;
+constexpr QRgb kBlack = 0x000000;
+constexpr QRgb kBrown = 0x1F150C;
 constexpr QRgb kCoffee = 0x412D15;
-constexpr QRgb kBeige  = 0xE1DCC9;
+constexpr QRgb kBeige = 0xE1DCC9;
+
+QColor withAlpha(QRgb rgb, int alpha) {
+    QColor color(rgb);
+    color.setAlpha(alpha);
+    return color;
+}
 
 Theme makeDark() {
     Theme theme;
-    theme.background = QColor(kBlack);
-    // Dots are a texture, not a signal — kept low-alpha so they read
-    // as "this is a canvas" without competing with nodes/edges.
-    theme.dot            = QColor(kBeige);
-    theme.dot.setAlpha(28);
-    theme.edge            = QColor(kBeige);
-    theme.edge.setAlpha(90);
-    theme.edgeDimmed      = QColor(kBeige);
-    theme.edgeDimmed.setAlpha(28);
-    theme.selectedRing    = QColor(kBeige);
-    theme.neighborRing    = QColor(kCoffee);
-    theme.neighborRing.setAlpha(230);
-    // Hover reads as "about to select" — brighter than the neighbor
-    // ring (which means "already related to the selection"), dimmer
-    // than the selected ring itself (which means "this is it").
-    theme.hoverRing = QColor(kBeige);
-    theme.hoverRing.setAlpha(160);
-    // Every node gets this thin border regardless of highlight state —
-    // on a pure-black background a flat-colored circle with no edge
-    // reads as a blurry smudge, not a distinct object. kCoffee (a warm
-    // dark brown, not pure black) gives every node a crisp silhouette
-    // against the black background without fighting the difficulty
-    // color for attention — a literal "darker than black" has no
-    // effect and would have been invisible.
-    theme.nodeBorder = QColor(kCoffee);
+    theme.background = QColor(0x18181b);
+    theme.dot = withAlpha(0xe4e4e7, 14);
+    theme.edge = QColor(0x52525b);
+    theme.edgeDimmed = withAlpha(0x52525b, 80);
+    theme.selectedRing = QColor(0xe4e4e7);
+    theme.neighborRing = withAlpha(0xa1a1aa, 160);
+    theme.hoverRing = withAlpha(0xe4e4e7, 120);
+    theme.nodeBorder = QColor(0x3f3f46);
+    theme.nodeDifficulty = {QColor(100, 200, 120), QColor(100, 160, 220), QColor(230, 170, 60), QColor(220, 90, 90)};
 
-    // Difficulty stays a semantic traffic-light-ish scale (see
-    // graph_window.cpp) — kept saturated/bright since it sits on black.
-    theme.nodeDifficulty = {
-        QColor(100, 200, 120),  // Beginner
-        QColor(100, 160, 220),  // Intermediate
-        QColor(230, 170, 60),   // Advanced
-        QColor(220, 90, 90),    // Expert
-    };
-
-    theme.panelBackground          = QColor(kCoffee);
+    theme.panelBackground = QColor(kCoffee);
     theme.panelAlternateBackground = QColor(kCoffee).lighter(122);
-    theme.panelText                = QColor(kBeige);
-    // Border is the darkest of the two remaining tones, distinct from
-    // the now-lighter panelBackground — was kCoffee itself before this
-    // fix, which meant border and background were the same color and
-    // panels had no visible edge at all.
-    theme.panelBorder              = QColor(kBrown);
-    theme.accent                   = QColor(kBeige);
+    theme.panelText = QColor(kBeige);
+    theme.panelBorder = QColor(kBrown);
+    theme.accent = QColor(0xa3e635);
+
+    theme.surface = QColor(0x1f1f23);
+    theme.surfaceRaised = QColor(0x27272a);
+    theme.border = QColor(0x2e2e33);
+    theme.text = QColor(0xe4e4e7);
+    theme.textMuted = QColor(0xa1a1aa);
+    theme.nodeFill = QColor(0x27272a);
+    theme.label = QColor(0xa1a1aa);
+    theme.ringStrong = QColor(0xa3e635);
+    theme.ringMedium = QColor(0xe4e4e7);
+    theme.ringWeak = QColor(0xfb7185);
+    theme.ringNew = QColor(0x52525b);
+    theme.ringTrack = QColor(0x2e2e33);
+    theme.danger = QColor(0xfb7185);
     return theme;
 }
 
 Theme makeLight() {
     Theme theme;
-    theme.background = QColor(kBeige);
-    theme.dot         = QColor(kBrown);
-    theme.dot.setAlpha(40);
-    theme.edge         = QColor(kBrown);
-    theme.edge.setAlpha(110);
-    theme.edgeDimmed   = QColor(kBrown);
-    theme.edgeDimmed.setAlpha(35);
-    theme.selectedRing = QColor(kBlack);
-    theme.neighborRing = QColor(kCoffee);
-    theme.hoverRing = QColor(kBrown);
-    theme.hoverRing.setAlpha(180);
-    // On a light beige background, the same "warm dark tone, not the
-    // background color itself" logic as dark mode — kBrown reads as a
-    // crisp outline without needing pure black (too harsh against beige).
-    theme.nodeBorder = QColor(kBrown);
+    theme.background = QColor(0xfafafa);
+    theme.dot = withAlpha(0x18181b, 18);
+    theme.edge = QColor(0xa1a1aa);
+    theme.edgeDimmed = withAlpha(0xa1a1aa, 70);
+    theme.selectedRing = QColor(0x18181b);
+    theme.neighborRing = withAlpha(0x52525b, 160);
+    theme.hoverRing = withAlpha(0x18181b, 110);
+    theme.nodeBorder = QColor(0xd4d4d8);
+    theme.nodeDifficulty = {QColor(60, 140, 80), QColor(50, 100, 165), QColor(180, 120, 20), QColor(175, 60, 60)};
 
-    // Same semantic hues as dark, darkened/desaturated a bit so they
-    // hold contrast against the light beige background instead of
-    // washing out.
-    theme.nodeDifficulty = {
-        QColor(60, 140, 80),    // Beginner
-        QColor(50, 100, 165),   // Intermediate
-        QColor(180, 120, 20),   // Advanced
-        QColor(175, 60, 60),    // Expert
-    };
-
-    theme.panelBackground          = QColor(kBeige);
+    theme.panelBackground = QColor(kBeige);
     theme.panelAlternateBackground = QColor(kBeige).darker(107);
-    theme.panelText                = QColor(kBlack);
-    theme.panelBorder              = QColor(kCoffee);
-    theme.accent                   = QColor(kCoffee);
+    theme.panelText = QColor(kBlack);
+    theme.panelBorder = QColor(kCoffee);
+    theme.accent = QColor(0x4d7c0f);
+
+    theme.surface = QColor(0xf4f4f5);
+    theme.surfaceRaised = QColor(0xffffff);
+    theme.border = QColor(0xe4e4e7);
+    theme.text = QColor(0x18181b);
+    theme.textMuted = QColor(0x52525b);
+    theme.nodeFill = QColor(0xffffff);
+    theme.label = QColor(0x52525b);
+    theme.ringStrong = QColor(0x4d7c0f);
+    theme.ringMedium = QColor(0x71717a);
+    theme.ringWeak = QColor(0xe11d48);
+    theme.ringNew = QColor(0xa1a1aa);
+    theme.ringTrack = QColor(0xe4e4e7);
+    theme.danger = QColor(0xe11d48);
     return theme;
 }
 
 }  // namespace
 
 const Theme& themeFor(ThemeMode mode) {
-    static const Theme dark  = makeDark();
+    static const Theme dark = makeDark();
     static const Theme light = makeLight();
     return mode == ThemeMode::Dark ? dark : light;
+}
+
+RingBand ringBand(double recall) {
+    if (!(recall >= 0.0)) return RingBand::New;
+    if (recall >= kStrongRecall) return RingBand::Strong;
+    if (recall >= kMediumRecall) return RingBand::Medium;
+    return RingBand::Weak;
+}
+
+QColor ringColor(const Theme& theme, double recall) {
+    switch (ringBand(recall)) {
+        case RingBand::Strong: return theme.ringStrong;
+        case RingBand::Medium: return theme.ringMedium;
+        case RingBand::Weak: return theme.ringWeak;
+        case RingBand::New: return theme.ringNew;
+    }
+    return theme.ringNew;
 }
 
 }  // namespace atlas::render
