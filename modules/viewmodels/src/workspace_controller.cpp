@@ -1,9 +1,9 @@
-#include "atlas/ui/workspace_controller.hpp"
+#include "atlas/viewmodels/workspace_controller.hpp"
 
 #include <algorithm>
 #include <utility>
 
-namespace atlas::ui {
+namespace atlas::viewmodels {
 
 WorkspaceController::WorkspaceController(atlas::persistence::Database& database, QObject* parent)
     : QObject(parent),
@@ -45,11 +45,6 @@ Result<void, ControllerFailure> WorkspaceController::load() {
 
 Result<KnowledgeObjectId, ControllerFailure> WorkspaceController::createKnowledgeObject(
     std::string title, TopicId topicId) {
-    // Checked up front, same reasoning as the duplicate-edge check in
-    // createRelationship: the knowledge_objects.topic_id foreign key
-    // would reject this too, but "no such Topic" is a legible error
-    // this layer can produce, versus a raw SQL constraint-violation
-    // message bubbling up from the repository.
     auto topicResult = topicRepository_.findById(topicId);
     if (!topicResult.hasValue()) {
         return Result<KnowledgeObjectId, ControllerFailure>::err(
@@ -77,11 +72,6 @@ Result<KnowledgeObjectId, ControllerFailure> WorkspaceController::createKnowledg
 
     auto graphResult = graph_.addNode(std::move(object));
     if (!graphResult.hasValue()) {
-        // The database now has this object but the in-memory graph
-        // doesn't. Should be unreachable — the id was just freshly
-        // generated — but if it ever happens, the database remains the
-        // source of truth and a future load() would self-heal. Surface
-        // it rather than silently swallowing the inconsistency.
         return Result<KnowledgeObjectId, ControllerFailure>::err(
             {ControllerErrorCode::GraphInconsistency, "addNode failed after a successful save"});
     }
@@ -98,10 +88,6 @@ Result<void, ControllerFailure> WorkspaceController::updateKnowledgeObject(
             {ControllerErrorCode::NotFound, "No KnowledgeObject with that id"});
     }
 
-    // Copy-modify-then-replace, never mutate the graph's live object
-    // directly: this is what lets every error below return early with
-    // the graph and database both still in their original, consistent
-    // state.
     KnowledgeObject updated = *current;
 
     if (edits.title.has_value()) {
@@ -176,11 +162,6 @@ Result<RelationshipId, ControllerFailure> WorkspaceController::createRelationshi
         return Result<RelationshipId, ControllerFailure>::err(
             {ControllerErrorCode::NotFound, "No KnowledgeObject with that id"});
     }
-    // Checked against the graph *before* writing anything: the database's
-    // UNIQUE(source_id, target_id, type) constraint doesn't catch a
-    // symmetric type's reverse-pair duplicate, but GraphEngine does.
-    // Checking here means that case is rejected before any database
-    // write, not discovered as an inconsistency after one.
     if (graph_.hasDuplicateEdge(sourceId, targetId, type)) {
         return Result<RelationshipId, ControllerFailure>::err(
             {ControllerErrorCode::ValidationFailed,
@@ -203,9 +184,6 @@ Result<RelationshipId, ControllerFailure> WorkspaceController::createRelationshi
 
     auto graphResult = graph_.addEdge(std::move(relationship));
     if (!graphResult.hasValue()) {
-        // Should be unreachable now that hasDuplicateEdge is checked
-        // up front — same reasoning as createKnowledgeObject's
-        // equivalent comment.
         return Result<RelationshipId, ControllerFailure>::err(
             {ControllerErrorCode::GraphInconsistency, "addEdge failed after a successful save"});
     }
@@ -245,8 +223,6 @@ std::vector<Relationship> WorkspaceController::allRelationships() const {
         const Relationship* relationship = graph_.findEdge(id);
         if (relationship != nullptr) relationships.push_back(*relationship);
     }
-    // Chronological: relationships have no natural display name to
-    // sort by, but creation order is still deterministic and stable.
     std::sort(relationships.begin(), relationships.end(),
               [](const Relationship& a, const Relationship& b) {
                   return a.createdAt() < b.createdAt();
@@ -355,21 +331,16 @@ Result<void, ControllerFailure> WorkspaceController::removeTopic(const TopicId& 
     if (id == atlas::core::uncategorizedTopicId()) {
         return Result<void, ControllerFailure>::err(
             {ControllerErrorCode::ValidationFailed,
-             "The Uncategorized topic can't be removed — it's where migrated and "
+             "The Uncategorized topic can't be removed - it's where migrated and "
              "not-yet-sorted concepts live"});
     }
 
-    // Checked up front rather than just letting the database's foreign
-    // key (knowledge_objects.topic_id has no ON DELETE clause — see
-    // migration 2) reject the delete: same "legible error instead of a
-    // raw constraint-violation message" reasoning as
-    // createKnowledgeObject's topic check.
     auto members = knowledgeObjectsInTopic(id);
     if (!members.empty()) {
         return Result<void, ControllerFailure>::err(
             {ControllerErrorCode::ValidationFailed,
              "This topic still has " + std::to_string(members.size()) +
-                 " concept(s) in it — move or delete them first"});
+                 " concept(s) in it - move or delete them first"});
     }
 
     auto removeResult = topicRepository_.remove(id);
@@ -411,4 +382,4 @@ std::vector<KnowledgeObject> WorkspaceController::knowledgeObjectsInTopic(
     return objects;
 }
 
-}  // namespace atlas::ui
+}  // namespace atlas::viewmodels

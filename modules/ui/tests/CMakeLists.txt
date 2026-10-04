@@ -1,6 +1,5 @@
 add_executable(atlas_ui_tests
     test_main.cpp
-    test_workspace_controller.cpp
     test_knowledge_object_list_model.cpp
     test_knowledge_object_panel.cpp
     test_relationship_list_model.cpp

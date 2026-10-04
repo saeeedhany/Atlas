@@ -31,6 +31,7 @@ add_subdirectory(modules/learning)
 add_subdirectory(modules/render)
 
 if (ATLAS_BUILD_UI)
+    add_subdirectory(modules/viewmodels)
     add_subdirectory(modules/ui)
     add_subdirectory(modules/app)
 endif()

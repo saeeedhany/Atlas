@@ -2,12 +2,12 @@
 #include "atlas/persistence/knowledge_object_repository.hpp"
 #include "atlas/persistence/relationship_repository.hpp"
 #include "atlas/persistence/topic_repository.hpp"
-#include "atlas/ui/workspace_controller.hpp"
+#include "atlas/viewmodels/workspace_controller.hpp"
 #include "doctest.h"
 
 using namespace atlas::core;
 using namespace atlas::persistence;
-using namespace atlas::ui;
+using namespace atlas::viewmodels;
 
 namespace {
 
@@ -32,8 +32,6 @@ TEST_CASE("createKnowledgeObject persists and adds to the graph") {
     REQUIRE(found.has_value());
     CHECK(found->title() == "Hash Tables");
 
-    // Independently verify it actually reached the database, not just
-    // the in-memory graph.
     KnowledgeObjectRepository repo(db);
     auto persisted = repo.findById(id);
     REQUIRE(persisted.hasValue());
@@ -166,10 +164,6 @@ TEST_CASE("search ranks results by relevance, not alphabetically") {
 
     auto results = controller.search("tail call");
     REQUIRE(results.size() == 2);
-    // "Zebra Tail Call" matches in the title (higher weight) even
-    // though "Aphid" would sort first alphabetically — this is the
-    // whole point of ranking by relevance instead of reusing
-    // allKnowledgeObjects()'s alphabetical order.
     CHECK(results.front().title() == "Zebra Tail Call");
 }
 
@@ -202,8 +196,6 @@ TEST_CASE("search excludes objects that don't match") {
 
 TEST_CASE("load() populates the graph from data already in the database") {
     auto db = openTestDatabase();
-    // load() actually reads from storage rather than only reflecting
-    // whatever the controller itself wrote during this process.
     KnowledgeObjectRepository repo(db);
     auto seeded = KnowledgeObject::create("Seeded From Disk");
     REQUIRE(seeded.hasValue());
@@ -262,8 +254,6 @@ TEST_CASE("createRelationship rejects a duplicate before writing to the database
     REQUIRE(controller.createRelationship(a, b, RelationshipType::RelatedTo, std::nullopt)
                 .hasValue());
 
-    // Reverse pair, symmetric type — same fact, must be rejected even
-    // though a naive ordered UNIQUE constraint wouldn't catch it.
     auto result = controller.createRelationship(b, a, RelationshipType::RelatedTo, std::nullopt);
     CHECK(!result.hasValue());
     CHECK(result.error().code == ControllerErrorCode::ValidationFailed);
@@ -353,10 +343,6 @@ TEST_CASE("removing a KnowledgeObject cascades and the relationship list reflect
 
     REQUIRE(controller.removeKnowledgeObject(a).hasValue());
 
-    // This is exactly the cascade scenario that motivated collapsing
-    // to one graphChanged signal — removeKnowledgeObject never emits
-    // anything relationship-specific, so a view that only refreshed on
-    // a (now-removed) relationshipRemoved signal would have missed it.
     CHECK(controller.allRelationships().empty());
 }
 
@@ -513,7 +499,7 @@ TEST_CASE("removeTopic refuses to remove a topic that still has members") {
 
     auto result = controller.removeTopic(topicId);
     CHECK(!result.hasValue());
-    CHECK(controller.allTopics().size() == 2);  // still there — nothing was removed
+    CHECK(controller.allTopics().size() == 2);
 }
 
 TEST_CASE("removeTopic succeeds once the topic is empty") {
@@ -566,9 +552,6 @@ TEST_CASE("updateKnowledgeObject replaces examples/miniProjects/references and p
     REQUIRE(found->references().size() == 1);
     CHECK(found->examples().front().description == "Factorial");
 
-    // Independently verify it actually reached the database, not just
-    // the in-memory graph — same pattern as every other persistence
-    // check in this file.
     KnowledgeObjectRepository repo(db);
     auto persisted = repo.findById(id);
     REQUIRE(persisted.hasValue());
@@ -586,25 +569,19 @@ TEST_CASE("updateKnowledgeObject with no list edits leaves existing lists untouc
     firstEdit.examples = std::vector<Example>{Example{"Factorial", std::nullopt}};
     REQUIRE(controller.updateKnowledgeObject(id, firstEdit).hasValue());
 
-    // A second, unrelated edit that doesn't touch examples at all —
-    // nullopt (the KnowledgeObjectEdits default), not an empty vector.
     KnowledgeObjectEdits secondEdit;
     secondEdit.notes = "unrelated change";
     REQUIRE(controller.updateKnowledgeObject(id, secondEdit).hasValue());
 
     auto found = controller.findKnowledgeObject(id);
     REQUIRE(found.has_value());
-    REQUIRE(found->examples().size() == 1);  // still there — nullopt means "don't touch"
+    REQUIRE(found->examples().size() == 1);
     CHECK(found->notes() == "unrelated change");
 }
 
 TEST_CASE("suggestProjects resolves ids to full KnowledgeObjects with readiness/leverage") {
     auto db = openTestDatabase();
 
-    // WorkspaceController has no API yet to add a MiniProject to an
-    // object, so seed the database directly — same pattern as the
-    // "load() populates the graph from data already in the database"
-    // test above.
     auto topicResult = Topic::create("Algorithms");
     REQUIRE(topicResult.hasValue());
     auto topic = std::move(topicResult).value();
