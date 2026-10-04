@@ -139,3 +139,60 @@ TEST_CASE("layout is reasonably stable when one unrelated node is added") {
     // the whole point of recomputing is that it's allowed to change.
     CHECK(afterDistance < beforeDistance * 3.0);
 }
+
+TEST_CASE("pinned nodes keep their exact position") {
+    GraphEngine graph;
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    auto aId = a.id();
+    auto bId = b.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value()).hasValue());
+
+    LayoutHints hints;
+    hints.initial[aId] = Point2D{500.0, -200.0};
+    hints.pinned.insert(aId);
+    auto positions = ForceDirectedLayout::compute(graph, {}, hints);
+    CHECK(positions.at(aId).x == 500.0);
+    CHECK(positions.at(aId).y == -200.0);
+}
+
+TEST_CASE("with saved positions, no node moves further than the warm start allows") {
+    GraphEngine graph;
+    std::vector<KnowledgeObjectId> ids;
+    for (const char* title : {"A", "B", "C", "D", "E", "F"}) {
+        auto node = makeNode(title);
+        ids.push_back(node.id());
+        REQUIRE(graph.addNode(std::move(node)).hasValue());
+    }
+    for (size_t i = 1; i < ids.size(); ++i) {
+        REQUIRE(graph.addEdge(Relationship::create(ids[i], ids[i - 1], RelationshipType::DependsOn).value()).hasValue());
+    }
+    auto cold = ForceDirectedLayout::compute(graph);
+
+    LayoutHints hints;
+    for (const auto& [id, point] : cold) hints.initial[id] = point;
+    auto warm = ForceDirectedLayout::compute(graph, {}, hints);
+
+    for (const auto& [id, point] : cold) {
+        CHECK(distance(point, warm.at(id)) < 53.4);
+    }
+}
+
+TEST_CASE("a new node starts next to the saved neighbors it links to") {
+    GraphEngine graph;
+    auto anchor = makeNode("Anchor");
+    auto fresh = makeNode("Fresh");
+    auto anchorId = anchor.id();
+    auto freshId = fresh.id();
+    REQUIRE(graph.addNode(std::move(anchor)).hasValue());
+    REQUIRE(graph.addNode(std::move(fresh)).hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(freshId, anchorId, RelationshipType::DependsOn).value()).hasValue());
+
+    LayoutHints hints;
+    hints.initial[anchorId] = Point2D{1000.0, 1000.0};
+    hints.pinned.insert(anchorId);
+    auto positions = ForceDirectedLayout::compute(graph, {}, hints);
+    CHECK(distance(positions.at(freshId), Point2D{1000.0, 1000.0}) < 120.0);
+}
