@@ -1,6 +1,7 @@
 add_library(atlas_learning STATIC
     src/fsrs.cpp
     src/memory_ledger.cpp
+    src/network_rules.cpp
 )
 
 target_include_directories(atlas_learning PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
