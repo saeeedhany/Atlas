@@ -1,7 +1,7 @@
 # atlas: the composition root. Owns main(), opens the real database
 # file in the user's app-data directory, and runs the Qt event loop.
 
-find_package(Qt6 6.7 REQUIRED COMPONENTS Gui Quick)
+find_package(Qt6 6.7 REQUIRED COMPONENTS Gui Quick QuickControls2 QuickShapes)
 
 qt_add_executable(atlas src/main_qml.cpp)
 target_link_libraries(atlas PRIVATE
