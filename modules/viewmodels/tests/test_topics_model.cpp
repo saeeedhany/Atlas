@@ -1,7 +1,10 @@
+#include <QTemporaryDir>
+
 #include "atlas/persistence/database.hpp"
 #include "atlas/viewmodels/ids.hpp"
 #include "atlas/viewmodels/topics_model.hpp"
 #include "doctest.h"
+#include "raw_sql.hpp"
 
 using namespace atlas::core;
 using namespace atlas::persistence;
@@ -9,14 +12,16 @@ using namespace atlas::viewmodels;
 
 namespace {
 
-Database openTestDatabase() {
-    auto result = Database::open(":memory:");
+Database openTestDatabase(const std::string& path) {
+    auto result = Database::open(path);
     REQUIRE(result.hasValue());
     return std::move(result).value();
 }
 
 struct Fixture {
-    Database db = openTestDatabase();
+    QTemporaryDir dir;
+    std::string path = dir.filePath("atlas.db").toStdString();
+    Database db = openTestDatabase(path);
     WorkspaceController workspace{db};
     bool loaded = workspace.load().hasValue();
     TopicsModel topics{workspace};
@@ -71,4 +76,16 @@ TEST_CASE("refused operations are reported") {
     f.workspace.createKnowledgeObject("Paging", *parseId<TopicId>(os));
     CHECK_FALSE(f.topics.remove(os));
     CHECK(f.errors == 4);
+}
+
+TEST_CASE("a topic loading failure is reported and keeps the previous rows") {
+    Fixture f;
+    f.topics.create("OS");
+    REQUIRE(f.topics.count() == 2);
+    REQUIRE(executeRawSql(f.path, "DROP TABLE topics;"));
+
+    f.topics.refresh();
+    CHECK(f.errors == 1);
+    CHECK(f.topics.count() == 2);
+    CHECK(f.at(0, TopicsModel::NameRole).toString() == "OS");
 }

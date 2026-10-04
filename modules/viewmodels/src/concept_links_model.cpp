@@ -136,17 +136,21 @@ bool ConceptLinksModel::remove(const QString& linkId) {
     return removed.hasValue() || fail(toQString(removed.error().detail));
 }
 
-QVariantList ConceptLinksModel::candidates(const QString& query) const {
-    std::unordered_map<std::string, std::string> topicNames;
-    for (const auto& topic : workspace_->allTopics()) topicNames.emplace(topic.id().toString(), topic.name());
+QVariantList ConceptLinksModel::candidates(const QString& query) {
+    if (auto topics = workspace_->topics(); topics.hasValue()) {
+        topicNames_.clear();
+        for (const auto& topic : topics.value()) topicNames_.emplace(topic.id().toString(), topic.name());
+    } else {
+        emit errorOccurred(toQString(topics.error().detail));
+    }
     QVariantList results;
     for (const auto& object : workspace_->search(toStdString(query))) {
         QString id = idString(object.id());
         if (id == conceptId_) continue;
         QString topic;
         if (object.topicId()) {
-            auto name = topicNames.find(object.topicId()->toString());
-            if (name != topicNames.end()) topic = toQString(name->second);
+            auto name = topicNames_.find(object.topicId()->toString());
+            if (name != topicNames_.end()) topic = toQString(name->second);
         }
         results.append(QVariantMap{{"id", id}, {"title", toQString(object.title())}, {"topic", topic}});
         if (results.size() == kCandidateLimit) break;

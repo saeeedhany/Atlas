@@ -8,6 +8,8 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <optional>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "atlas/render/graph_canvas_item.hpp"
@@ -69,6 +71,7 @@ private:
     QPointer<atlas::render::GraphCanvasItem> canvas_;
     QString topicId_;
     QString selectedId_;
+    std::unordered_map<std::string, std::string> topicNames_;
     std::vector<atlas::render::RenderNode> nodes_;
     std::vector<atlas::render::RenderEdge> edges_;
     int conceptCount_ = 0;

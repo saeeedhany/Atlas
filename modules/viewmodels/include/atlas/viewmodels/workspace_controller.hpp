@@ -65,7 +65,8 @@ public:
     Result<TopicId, ControllerFailure> createTopic(std::string name, std::string description = "");
     Result<void, ControllerFailure> renameTopic(const TopicId& id, std::string newName);
     Result<void, ControllerFailure> removeTopic(const TopicId& id);
-    std::vector<Topic> allTopics();  // sorted by name
+    Result<std::vector<Topic>, ControllerFailure> topics();  // sorted by name
+    std::vector<Topic> allTopics();  // sorted by name, empty on failure
     std::optional<Topic> findTopic(const TopicId& id);
 
     std::vector<KnowledgeObject> knowledgeObjectsInTopic(const TopicId& topicId) const;

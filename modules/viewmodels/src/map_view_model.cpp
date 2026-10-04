@@ -75,8 +75,12 @@ void MapViewModel::setSelectedId(const QString& conceptId) {
 
 void MapViewModel::refresh() {
     refreshPending_ = false;
-    std::unordered_map<std::string, std::string> topicNames;
-    for (const auto& topic : workspace_->allTopics()) topicNames.emplace(topic.id().toString(), topic.name());
+    if (auto topics = workspace_->topics(); topics.hasValue()) {
+        topicNames_.clear();
+        for (const auto& topic : topics.value()) topicNames_.emplace(topic.id().toString(), topic.name());
+    } else {
+        emit errorOccurred(toQString(topics.error().detail));
+    }
 
     auto topic = scope();
     auto objects = workspace_->allKnowledgeObjects();
@@ -112,8 +116,8 @@ void MapViewModel::refresh() {
         node.ghost = !member;
         if (object.topicId()) {
             node.groupKey = idString(*object.topicId());
-            auto name = topicNames.find(object.topicId()->toString());
-            if (name != topicNames.end()) node.groupLabel = toQString(name->second);
+            auto name = topicNames_.find(object.topicId()->toString());
+            if (name != topicNames_.end()) node.groupLabel = toQString(name->second);
         }
         nodes_.push_back(std::move(node));
     }

@@ -6,6 +6,8 @@
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "atlas/viewmodels/memory_controller.hpp"
@@ -51,7 +53,7 @@ public:
 
     Q_INVOKABLE bool add(const QString& otherId, int typeIndex, bool outgoing, const QString& note);
     Q_INVOKABLE bool remove(const QString& linkId);
-    Q_INVOKABLE QVariantList candidates(const QString& query) const;
+    Q_INVOKABLE QVariantList candidates(const QString& query);
 
 signals:
     void conceptIdChanged();
@@ -77,6 +79,7 @@ private:
     MemoryController* memory_;
     QString conceptId_;
     std::vector<Row> rows_;
+    std::unordered_map<std::string, std::string> topicNames_;
 };
 
 }  // namespace atlas::viewmodels

@@ -353,12 +353,18 @@ Result<void, ControllerFailure> WorkspaceController::removeTopic(const TopicId& 
     return Result<void, ControllerFailure>::ok();
 }
 
-std::vector<Topic> WorkspaceController::allTopics() {
+Result<std::vector<Topic>, ControllerFailure> WorkspaceController::topics() {
+    using Out = Result<std::vector<Topic>, ControllerFailure>;
     auto result = topicRepository_.findAll();
-    std::vector<Topic> topics = result.hasValue() ? std::move(result).value() : std::vector<Topic>{};
-    std::sort(topics.begin(), topics.end(),
-              [](const Topic& a, const Topic& b) { return a.name() < b.name(); });
-    return topics;
+    if (!result.hasValue()) return Out::err({ControllerErrorCode::PersistenceFailed, result.error().detail});
+    std::vector<Topic> sorted = std::move(result).value();
+    std::sort(sorted.begin(), sorted.end(), [](const Topic& a, const Topic& b) { return a.name() < b.name(); });
+    return Out::ok(std::move(sorted));
+}
+
+std::vector<Topic> WorkspaceController::allTopics() {
+    auto result = topics();
+    return result.hasValue() ? std::move(result).value() : std::vector<Topic>{};
 }
 
 std::optional<Topic> WorkspaceController::findTopic(const TopicId& id) {
