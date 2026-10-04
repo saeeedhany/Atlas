@@ -58,13 +58,20 @@ std::vector<Point2D> startingPositions(const std::vector<KnowledgeObjectId>& ids
         positions[i] = known[i] ? hint->second : random;
     }
 
+    if (hints.initial.empty()) return positions;
+
+    std::vector<std::vector<size_t>> neighborsOf(n);
+    for (const auto& edge : edges) {
+        neighborsOf[edge.a].push_back(edge.b);
+        neighborsOf[edge.b].push_back(edge.a);
+    }
+
     for (size_t i = 0; i < n; ++i) {
         if (known[i]) continue;
         Point2D sum;
         int count = 0;
-        for (const auto& edge : edges) {
-            size_t other = edge.a == i ? edge.b : (edge.b == i ? edge.a : n);
-            if (other == n || !known[other]) continue;
+        for (size_t other : neighborsOf[i]) {
+            if (!known[other]) continue;
             sum.x += positions[other].x;
             sum.y += positions[other].y;
             ++count;
