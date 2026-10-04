@@ -4585,3 +4585,14 @@ Expected: `0`.
 git add docs/DECISIONS.md
 git commit -m "docs: record view model and canvas decisions"
 ```
+
+---
+
+## Carry-over to Plan 3 (from the final review)
+
+Plan 3 starts with these before any screen work:
+
+1. Canvas navigation API: `centerOn(id)`, `fitToContent()`, zoom anchored at the cursor, a node-to-screen mapping for panels that grow from a node, link hover info (type and note), recall lookup for exact values on hover, and zooming in to at least the label zoom when a collapsed topic is clicked.
+2. Canvas cost: cull geometry to the viewport and make animation ticks cheaper than a full rebuild.
+3. Small fixes: give the placement seeding offset a minimum radius so a new concept never starts on top of its neighbor; guard `PlacementController::tidy()` with `loaded_`; let `MapViewModel::setSelectedId` accept a concept that exists but is not yet in the scene, or select only after the scene updates; correct the DECISIONS line about selection (selection still rebuilds everything because of dimming).
+4. Wiring notes for the composition root: `AppContext` must outlive the QML engine; call `registerGraphCanvasQmlType()` before loading QML; `ConceptEditor` drops unsaved drafts when `conceptId` changes, so the panel must save or ask first; refresh `Today` and `MapView` when the window is activated so recall rings and counts follow time; settle the QTP0001 and QML output directory configure notices.
