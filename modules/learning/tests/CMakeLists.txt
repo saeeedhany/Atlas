@@ -1,6 +1,7 @@
 add_executable(atlas_learning_tests
     test_main.cpp
     test_fsrs.cpp
+    test_memory_ledger.cpp
 )
 
 target_link_libraries(atlas_learning_tests PRIVATE atlas_learning)
