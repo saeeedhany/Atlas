@@ -44,9 +44,9 @@ ApplicationWindow {
         }
     }
 
-    onClosing: {
-        if (Concept.dirty)
-            Concept.save()
+    onClosing: close => {
+        if (Concept.dirty && !Concept.save())
+            close.accepted = false
     }
 
     NavRail {

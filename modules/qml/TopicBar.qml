@@ -55,6 +55,13 @@ Rectangle {
             topicPopup.close()
     }
 
+    function submitTopicName(name: string) {
+        if (canEditTopic)
+            renameTopic(name)
+        else
+            createTopic(name)
+    }
+
     function deleteTopic() {
         if (!Topics.remove(MapView.topicId))
             return
@@ -112,6 +119,7 @@ Rectangle {
             objectName: "searchField"
             Layout.fillWidth: true
             Layout.minimumWidth: 120
+            Layout.maximumWidth: 360
             placeholderText: "Search"
             onTextEdited: bar.searchFor(text)
             onAccepted: {
@@ -125,9 +133,12 @@ Rectangle {
             objectName: "newConceptField"
             Layout.fillWidth: true
             Layout.minimumWidth: 120
+            Layout.maximumWidth: 360
             placeholderText: "New concept"
             onAccepted: bar.addConcept(text)
         }
+
+        Item { Layout.fillWidth: true }
 
         AppButton {
             text: "Fit"
@@ -166,7 +177,7 @@ Rectangle {
                 id: topicName
                 Layout.fillWidth: true
                 placeholderText: "Topic name"
-                onAccepted: bar.createTopic(text)
+                onAccepted: bar.submitTopicName(text)
             }
 
             RowLayout {

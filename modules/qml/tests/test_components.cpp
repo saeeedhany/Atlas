@@ -48,8 +48,16 @@ TEST_CASE("a toast shows a message and hides itself") {
 
 TEST_CASE("every shared component loads without warnings") {
     QmlFixture f;
-    for (const char* type : {"AppButton", "AppTextField", "AppTextArea", "SectionLabel"}) {
+    for (const char* type : {"AppButton", "AppSwitch", "AppTextField", "AppTextArea", "SectionLabel"}) {
         auto object = f.create(type);
         CHECK(object != nullptr);
     }
+}
+
+TEST_CASE("a disabled button dims as a whole") {
+    QmlFixture f;
+    auto button = f.create("AppButton", {{"text", "Save"}, {"primary", true}, {"enabled", false}});
+    CHECK(button->property("opacity").toDouble() == doctest::Approx(0.4));
+    button->setProperty("enabled", true);
+    CHECK(button->property("opacity").toDouble() == doctest::Approx(1.0));
 }

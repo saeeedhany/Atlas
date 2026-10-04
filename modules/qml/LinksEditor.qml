@@ -37,9 +37,22 @@ ColumnLayout {
         targetId = ""
         targetTitle = ""
         candidates = []
+        typeBox.currentIndex = 0
+        directionSwitch.checked = true
+    }
+
+    function reset() {
+        cancel()
+        findField.clear()
+        noteField.clear()
     }
 
     spacing: 8
+
+    Connections {
+        target: ConceptLinks
+        function onConceptIdChanged() { editor.reset() }
+    }
 
     SectionLabel { text: "Links" }
 
@@ -112,6 +125,7 @@ ColumnLayout {
 
     AppTextField {
         id: findField
+        objectName: "linkFindField"
         Layout.fillWidth: true
         visible: editor.targetId === ""
         placeholderText: "Link to..."
@@ -145,18 +159,20 @@ ColumnLayout {
         }
         ComboBox {
             id: typeBox
+            objectName: "linkTypeBox"
             Layout.fillWidth: true
             font.pixelSize: Theme.fontBody
             model: ConceptLinks.typeNames
         }
-        Switch {
+        AppSwitch {
             id: directionSwitch
+            objectName: "linkDirectionSwitch"
             checked: true
             text: checked ? "This concept points to it" : "It points to this concept"
-            font.pixelSize: Theme.fontBody
         }
         AppTextField {
             id: noteField
+            objectName: "linkNoteField"
             Layout.fillWidth: true
             placeholderText: "Why are they linked? (optional)"
         }

@@ -37,7 +37,38 @@ TEST_CASE("cancel drops the chosen target") {
     f.context().links().setConceptId(a);
     auto editor = f.create("LinksEditor");
     REQUIRE(QMetaObject::invokeMethod(editor.get(), "chooseTarget", Q_ARG(QString, b), Q_ARG(QString, "Beta")));
+    QmlFixture::child(editor.get(), "linkTypeBox")->setProperty("currentIndex", 2);
+    QmlFixture::child(editor.get(), "linkDirectionSwitch")->setProperty("checked", false);
     REQUIRE(QMetaObject::invokeMethod(editor.get(), "cancel"));
     CHECK(editor->property("targetId").toString().isEmpty());
+    CHECK(QmlFixture::child(editor.get(), "linkTypeBox")->property("currentIndex").toInt() == 0);
+    CHECK(QmlFixture::child(editor.get(), "linkDirectionSwitch")->property("checked").toBool());
     CHECK(f.context().links().count() == 0);
+}
+
+TEST_CASE("switching concepts clears the link form") {
+    QmlFixture f;
+    QString a = f.context().map().createConcept("Alpha");
+    QString b = f.context().map().createConcept("Beta");
+    QString c = f.context().map().createConcept("Gamma");
+    f.context().links().setConceptId(a);
+    auto editor = f.create("LinksEditor");
+
+    REQUIRE(QMetaObject::invokeMethod(editor.get(), "chooseTarget", Q_ARG(QString, c), Q_ARG(QString, "Gamma")));
+    QmlFixture::child(editor.get(), "linkTypeBox")->setProperty("currentIndex", 2);
+    QmlFixture::child(editor.get(), "linkDirectionSwitch")->setProperty("checked", false);
+    QmlFixture::child(editor.get(), "linkNoteField")->setProperty("text", "why");
+    f.context().links().setConceptId(b);
+    CHECK(editor->property("targetId").toString().isEmpty());
+    CHECK(editor->property("targetTitle").toString().isEmpty());
+    CHECK(QmlFixture::child(editor.get(), "linkTypeBox")->property("currentIndex").toInt() == 0);
+    CHECK(QmlFixture::child(editor.get(), "linkDirectionSwitch")->property("checked").toBool());
+    CHECK(QmlFixture::child(editor.get(), "linkNoteField")->property("text").toString().isEmpty());
+
+    QmlFixture::child(editor.get(), "linkFindField")->setProperty("text", "gam");
+    REQUIRE(QMetaObject::invokeMethod(editor.get(), "searchCandidates", Q_ARG(QString, "gam")));
+    REQUIRE_FALSE(editor->property("candidates").toList().isEmpty());
+    f.context().links().setConceptId(a);
+    CHECK(editor->property("candidates").toList().isEmpty());
+    CHECK(QmlFixture::child(editor.get(), "linkFindField")->property("text").toString().isEmpty());
 }

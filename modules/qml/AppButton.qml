@@ -12,12 +12,12 @@ Button {
     rightPadding: 14
     topPadding: 8
     bottomPadding: 8
+    opacity: enabled ? 1 : 0.4
 
     contentItem: Text {
         text: control.text
         font: control.font
         color: control.primary ? Theme.background : control.danger ? Theme.danger : Theme.text
-        opacity: control.enabled ? 1 : 0.4
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

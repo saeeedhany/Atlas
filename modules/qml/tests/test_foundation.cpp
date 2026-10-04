@@ -1,4 +1,9 @@
 #include <QColor>
+#include <QCoreApplication>
+#include <QQmlComponent>
+#include <QQmlEngine>
+
+#include <memory>
 
 #include "doctest.h"
 #include "qml_fixture.hpp"
@@ -53,4 +58,21 @@ TEST_CASE("the startup error window shows its message") {
     QmlFixture f;
     auto window = f.create("StartupError", {{"message", "The database is locked"}});
     CHECK(QmlFixture::child(window.get(), "startupMessage")->property("text").toString().contains("locked"));
+}
+
+TEST_CASE("the startup error window loads in a bare engine without singletons") {
+    QQmlEngine engine;
+    QStringList warnings;
+    engine.setOutputWarningsToStandardError(false);
+    QObject::connect(&engine, &QQmlEngine::warnings, [&warnings](const QList<QQmlError>& list) {
+        for (const auto& warning : list) warnings.append(warning.toString());
+    });
+    QQmlComponent component(&engine, "Atlas.Ui", "StartupError");
+    INFO(component.errorString().toStdString());
+    REQUIRE(component.isReady());
+    std::unique_ptr<QObject> window(component.createWithInitialProperties({{"message", "The database is locked"}}));
+    REQUIRE(window != nullptr);
+    QCoreApplication::processEvents();
+    INFO(warnings.join('\n').toStdString());
+    CHECK(warnings.isEmpty());
 }

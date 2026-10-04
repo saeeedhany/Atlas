@@ -111,3 +111,43 @@ TEST_CASE("a focus that never resolves does not block topic fits") {
     CHECK(overlay->property("focusId").toString().isEmpty());
     CHECK_FALSE(overlay->property("fitPending").toBool());
 }
+
+TEST_CASE("enter in the topic popup renames the open topic and creates one otherwise") {
+    QmlFixture f;
+    auto window = f.create("Main");
+    auto* bar = QmlFixture::child(window.get(), "topicBar");
+    REQUIRE(QMetaObject::invokeMethod(bar, "submitTopicName", Q_ARG(QString, "Databases")));
+    QmlFixture::settle();
+    CHECK(f.context().topics().count() == 2);
+    REQUIRE(bar->property("canEditTopic").toBool());
+
+    REQUIRE(QMetaObject::invokeMethod(bar, "submitTopicName", Q_ARG(QString, "Storage")));
+    QmlFixture::settle();
+    CHECK(f.context().topics().count() == 2);
+    CHECK(f.context().topics().nameOf(f.context().map().topicId()) == "Storage");
+}
+
+TEST_CASE("focusing another topic's concept keeps the scope when the draft cannot be saved") {
+    QmlFixture f;
+    auto os = f.context().topics().createTopic("OS");
+    auto databases = f.context().topics().createTopic("Databases");
+    f.context().map().setTopicId(os);
+    QString paging = f.context().map().createConcept("Paging");
+    f.context().map().setTopicId(databases);
+    QString indexing = f.context().map().createConcept("Indexing");
+    f.context().map().setSelectedId(QString());
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    f.context().map().setSelectedId(indexing);
+    QmlFixture::settle();
+    REQUIRE(f.context().conceptEditor().conceptId() == indexing);
+
+    f.context().conceptEditor().setTitle("");
+    auto* overlay = QmlFixture::child(window.get(), "mapOverlay");
+    REQUIRE(QMetaObject::invokeMethod(overlay, "focusConcept", Q_ARG(QString, paging)));
+    QmlFixture::settle();
+    CHECK(f.context().map().topicId() == databases);
+    CHECK(f.context().map().selectedId() == indexing);
+    CHECK(f.context().conceptEditor().conceptId() == indexing);
+    CHECK(overlay->property("focusId").toString().isEmpty());
+}

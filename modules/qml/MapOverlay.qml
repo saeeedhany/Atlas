@@ -18,6 +18,8 @@ Item {
         if (Object.keys(MapView.conceptInfo(id)).length === 0)
             return
         MapView.selectedId = id
+        if (Concept.dirty && Concept.conceptId !== id)
+            return
         if (MapView.selectedId !== id) {
             MapView.topicId = ""
             MapView.selectedId = id

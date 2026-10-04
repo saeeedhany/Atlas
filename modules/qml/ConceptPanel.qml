@@ -206,9 +206,14 @@ Rectangle {
                     color: Theme.text
                     font.pixelSize: Theme.fontBody
                 }
-                Switch {
+                AppSwitch {
+                    id: pinSwitch
+                    objectName: "pinSwitch"
                     checked: Concept.pinned
-                    onToggled: Concept.pinned = checked
+                    onToggled: {
+                        Concept.pinned = checked
+                        Qt.callLater(() => pinSwitch.checked = Qt.binding(() => Concept.pinned))
+                    }
                 }
             }
         }

@@ -77,6 +77,36 @@ TEST_CASE("closing the window saves the draft") {
     CHECK_FALSE(p.f.context().conceptEditor().dirty());
 }
 
+TEST_CASE("a draft that cannot be saved keeps the window open") {
+    PanelFixture p;
+    p.select(p.a);
+    p.f.context().conceptEditor().setTitle("");
+    REQUIRE(QMetaObject::invokeMethod(p.window.get(), "close"));
+    QmlFixture::settle();
+    CHECK(p.window->property("visible").toBool());
+    CHECK(p.f.context().conceptEditor().dirty());
+    CHECK(QmlFixture::child(p.window.get(), "toast")->property("shown").toBool());
+}
+
+TEST_CASE("the pin switch always shows the stored pin state") {
+    PanelFixture p;
+    auto* pin = QmlFixture::child(p.window.get(), "pinSwitch");
+    REQUIRE(QMetaObject::invokeMethod(pin, "toggle"));
+    REQUIRE(QMetaObject::invokeMethod(pin, "toggled"));
+    QmlFixture::settle();
+    CHECK_FALSE(pin->property("checked").toBool());
+
+    p.select(p.a);
+    REQUIRE(QMetaObject::invokeMethod(pin, "toggle"));
+    REQUIRE(QMetaObject::invokeMethod(pin, "toggled"));
+    QmlFixture::settle();
+    CHECK(p.f.context().conceptEditor().pinned());
+    CHECK(pin->property("checked").toBool());
+
+    p.select(p.b);
+    CHECK_FALSE(pin->property("checked").toBool());
+}
+
 TEST_CASE("confirming delete removes the concept and closes the panel") {
     PanelFixture p;
     p.select(p.a);

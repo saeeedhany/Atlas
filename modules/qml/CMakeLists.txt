@@ -10,6 +10,7 @@ qt_add_qml_module(atlas_qml
     VERSION 1.0
     QML_FILES
         AppButton.qml
+        AppSwitch.qml
         AppTextArea.qml
         AppTextField.qml
         ConceptPanel.qml
