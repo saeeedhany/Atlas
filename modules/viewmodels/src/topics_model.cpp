@@ -64,7 +64,7 @@ bool TopicsModel::fail(const QString& message) {
     return false;
 }
 
-QString TopicsModel::create(const QString& name) {
+QString TopicsModel::createTopic(const QString& name) {
     auto created = workspace_->createTopic(toStdString(name));
     if (!created.hasValue()) {
         fail(toQString(created.error().detail));

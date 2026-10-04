@@ -14,6 +14,16 @@ AppContext::AppContext(atlas::persistence::Database& database, QSettings& store,
       links_(workspace_, memory_),
       today_(workspace_, memory_, settings_) {}
 
+AppContext::~AppContext() {
+    AppSettings::provide(nullptr);
+    Palette::provide(nullptr);
+    TopicsModel::provide(nullptr);
+    MapViewModel::provide(nullptr);
+    ConceptEditor::provide(nullptr);
+    ConceptLinksModel::provide(nullptr);
+    TodayViewModel::provide(nullptr);
+}
+
 Result<void, ControllerFailure> AppContext::load() {
     if (auto loaded = workspace_.load(); !loaded.hasValue()) return loaded;
     if (auto placed = placements_.load(); !placed.hasValue()) return placed;

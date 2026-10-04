@@ -400,7 +400,7 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
         appendDisc(out.borders, center, kNodeRadius + kNodeBorderWidth, border);
         appendDisc(out.fills, center, kNodeRadius, fill);
         appendMemoryRing(out.memory, center, kMemoryRingRadius, kMemoryRingThickness, node.recall, theme,
-                         dimmed ? kDimmedRingAlphaPercent : alpha);
+                         dimmed ? std::min(alpha, kDimmedRingAlphaPercent) : alpha);
     }
 }
 

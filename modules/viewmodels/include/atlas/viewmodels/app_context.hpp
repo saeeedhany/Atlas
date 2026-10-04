@@ -19,6 +19,9 @@ namespace atlas::viewmodels {
 class AppContext {
 public:
     AppContext(atlas::persistence::Database& database, QSettings& store, Clock clock);
+    ~AppContext();
+    AppContext(const AppContext&) = delete;
+    AppContext& operator=(const AppContext&) = delete;
 
     Result<void, ControllerFailure> load();
     void provideSingletons();

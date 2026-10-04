@@ -47,7 +47,7 @@ TEST_CASE("the seeded Uncategorized topic is listed and marked") {
 
 TEST_CASE("create, rename, and remove keep the list sorted and in sync") {
     Fixture f;
-    QString databases = f.topics.create("Databases");
+    QString databases = f.topics.createTopic("Databases");
     REQUIRE_FALSE(databases.isEmpty());
     CHECK(f.topics.count() == 2);
     CHECK(f.at(0, TopicsModel::NameRole).toString() == "Databases");
@@ -62,7 +62,7 @@ TEST_CASE("create, rename, and remove keep the list sorted and in sync") {
 
 TEST_CASE("concept counts follow the graph") {
     Fixture f;
-    QString os = f.topics.create("OS");
+    QString os = f.topics.createTopic("OS");
     f.workspace.createKnowledgeObject("Paging", *parseId<TopicId>(os));
     CHECK(f.at(0, TopicsModel::ConceptCountRole).toInt() == 1);
 }
@@ -70,9 +70,9 @@ TEST_CASE("concept counts follow the graph") {
 TEST_CASE("refused operations are reported") {
     Fixture f;
     CHECK_FALSE(f.topics.remove(idString(uncategorizedTopicId())));
-    CHECK(f.topics.create("").isEmpty());
+    CHECK(f.topics.createTopic("").isEmpty());
     CHECK_FALSE(f.topics.rename("garbage", "Name"));
-    QString os = f.topics.create("OS");
+    QString os = f.topics.createTopic("OS");
     f.workspace.createKnowledgeObject("Paging", *parseId<TopicId>(os));
     CHECK_FALSE(f.topics.remove(os));
     CHECK(f.errors == 4);
@@ -80,7 +80,7 @@ TEST_CASE("refused operations are reported") {
 
 TEST_CASE("a topic loading failure is reported and keeps the previous rows") {
     Fixture f;
-    f.topics.create("OS");
+    f.topics.createTopic("OS");
     REQUIRE(f.topics.count() == 2);
     REQUIRE(executeRawSql(f.path, "DROP TABLE topics;"));
 

@@ -30,6 +30,12 @@ TEST_CASE("a ring arc starts at twelve o'clock and stays inside its band") {
     }
 }
 
+TEST_CASE("a dashed line without a forward step is empty") {
+    CHECK(dashedLine({0.0f, 0.0f}, {10.0f, 0.0f}, 3.0f, -3.0f).empty());
+    CHECK(dashedLine({0.0f, 0.0f}, {10.0f, 0.0f}, 3.0f, -5.0f).empty());
+    CHECK(dashedLine({0.0f, 0.0f}, {10.0f, 0.0f}, 3.0f, std::nanf("")).empty());
+}
+
 TEST_CASE("a dashed ring has one band per dash") {
     CHECK(dashedRing({0.0f, 0.0f}, 10.0f, 2.0f, 12).size() == 12 * 6);
 }

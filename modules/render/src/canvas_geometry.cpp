@@ -60,7 +60,7 @@ std::vector<LineSegment> dashedLine(Vec2 from, Vec2 to, float dash, float gap) {
     std::vector<LineSegment> out;
     Vec2 delta{to.x - from.x, to.y - from.y};
     float total = lengthOf(delta);
-    if (total <= 0.0f || dash <= 0.0f) return out;
+    if (total <= 0.0f || dash <= 0.0f || !(dash + gap > 0.0f)) return out;
     Vec2 unit{delta.x / total, delta.y / total};
     for (float start = 0.0f; start < total; start += dash + gap) {
         float end = std::min(start + dash, total);
