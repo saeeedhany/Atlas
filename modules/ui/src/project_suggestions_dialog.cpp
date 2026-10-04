@@ -36,7 +36,7 @@ ProjectSuggestionsDialog::ProjectSuggestionsDialog(
 
     auto* heading = new QLabel(
         suggestions.empty()
-            ? QString("No project suggestions in \"%1\" yet — add a mini-project to a "
+            ? QString("No project suggestions in \"%1\" yet - add a mini-project to a "
                       "concept, or mark fewer concepts as Mastered.")
                   .arg(topicName)
             : QString("Suggested next projects in \"%1\", ranked by readiness and how much "

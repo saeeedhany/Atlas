@@ -14,7 +14,7 @@ using atlas::core::KnowledgeObject;
 using atlas::core::KnowledgeObjectId;
 using atlas::core::Result;
 
-// CRUD only — deliberately. Querying by relationship, traversing
+// CRUD only - deliberately. Querying by relationship, traversing
 // dependencies, or anything that needs to reason about the graph as a
 // whole belongs to atlas-graph, which loads everything via findAll()
 // once and builds its own in-memory index. Mixing that into a

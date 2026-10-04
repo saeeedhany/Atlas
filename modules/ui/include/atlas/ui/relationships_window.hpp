@@ -13,7 +13,7 @@ class RelationshipListModel;
 
 // Mirrors MainWindow's list-and-delete pattern, scoped to
 // relationships. A separate window rather than folded into MainWindow
-// or GraphWindow — same "smaller, safer change than unifying
+// or GraphWindow - same "smaller, safer change than unifying
 // everything on the first attempt" reasoning as GraphWindow itself.
 class RelationshipsWindow : public QWidget {
     Q_OBJECT

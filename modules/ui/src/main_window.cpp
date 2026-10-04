@@ -22,7 +22,7 @@ namespace {
 
 // "Atlas"/"Atlas" matches what a QSettings default-constructed from
 // QApplication's organizationName/applicationName would resolve to if
-// those were set — spelled out explicitly here since atlas_app's
+// those were set - spelled out explicitly here since atlas_app's
 // main() doesn't currently set them, and QSettings needs *some*
 // scope. Revisit if main() ever sets QCoreApplication::setOrganizationName.
 constexpr const char* kSettingsOrg = "Atlas";
@@ -60,7 +60,7 @@ MainWindow::MainWindow(WorkspaceController& controller, QWidget* parent)
     workspaceLayout->addWidget(splitter);
 
     // One-directional: list selection -> canvas highlight.
-    // Never the reverse — canvas clicks update the canvas highlight
+    // Never the reverse - canvas clicks update the canvas highlight
     // state but never jump-scroll the list or change list selection.
     connect(panel_, &KnowledgeObjectPanel::selectionChanged,
             canvas_, &GraphWindow::setSelectedKnowledgeObject);
@@ -104,7 +104,7 @@ void MainWindow::onTopicChosen(atlas::core::TopicId id) {
     canvas_->setTopic(id);
 
     auto topic = controller_->findTopic(id);
-    setWindowTitle(topic.has_value() ? QString("Atlas — %1").arg(QString::fromStdString(topic->name()))
+    setWindowTitle(topic.has_value() ? QString("Atlas - %1").arg(QString::fromStdString(topic->name()))
                                        : "Atlas");
 
     switchToPage(workspacePage_);
@@ -119,7 +119,7 @@ void MainWindow::onBackToTopicsClicked() {
 void MainWindow::switchToPage(QWidget* page) {
     if (stack_->currentWidget() == page) return;
 
-    // The page swap itself is synchronous — deliberately never gated
+    // The page swap itself is synchronous - deliberately never gated
     // behind animation completion, so callers (including tests) can
     // rely on stack_->currentWidget() already being `page` the moment
     // this returns, with no event-loop pumping required. The fade is a
@@ -127,7 +127,7 @@ void MainWindow::switchToPage(QWidget* page) {
     // it: a true two-sided crossfade (fading the OLD page out before
     // swapping) would mean the swap only happens once that animation's
     // finished signal fires, which needs a running event loop to ever
-    // deliver — exactly the kind of timing dependency
+    // deliver - exactly the kind of timing dependency
     // docs/DECISIONS.md already steers UI tests away from elsewhere in
     // this codebase (see the empty-state/currentWidget() note).
     stack_->setCurrentWidget(page);
@@ -138,7 +138,7 @@ void MainWindow::switchToPage(QWidget* page) {
     fadeIn->setDuration(180);
     fadeIn->setStartValue(0.0);
     fadeIn->setEndValue(1.0);
-    // Parented to `page`, not `this` — if the page is destroyed mid-
+    // Parented to `page`, not `this` - if the page is destroyed mid-
     // animation (shouldn't happen for these two long-lived pages, but
     // cheap insurance), the animation and effect go with it rather
     // than outliving what they were animating.
@@ -165,10 +165,10 @@ void MainWindow::applyTheme(atlas::render::ThemeMode mode) {
     // that are part of the *same* top-level window. RelationshipsWindow
     // (Qt::Window) and every QDialog (KnowledgeObjectEditDialog,
     // RelationshipEditDialog, RoadmapDialog, ProjectSuggestionsDialog,
-    // TwoFieldItemDialog — QDialog is inherently its own top-level
+    // TwoFieldItemDialog - QDialog is inherently its own top-level
     // window regardless of parent) are each a separate top-level
     // window from MainWindow's perspective, so a stylesheet set on
-    // `this` never reached them — the actual cause of "the theme
+    // `this` never reached them - the actual cause of "the theme
     // doesn't affect all windows." An application-level stylesheet
     // applies process-wide regardless of top-level-window boundaries,
     // which is the only mechanism that actually fixes this without
@@ -178,7 +178,7 @@ void MainWindow::applyTheme(atlas::render::ThemeMode mode) {
     //
     // Now that every window is in scope, QDialog and every input
     // widget dialogs actually use (QComboBox, QPlainTextEdit,
-    // QTabWidget) are styled too — previously absent entirely, so
+    // QTabWidget) are styled too - previously absent entirely, so
     // those widgets rendered in the OS default style even inside an
     // otherwise-dark-themed dialog.
     //

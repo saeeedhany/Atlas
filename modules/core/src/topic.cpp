@@ -47,7 +47,7 @@ void Topic::redescribeAs(std::string description) {
 }
 
 TopicId uncategorizedTopicId() {
-    // Parse of a fixed, valid literal — never fails in practice, but
+    // Parse of a fixed, valid literal - never fails in practice, but
     // routed through the same fallible Uuid::parse() every other UUID
     // in this codebase goes through rather than a separate hand-rolled
     // "all zero bytes" constructor.

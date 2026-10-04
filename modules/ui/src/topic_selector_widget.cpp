@@ -27,7 +27,7 @@ TopicSelectorWidget::TopicSelectorWidget(WorkspaceController& controller, QWidge
     listWidget_->setContextMenuPolicy(Qt::CustomContextMenu);
 
     emptyStateLabel_ = new QLabel(
-        "No topics yet.\n\nClick \"New Topic\" below to start one — \"OS,\" \"Databases,\" "
+        "No topics yet.\n\nClick \"New Topic\" below to start one - \"OS,\" \"Databases,\" "
         "whatever you're building a map of.",
         this);
     emptyStateLabel_->setAlignment(Qt::AlignCenter);
@@ -45,7 +45,7 @@ TopicSelectorWidget::TopicSelectorWidget(WorkspaceController& controller, QWidge
             &TopicSelectorWidget::onContextMenuRequested);
     connect(controller_, &WorkspaceController::topicsChanged, this, &TopicSelectorWidget::refresh);
     // A topic's member count (shown per row) depends on
-    // KnowledgeObjects, not just Topics — a concept getting created,
+    // KnowledgeObjects, not just Topics - a concept getting created,
     // deleted, or moved between topics needs to update these counts
     // too, even though no Topic itself changed.
     connect(controller_, &WorkspaceController::graphChanged, this, &TopicSelectorWidget::refresh);
@@ -112,7 +112,7 @@ void TopicSelectorWidget::onContextMenuRequested(const QPoint& pos) {
     QMenu menu(this);
     QAction* renameAction = menu.addAction("Rename...");
     QAction* deleteAction = menu.addAction("Delete...");
-    // The Uncategorized topic can be renamed but never deleted — same
+    // The Uncategorized topic can be renamed but never deleted - same
     // rule WorkspaceController::removeTopic already enforces (it's
     // where migrated and not-yet-sorted concepts live and would have
     // nowhere to go). Disabling it here is just a friendlier way to

@@ -114,7 +114,7 @@ TEST_CASE("remove on a nonexistent id is not an error") {
 TEST_CASE("remove fails at the database level when a KnowledgeObject still references the topic") {
     // No ON DELETE clause on knowledge_objects.topic_id (see migration
     // 2) means SQLite's default foreign-key behavior blocks this
-    // delete rather than orphaning or cascading — see
+    // delete rather than orphaning or cascading - see
     // TopicRepository::remove()'s doc comment for why that's
     // deliberate. The application layer (WorkspaceController) is
     // expected to check membership and prompt first; this test proves

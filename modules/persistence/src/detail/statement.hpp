@@ -22,7 +22,7 @@ using atlas::core::Result;
 Result<void, PersistenceError> execute(sqlite3* db, std::string_view sql);
 
 // Thin RAII wrapper around sqlite3_stmt*. Internal to atlas-persistence
-// — repositories use it, nothing outside this module ever sees it.
+// - repositories use it, nothing outside this module ever sees it.
 class Statement {
 public:
     static Result<Statement, PersistenceError> prepare(sqlite3* db, std::string_view sql);

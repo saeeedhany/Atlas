@@ -16,7 +16,7 @@ TEST_CASE("RelationshipEditDialog exposes the chosen target, type, and note") {
 
     RelationshipEditDialog dialog(source, candidates);
 
-    // Default selection is whatever the combo box starts on — the
+    // Default selection is whatever the combo box starts on - the
     // first candidate, by construction order.
     CHECK(dialog.targetId() == targetAId);
     CHECK(!dialog.note().has_value());  // empty by default
@@ -26,7 +26,7 @@ TEST_CASE("RelationshipEditDialog with no candidate targets has an empty target 
     auto source = KnowledgeObject::create("Lonely Concept").value();
     std::vector<KnowledgeObject> noCandidates;
 
-    // Doesn't crash to construct, even with nothing to connect to —
+    // Doesn't crash to construct, even with nothing to connect to -
     // MainWindow is responsible for not opening this dialog in that
     // case (see its Connect button's enabled-state logic), but the
     // dialog itself should degrade gracefully regardless.

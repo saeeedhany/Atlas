@@ -16,7 +16,7 @@ namespace atlas::ui {
 
 // Creates a relationship FROM a fixed source TO a user-chosen target.
 // Source is fixed (shown as a read-only label) rather than also
-// editable here — it's whatever row was selected in MainWindow's list,
+// editable here - it's whatever row was selected in MainWindow's list,
 // the same "use the existing, proven selection mechanism" choice
 // described in this milestone's design notes, rather than building
 // canvas-click node picking. `candidateTargets` is expected to already

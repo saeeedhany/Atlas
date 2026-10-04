@@ -92,7 +92,7 @@ KnowledgeObjectPanel::KnowledgeObjectPanel(WorkspaceController& controller,
 
     // Renaming the active topic (via TopicSelectorWidget's context
     // menu) should update this heading immediately, even though
-    // nothing about this panel's own KnowledgeObject data changed —
+    // nothing about this panel's own KnowledgeObject data changed -
     // same reasoning as TopicSelectorWidget itself listening for
     // topicsChanged to refresh its per-row member counts.
     connect(controller_, &WorkspaceController::topicsChanged, this,
@@ -138,7 +138,7 @@ void KnowledgeObjectPanel::onListSelectionChanged() {
     bool hasSelection = listView_->selectionModel()->hasSelection();
     editButton_->setEnabled(hasSelection);
     deleteButton_->setEnabled(hasSelection);
-    // Connecting needs a second, different object to target — disabled
+    // Connecting needs a second, different object to target - disabled
     // with fewer than 2 objects in the workspace even if one is selected.
     connectButton_->setEnabled(hasSelection && model_->rowCount() >= 2);
 

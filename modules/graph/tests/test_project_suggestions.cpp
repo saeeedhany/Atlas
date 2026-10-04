@@ -23,7 +23,7 @@ KnowledgeObject makeNode(const char* title, TopicId topic, ConfidenceLevel confi
 
 TEST_CASE("transitiveDependents is the mirror of transitiveDependencies") {
     GraphEngine graph;
-    // A depends on B, B depends on C — so C's dependents (transitively)
+    // A depends on B, B depends on C - so C's dependents (transitively)
     // are B and A; A has no dependents.
     auto a = KnowledgeObject::create("A").value();
     auto b = KnowledgeObject::create("B").value();

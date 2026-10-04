@@ -10,7 +10,7 @@ namespace atlas::ui {
 
 // Read-only display of a learning roadmap: an ordered list of
 // KnowledgeObjects where every entry appears only after all of its own
-// dependencies have. Plain numbered list — no editing, no drag-to-
+// dependencies have. Plain numbered list - no editing, no drag-to-
 // reorder; the order is computed (GraphEngine::learningRoadmapFor),
 // not something the user is meant to author by hand here.
 class RoadmapDialog : public QDialog {

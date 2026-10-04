@@ -8,10 +8,10 @@
 
 namespace atlas::ui {
 
-// Read-only display of ranked project suggestions for a Topic — same
+// Read-only display of ranked project suggestions for a Topic - same
 // "computed, not authored, no editing" posture as RoadmapDialog. Each
 // row shows the concept, why it was suggested (readiness/leverage,
-// not just a bare rank — see GraphEngine::ProjectSuggestion's own doc
+// not just a bare rank - see GraphEngine::ProjectSuggestion's own doc
 // comment on why those are exposed separately), and its mini-projects.
 class ProjectSuggestionsDialog : public QDialog {
     Q_OBJECT

@@ -59,7 +59,7 @@ TEST_CASE("list selection in the panel drives canvas highlighting") {
 
 TEST_CASE("MainWindow's View > Theme menu applies to the canvas and persists via QSettings") {
     // "Atlas"/"Atlas" matches the org/app scope MainWindow's own
-    // implementation uses — see the anonymous-namespace constants in
+    // implementation uses - see the anonymous-namespace constants in
     // main_window.cpp. Reset first: QSettings is real, on-disk, and
     // shared across test runs on this machine, so a previous run's
     // saved theme would otherwise make this test order-dependent.
@@ -141,8 +141,8 @@ TEST_CASE("Choosing a topic switches to the workspace page and scopes the panel 
     }
     REQUIRE(row >= 0);
     listWidget->setCurrentRow(row);
-    // Exercises the real wiring — TopicSelectorWidget::topicChosen is
-    // connected to MainWindow::onTopicChosen in the constructor — by
+    // Exercises the real wiring - TopicSelectorWidget::topicChosen is
+    // connected to MainWindow::onTopicChosen in the constructor - by
     // triggering the same private slot the real double-click/Enter
     // path triggers (see test_topic_selector_widget.cpp for why
     // invokeMethod, not emit, is used here), rather than calling

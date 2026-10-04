@@ -14,7 +14,7 @@ using atlas::core::Result;
 using atlas::core::Topic;
 using atlas::core::TopicId;
 
-// CRUD only — same reasoning as KnowledgeObjectRepository. There's no
+// CRUD only - same reasoning as KnowledgeObjectRepository. There's no
 // graph traversal concern here at all (Topics don't nest), so unlike
 // KnowledgeObjectRepository this class is about as simple as a
 // repository gets: no child rows, no domain-specific queries.
@@ -31,7 +31,7 @@ public:
     Result<std::vector<Topic>, PersistenceError> findAll();
 
     // No-op (not an error) if the id doesn't exist. Does NOT cascade
-    // to the KnowledgeObjects that referenced this topic — the
+    // to the KnowledgeObjects that referenced this topic - the
     // knowledge_objects.topic_id foreign key has no ON DELETE clause
     // (see migration 2), so removing a topic that still has members
     // fails at the database level with a foreign-key-constraint error

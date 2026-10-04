@@ -27,7 +27,7 @@ TEST_CASE("KnowledgeObjectEditDialog's Edit/Remove buttons start disabled with n
     object.addExample({"Factorial", std::nullopt});
 
     KnowledgeObjectEditDialog dialog(object);
-    // Every section's Edit/Remove pair starts disabled — three
+    // Every section's Edit/Remove pair starts disabled - three
     // sections, so three of each, all disabled until a row is
     // selected in that section's list.
     auto editButtons = dialog.findChildren<QPushButton*>();
@@ -51,12 +51,12 @@ TEST_CASE("KnowledgeObjectEditDialog starts with an empty object's lists all emp
 // Note: an end-to-end "click Add, fill the nested TwoFieldItemDialog,
 // verify examples() updates" test was attempted here and removed.
 // QApplication::activeModalWidget() proved unreliable under the
-// `offscreen` Qt platform used for this whole test binary — the test
+// `offscreen` Qt platform used for this whole test binary - the test
 // was flaky, not the dialog. Every other dialog test in this codebase
 // (RoadmapDialog, RelationshipEditDialog, ProjectSuggestionsDialog)
 // deliberately constructs and inspects without driving a nested modal
 // for the same reason. The pieces that matter are covered separately:
 // TwoFieldItemDialog's own accessors (test_two_field_item_dialog.cpp)
-// and this dialog's pre-fill/initial-state behavior above — the only
+// and this dialog's pre-fill/initial-state behavior above - the only
 // untested seam is the literal button-click -> exec() call itself,
 // which is a single trivial line per section.

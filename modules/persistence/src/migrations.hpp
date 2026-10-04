@@ -11,7 +11,7 @@ using atlas::core::Result;
 
 // Applies every migration with version > the highest version recorded
 // in schema_migrations, each inside its own transaction. Internal to
-// atlas-persistence — Database::open() is the only caller.
+// atlas-persistence - Database::open() is the only caller.
 Result<void, PersistenceError> runMigrations(sqlite3* db);
 
 }  // namespace atlas::persistence::detail

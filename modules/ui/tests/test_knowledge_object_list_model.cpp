@@ -109,7 +109,7 @@ TEST_CASE("the model stays current with an active search query across a graphCha
     REQUIRE(model.rowCount() == 0);
 
     // A newly created object that matches the active query should
-    // appear without anyone needing to re-call setSearchQuery — the
+    // appear without anyone needing to re-call setSearchQuery - the
     // existing graphChanged -> refresh() wiring already re-applies
     // whatever query is currently set.
     REQUIRE(controller.createKnowledgeObject("Recursion").hasValue());

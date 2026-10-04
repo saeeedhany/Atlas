@@ -166,7 +166,7 @@ TEST_CASE("panel emits selectionChanged with nullopt when selection is cleared")
 
 TEST_CASE("the Suggest Projects button exists and needs no selection to be usable") {
     // Unlike Connect (needs a row selected) or Edit/Delete (need a row
-    // selected), suggestions are scoped to the whole topic — there's
+    // selected), suggestions are scoped to the whole topic - there's
     // no reason to gate this button on list selection state.
     auto db = openTestDatabase();
     WorkspaceController controller(db);

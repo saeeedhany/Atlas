@@ -17,7 +17,7 @@ class QPushButton;
 namespace atlas::ui {
 
 // Edit-only, not create-and-edit: creating a new KnowledgeObject only
-// ever needs a title (see atlas-core's design notes — Title is the
+// ever needs a title (see atlas-core's design notes - Title is the
 // only field with a real invariant, everything else can start blank
 // and be filled in progressively), so MainWindow uses a plain
 // QInputDialog text prompt for that. This dialog exists for the
@@ -28,10 +28,10 @@ namespace atlas::ui {
 // Examples/MiniProjects/References are each a QListWidget + Add/Edit/
 // Remove buttons, working on a local std::vector<T> copy that's only
 // committed back via examples()/miniProjects()/references() if the
-// dialog is accepted — cancelling the dialog discards any in-progress
+// dialog is accepted - cancelling the dialog discards any in-progress
 // list edits, same as every other field here. Add/Edit both go through
 // the shared TwoFieldItemDialog rather than three near-identical
-// custom dialogs — see that class's own header comment.
+// custom dialogs - see that class's own header comment.
 class KnowledgeObjectEditDialog : public QDialog {
     Q_OBJECT
 
@@ -53,7 +53,7 @@ public:
 
 private:
     // One QGroupBox-building helper per list type rather than a
-    // generic "list section" abstraction — see this class's header
+    // generic "list section" abstraction - see this class's header
     // comment, and KnowledgeObjectRepository's own precedent for
     // three explicit blocks over one generic one for these same three
     // types.

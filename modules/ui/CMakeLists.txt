@@ -1,7 +1,7 @@
 # atlas-ui: the first module that depends on Qt. Bridges
 # atlas-persistence and atlas-graph into something a window can show.
 # WorkspaceController carries the "write database first, touch the
-# graph only after that succeeds" invariant — see its header comment.
+# graph only after that succeeds" invariant - see its header comment.
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Quick QuickWidgets)
 
@@ -43,7 +43,7 @@ target_link_libraries(atlas_ui PUBLIC
 )
 
 # GraphWindow loads GraphView.qml directly from this source location
-# rather than through Qt's resource system — a deliberate v1
+# rather than through Qt's resource system - a deliberate v1
 # simplification (see GraphWindow's header comment for the trade-off);
 # revisit before this app is actually packaged/installed anywhere.
 target_compile_definitions(atlas_ui PRIVATE

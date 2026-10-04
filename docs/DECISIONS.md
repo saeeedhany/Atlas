@@ -1,7 +1,7 @@
 # Engineering Decision Log
 
 Detailed, chronological notes on specific design decisions and the bugs
-found while building each milestone — the "why does this look this way"
+found while building each milestone - the "why does this look this way"
 forensics that don't belong in a top-level README but are worth keeping.
 See `README.md` for the high-level picture; this file is the detail
 underneath it.
@@ -12,13 +12,13 @@ Organized by module, roughly in the order each decision arose.
 
 - **The dark theme's actual bug: panel chrome and canvas background
   were nearly the same color.** `panelBackground` was `kBrown`
-  (`0x1F150C`), barely distinguishable from the canvas's pure black —
+  (`0x1F150C`), barely distinguishable from the canvas's pure black -
   everything read as "almost-black-on-black" with no depth, which is
   what made dark mode look flat compared to light mode even with the
   same palette applied. Fixed by swapping `panelBackground` to
   `kCoffee` (a properly mid-dark brown, one full step up from black)
   and re-deriving `panelAlternateBackground`/`panelBorder` from that,
-  entirely within the same four supplied colors — no new hues
+  entirely within the same four supplied colors - no new hues
   introduced, just a different assignment of the existing ones.
 - **"The theme doesn't affect all windows" had one specific,
   identifiable cause: `setStyleSheet()` was called on `MainWindow`
@@ -26,11 +26,11 @@ Organized by module, roughly in the order each decision arose.
   descendants that belong to the *same* top-level window.
   `RelationshipsWindow` (explicitly `Qt::Window`) and every `QDialog`
   (`KnowledgeObjectEditDialog`, `RelationshipEditDialog`,
-  `RoadmapDialog`, `ProjectSuggestionsDialog`, `TwoFieldItemDialog` —
+  `RoadmapDialog`, `ProjectSuggestionsDialog`, `TwoFieldItemDialog` -
   `QDialog` is inherently its own top-level window regardless of
   parent) were each invisible to a stylesheet set on `MainWindow`.
   Fixed by applying via `qApp->setStyleSheet()` instead, which is
-  process-wide and ignores top-level-window boundaries entirely — the
+  process-wide and ignores top-level-window boundaries entirely - the
   only mechanism that actually solves this, short of manually
   reapplying the same stylesheet string in every dialog's own
   constructor (which would drift out of sync the first time only one
@@ -39,8 +39,8 @@ Organized by module, roughly in the order each decision arose.
   project had explicitly deferred earlier** (see the "UI enhancement
   pass" entry above: "those dialogs intentionally keep the OS default
   style until they get their own theming pass"). `QComboBox`,
-  `QPlainTextEdit`, and `QTabWidget`/`QTabBar` — all used by the edit
-  dialogs but never styled at all before this — got real rules for the
+  `QPlainTextEdit`, and `QTabWidget`/`QTabBar` - all used by the edit
+  dialogs but never styled at all before this - got real rules for the
   first time, including `QComboBox`'s popup list
   (`QComboBox QAbstractItemView`), which is a separate top-level popup
   in Qt and needed its own explicit background/selection colors or it
@@ -61,15 +61,15 @@ Organized by module, roughly in the order each decision arose.
   reasoned architecture decision (`ForceDirectedLayout` computes once
   per structural change specifically to avoid O(n²) work every single
   frame at the node counts this app targets). Instead,
-  `GraphCanvasItem` now keeps two id-keyed position maps —
+  `GraphCanvasItem` now keeps two id-keyed position maps -
   `targetPositions_` (where the static layout says a node belongs) and
-  `currentPositions_` (what's actually rendered) — and a `QTimer`
+  `currentPositions_` (what's actually rendered) - and a `QTimer`
   exponentially eases the latter toward the former
   (`current += (target - current) * 0.2` per tick, ~60fps) until every
   node is within a small epsilon, then stops. This gets most of the
   "graph feels alive, watch it settle" effect Obsidian is known for,
   at a fraction of the ongoing computational cost, and the timer
-  costs nothing once the graph is at rest — it doesn't run permanently.
+  costs nothing once the graph is at rest - it doesn't run permanently.
 - **`RenderEdge` changed from storing raw `x1/y1/x2/y2` coordinates to
   storing `sourceId`/`targetId` node ids**, resolved to
   `currentPositions_` fresh on every geometry rebuild. This was a
@@ -84,13 +84,13 @@ Organized by module, roughly in the order each decision arose.
   already-known nodes (repositioned by a layout change) animate.**
   Guessing a plausible "was somewhere before" position for a brand-new
   node (e.g. the graph's centroid, or its first neighbor's position)
-  was considered and deliberately left out of this pass — simpler, and
+  was considered and deliberately left out of this pass - simpler, and
   a node popping in instantly still reads fine next to others gliding
   into their new spots, without extra logic to get subtly wrong.
 - **Hit-testing and rendering both read from `currentPositions_`, not
   from the target coordinates baked into `nodes_`.** Without this, a
   click during an in-flight animation would be tested against where a
-  node is *headed*, not where it visually *is* — a small but real
+  node is *headed*, not where it visually *is* - a small but real
   correctness gap that would have made clicking a moving node feel
   broken during the ~1-second window most transitions take to settle.
 
@@ -100,16 +100,16 @@ Organized by module, roughly in the order each decision arose.
   sprites.** A texture-based approach (rendering a circle image via
   `QSGSimpleTextureNode`) would look smoother with less vertex data,
   but introduces asset generation/loading that a hand-built triangle
-  fan avoids entirely — `appendCircleFan()` is one small function
+  fan avoids entirely - `appendCircleFan()` is one small function
   every circular shape on the canvas (node fills, node borders, and
   all three ring types) now goes through, so "make circles smoother"
   or "add anti-aliasing later" is a one-place change, not a rewrite.
   16 segments per circle was picked as a size/smoothness trade-off,
-  not measured against a specific quality bar — worth revisiting if it
+  not measured against a specific quality bar - worth revisiting if it
   ever looks faceted at high zoom.
 - **Every node gets a permanent border, not just highlighted ones.** A
   flat-colored circle directly on a pure-black (or plain-beige)
-  background reads as a blurry smudge with no defined edge — the
+  background reads as a blurry smudge with no defined edge - the
   border exists purely to give every node a crisp silhouette. A real
   bug was caught before shipping: the first attempt computed the dark
   theme's border as `QColor(kBlack).darker(140)`, which has no visible
@@ -119,14 +119,14 @@ Organized by module, roughly in the order each decision arose.
 - **Hover and selection are visually and architecturally separate
   states**, with their own ring color, sized smaller than the
   selection ring so priority reads correctly if a node is somehow both
-  (selection ring wins — stronger and stickier as a user commitment).
+  (selection ring wins - stronger and stickier as a user commitment).
   `GraphCanvasItem::nodeHovered(QString id)` is a dumb, stateless "here's
-  what's under the cursor right now" signal — the canvas has no idea
+  what's under the cursor right now" signal - the canvas has no idea
   what a tooltip is; `GraphWindow` decides what showing "hovering this
   id" means (a `QToolTip` with title/difficulty/confidence/definition)
   and does all the domain-level interpretation.
 - **Hit-testing switched from a square bounding-box check to a real
-  circular distance check**, to match the new circular node shape —
+  circular distance check**, to match the new circular node shape -
   otherwise a click near a node's old bounding-box corner (now outside
   the visible circle) would register as a hit on empty-looking space,
   which would have read as broken precision rather than a deliberate
@@ -138,13 +138,13 @@ Organized by module, roughly in the order each decision arose.
   full node/edge/ring vertex rebuild just to redraw dots, and adding a
   Knowledge Object shouldn't force every dot on screen to be
   recomputed. Dot spacing scales with zoom but is snapped to a pixel
-  range (18-72px) via repeated halving/doubling — the standard
+  range (18-72px) via repeated halving/doubling - the standard
   level-of-detail trick applied to a *spacing value* rather than to
   actual rendered detail, so the grid never becomes so dense it's
   expensive to draw when zoomed out, or so sparse it stops reading as
   a grid when zoomed in.
 - **Topic rename/delete were already fully implemented at the
-  controller layer (with correct validation — can't delete
+  controller layer (with correct validation - can't delete
   Uncategorized, can't delete a non-empty topic) but had no UI at
   all.** `TopicSelectorWidget` gained a standard `Qt::CustomContextMenu`
   right-click handler; no new validation logic was needed anywhere,
@@ -152,14 +152,14 @@ Organized by module, roughly in the order each decision arose.
   a person could actually reach.
 - **A second flaky-modal-test situation, recognized early because of
   the first one.** `TopicSelectorWidget`'s context menu is a
-  `QMenu::exec()` call — the same class of blocking modal that made
+  `QMenu::exec()` call - the same class of blocking modal that made
   the `TwoFieldItemDialog` add-flow test flaky earlier in this project.
   Rather than repeat that mistake, the test suite here only verifies
   what's safely testable without driving the menu's own event loop
   (the context-menu policy is set; an empty-space right-click is a
   no-op) and leans on the controller-level `renameTopic`/`removeTopic`
-  tests — already passing — for the actual business logic.
-- **Adding a heading label to `KnowledgeObjectPanel`** (it had none —
+  tests - already passing - for the actual business logic.
+- **Adding a heading label to `KnowledgeObjectPanel`** (it had none -
   went straight from nothing to the search box) surfaced an ambiguous-
   lookup test bug: two existing tests called `findChild<QLabel*>()`
   with no name, which had silently relied on the empty-state label
@@ -167,14 +167,14 @@ Organized by module, roughly in the order each decision arose.
   (the heading) made both tests start matching the wrong one. Fixed by
   giving the empty-state label an explicit object name
   (`"emptyStateLabel"`) and updating the two lookups to target it by
-  name — the same "don't rely on positional/ordering assumptions that
+  name - the same "don't rely on positional/ordering assumptions that
   happen to hold today" lesson as the deterministic tie-breaks added
   to `GraphEngine::search()`/`suggestProjects()` much earlier.
 - **Explicit list-item selection styling was added specifically
   because its absence was very likely the real "why does this still
   look bad even with the palette applied" culprit.** Before this pass,
   `QListView`/`QListWidget` had a background/text/border color from
-  the custom stylesheet, but no `::item:selected` rule — meaning
+  the custom stylesheet, but no `::item:selected` rule - meaning
   selecting a row fell back to the OS's default selection highlight
   (typically a system blue), which clashes badly against a deliberately
   chosen four-color palette. A custom highlight is now
@@ -184,26 +184,26 @@ Organized by module, roughly in the order each decision arose.
 ## Examples / Mini Projects / References editing
 
 - **`KnowledgeObject` gained `setExamples()`/`setMiniProjects()`/
-  `setReferences()` — whole-list replacement, not incremental add/
+  `setReferences()` - whole-list replacement, not incremental add/
   remove/edit mutators.** Matches a pattern already established one
   layer down: `atlas-persistence`'s `KnowledgeObjectRepository` already
   treats these three fields as "delete every child row for this
   object, then reinsert the current list" rather than diffing (a
   decision made back in M1, when these lists were expected to stay
   small). An editing UI collects a full edited list and hands it over
-  in one call — consistent with how every other field in
+  in one call - consistent with how every other field in
   `KnowledgeObjectEdits` is already an optional full replacement, not
   an incremental patch.
 - **One generic `TwoFieldItemDialog`, not three near-identical add/edit
-  dialogs.** All three of `atlas-core`'s content types — `Example`
+  dialogs.** All three of `atlas-core`'s content types - `Example`
   (description, optional snippet), `MiniProject` (title, description),
-  `Reference` (title, optional url) — are shaped the same way: one
+  `Reference` (title, optional url) - are shaped the same way: one
   required string field, one second string field that's either
   required or optional. That's close enough to share one small
   parameterized dialog. The *list section* around each type
   (`buildExamplesSection()`/`buildMiniProjectsSection()`/
   `buildReferencesSection()`) stays three explicit, near-duplicated
-  blocks rather than a generic "list-of-T" widget abstraction —
+  blocks rather than a generic "list-of-T" widget abstraction -
   mirroring `KnowledgeObjectRepository`'s own precedent of accepting
   duplication over genericizing these same three types, since each
   section's specific item-to-display-text formatting is different
@@ -211,7 +211,7 @@ Organized by module, roughly in the order each decision arose.
   nearly everything anyway.
 - **The edit dialog gained tabs.** Five text fields, two combo boxes,
   and three list-editing sections would not fit in one flat form
-  without becoming an unusable wall of widgets — the existing "Details"
+  without becoming an unusable wall of widgets - the existing "Details"
   form became one tab, Examples/Mini Projects/References each became
   their own.
 - **List edits are staged locally in the dialog (a `std::vector<T>`
@@ -219,21 +219,21 @@ Organized by module, roughly in the order each decision arose.
   `miniProjects()`/`references()` if the dialog is accepted.**
   Cancelling the dialog discards any in-progress Add/Edit/Remove
   actions on these lists, the same as cancelling discards edits to
-  every other field — nothing is written to the actual
+  every other field - nothing is written to the actual
   `KnowledgeObject` or the database until `WorkspaceController::
   updateKnowledgeObject()` is called with the whole edited state.
 - **A flaky test was written, diagnosed, and deliberately removed
   rather than left in "usually passing."** An end-to-end test drove
   the "Add..." button's `TwoFieldItemDialog::exec()` via
   `QApplication::activeModalWidget()` inside a `QTimer::singleShot`
-  callback — the standard Qt technique for testing a button that opens
+  callback - the standard Qt technique for testing a button that opens
   a modal. It failed intermittently: `activeModalWidget()` proved
   unreliable specifically under the `offscreen` Qt platform this whole
   test binary runs under, not a defect in the dialog itself. Every
   other dialog test in this codebase (`RoadmapDialog`,
   `RelationshipEditDialog`, `ProjectSuggestionsDialog`) already
   deliberately avoids driving a nested modal for what was, in
-  retrospect, likely this same reason — a convention that had never
+  retrospect, likely this same reason - a convention that had never
   been written down until this milestone made someone try to break it.
   Removed rather than kept "because it usually passes": a flaky test
   that intermittently fails CI erodes trust in every other test's
@@ -242,25 +242,25 @@ Organized by module, roughly in the order each decision arose.
 ## Project suggestions
 
 - **The ranking heuristic lives in `atlas-graph`, not `atlas-ui` or
-  `atlas-core`.** It's a pure computation over graph structure —
+  `atlas-core`.** It's a pure computation over graph structure -
   readiness needs `dependsOn()`, leverage needs the new
-  `transitiveDependents()` — the same category as
+  `transitiveDependents()` - the same category as
   `topologicalOrder()`/`learningRoadmapFor()`, and for the same reason:
   keeping it testable with synthetic graphs, no Qt or SQLite involved.
-- **No AI in v1, on purpose — not a placeholder for "AI later," a
+- **No AI in v1, on purpose - not a placeholder for "AI later," a
   deliberate separate milestone.** The whole ranking (readiness ×
   leverage, filtered to concepts with a MiniProject and not already
   Mastered) is computable from data already in the graph. AI-assisted
-  suggestions are explicitly the *next* roadmap item, not this one —
+  suggestions are explicitly the *next* roadmap item, not this one -
   conflating them would have meant either shipping nothing until an AI
   integration existed, or building a heuristic and quietly calling it
   "AI" when it isn't.
 - **`transitiveDependents()` is the mirror of `transitiveDependencies()`
-  — added as a new public primitive, not inlined into
+  - added as a new public primitive, not inlined into
   `suggestProjects()`.** Both are BFS over `DependsOn` edges in
   opposite directions (dependsOn vs. usedBy), so the traversal itself
   was factored into one shared private `transitiveClosure()` helper
-  rather than duplicating the loop — the same "don't duplicate a BFS
+  rather than duplicating the loop - the same "don't duplicate a BFS
   that already exists" instinct that produced
   `learningRoadmapFor()` reusing `transitiveDependencies()` earlier.
   `transitiveDependents()` is useful on its own beyond this feature
@@ -269,7 +269,7 @@ Organized by module, roughly in the order each decision arose.
 - **A hard filter, not just a scoring factor, for "has at least one
   MiniProject."** A highly-leveraged, fully-ready concept with zero
   MiniProjects would score arbitrarily high under readiness × leverage
-  alone, but there's nothing to actually go *do* — suggesting it would
+  alone, but there's nothing to actually go *do* - suggesting it would
   be pointing at an empty room. Filtered out before scoring, not scored
   low and hoping it sorts to the bottom.
 - **Readiness and leverage are both exposed on `ProjectSuggestion`,
@@ -284,7 +284,7 @@ Organized by module, roughly in the order each decision arose.
   holds a bare `KnowledgeObjectId`; the UI-layer struct holds the
   resolved `KnowledgeObject` so a dialog can show its title and
   MiniProjects without a second lookup. The field originally named
-  `concept` had to be renamed to `knowledgeObject` — `concept` is a
+  `concept` had to be renamed to `knowledgeObject` - `concept` is a
   reserved keyword in C++20 (concepts, the language feature), and the
   compiler error surfaced as a bizarre "too many initializers"
   downstream of the real parse failure, not as an obvious "reserved
@@ -293,24 +293,24 @@ Organized by module, roughly in the order each decision arose.
 ## Topics, unified window, and theming
 
 - **A KnowledgeObject belongs to exactly one Topic; Topics don't
-  nest.** Nesting was real future scope, not this pass's — a flat
+  nest.** Nesting was real future scope, not this pass's - a flat
   namespace was enough to make "OS," "Databases," "Distributed
   Systems" distinct maps without the added complexity of a tree
   (reparenting, cycle checks, depth limits) that nothing yet demands.
-- **Relationships can't cross Topic boundaries — enforced in
+- **Relationships can't cross Topic boundaries - enforced in
   `WorkspaceController`, not on `Relationship` or `KnowledgeObject`
   themselves.** Same split as the duplicate-edge and self-loop checks
   from earlier: an app-level rule about how two objects may relate,
-  not something intrinsic to either class. All the checks —
+  not something intrinsic to either class. All the checks -
   self-loop, duplicate (including a symmetric type's reverse pair),
-  and now cross-topic — run against the in-memory graph before
+  and now cross-topic - run against the in-memory graph before
   anything is written, so a rejection is never discovered only after
   the database already accepted a row.
 - **Migration 2 backfills a fixed "Uncategorized" topic using the nil
   UUID as its id**, not a freshly generated one. Every pre-existing
   KnowledgeObject needs a topic the moment this migration runs, and
   the fixed id means the app can reference "the Uncategorized topic"
-  from C++ (`uncategorizedTopicId()`) without a database round trip —
+  from C++ (`uncategorizedTopicId()`) without a database round trip -
   it's the same id on every machine's database, deterministically.
   `topic_id` stays nullable at the SQL level (SQLite can't cheaply add
   a `NOT NULL` column with no default to an existing table without a
@@ -319,30 +319,30 @@ Organized by module, roughly in the order each decision arose.
   own invariants are.
 - **`TopicRepository` has no in-memory cache the way
   `KnowledgeObject`/`Relationship` have `GraphEngine`.** Topics don't
-  participate in graph traversal — they don't nest, don't have edges
-  of their own — and at the scale a person actually has topics (dozens,
+  participate in graph traversal - they don't nest, don't have edges
+  of their own - and at the scale a person actually has topics (dozens,
   not thousands), querying the repository directly on every call is
   simpler than a cache and can't go stale, with no real performance
   cost to weigh against that simplicity.
 - **`topicsChanged` is a separate signal from `graphChanged`, not
-  folded into it** — a deliberate exception to the earlier "collapse
+  folded into it** - a deliberate exception to the earlier "collapse
   everything into one signal" pattern from the relationship-creation
   work. That collapse was about not missing a cascade; this is about
   not doing wasted work. `TopicSelectorWidget` cares about
   `topicsChanged` and not `graphChanged`; the workspace panel and
   canvas care about `graphChanged` and not `topicsChanged`. Folding
   them together would mean every topic rename triggers a full graph
-  relayout in whichever topic happens to be open at the time — an
+  relayout in whichever topic happens to be open at the time - an
   unrelated observer paying a real cost, not a case where something
   could be silently missed.
 - **The topic selector and the workspace view are two pages of one
   `QStackedWidget` inside `MainWindow`, not two windows.** Consistent
   with the earlier decision to unify the list and canvas into one
-  window rather than several utility windows — adding a third
+  window rather than several utility windows - adding a third
   top-level window for topic selection would have reintroduced the
   same problem in a new place. The page swap itself
   (`switchToPage`/`stack_->setCurrentWidget`) is synchronous and
-  never gated behind animation completion — a fade-in runs on top of
+  never gated behind animation completion - a fade-in runs on top of
   it as a cosmetic layer, but `stack_->currentWidget()` is already the
   new page the instant the call returns, with no event-loop pumping
   required. That matters for tests: relying on an animation's
@@ -355,18 +355,18 @@ Organized by module, roughly in the order each decision arose.
   descendant; the edit/relationship/roadmap dialogs are all parented
   under `MainWindow`, so a blanket rule would silently theme their
   backgrounds dark while their own `QLabel`s kept default-palette
-  (often black) text — unreadable, and not something anyone asked for.
+  (often black) text - unreadable, and not something anyone asked for.
   Those dialogs intentionally keep the OS default style until they get
   their own theming pass; the four-color palette (`Theme`) only
   applies to the topic selector, the workspace panel, and the canvas.
 - **`Theme` is a plain data struct plus a `themeFor(mode)` lookup, not
   a live-updating/observable theming system.** Two modes, both
-  precomputed once as static locals — cheap to call repeatedly (e.g.
+  precomputed once as static locals - cheap to call repeatedly (e.g.
   once per `refreshGraph()`), no allocation, no signal/slot machinery
   for "theme changed" beyond `MainWindow` re-applying the stylesheet
   and calling `GraphWindow::setTheme()` directly on toggle. Difficulty
   colors are the one deliberate exception to "everything comes from
-  the four-color palette" — they're a semantic mapping onto Beginner
+  the four-color palette" - they're a semantic mapping onto Beginner
   through Expert, so they get their own tuned hues per mode rather
   than being derived from Black/Brown/Coffee/Beige.
 
@@ -375,19 +375,19 @@ Organized by module, roughly in the order each decision arose.
 - **These turned out to be one feature, not two.** The original spec
   listed "dependency visualization" and "learning roadmap generation"
   as separate items. In practice, "what should I learn before X" and
-  "show me X's dependency order" are the same question — building them
+  "show me X's dependency order" are the same question - building them
   as two separate UI flows would have meant building the same
   underlying primitive twice. Combined into one right-click action.
 - **A real gap found while building the UI, not before:**
   `GraphEngine::topologicalOrder()` operates on the *entire* graph's
   `DependsOn` edges. A roadmap "to learn X" needs to be scoped to only
-  X's prerequisite chain — without that restriction, asking for a
+  X's prerequisite chain - without that restriction, asking for a
   roadmap to a beginner-level, dependency-free concept would still
   surface every other disconnected concept in the workspace that also
   happens to have no dependencies, since they'd all tie for "first" in
   a global topological sort. `learningRoadmapFor()` fixes this by
   intersecting the global topological order with
-  `transitiveDependencies(id) ∪ {id}` — O(1) membership checks via an
+  `transitiveDependencies(id) ∪ {id}` - O(1) membership checks via an
   `unordered_set`, so the filter doesn't reintroduce the cost the
   global sort already paid. `GraphEngine`'s existing tests never
   caught this because they only ever asserted on the *global* ordering,
@@ -397,7 +397,7 @@ Organized by module, roughly in the order each decision arose.
   work; right-click was the natural extension for a contextual action
   on a specific node, rather than introducing a new selection mechanism
   or a separate dialog flow to pick a target node from a list again.
-- **`RoadmapDialog` is read-only by design** — a plain numbered list,
+- **`RoadmapDialog` is read-only by design** - a plain numbered list,
   no drag-to-reorder, no inline editing. The order is computed, not
   authored; a UI that implied it could be rearranged by hand would
   misrepresent what the feature actually does.
@@ -405,7 +405,7 @@ Organized by module, roughly in the order each decision arose.
   not a crash or a silent empty list.** `GraphError::CycleDetected`
   threads all the way from `GraphEngine::learningRoadmapFor()` through
   `WorkspaceController::roadmapFor()`'s own `RoadmapErrorCode` (a
-  separate UI-facing enum, not a re-export of `GraphError` — `atlas-ui`
+  separate UI-facing enum, not a re-export of `GraphError` - `atlas-ui`
   shouldn't need to know about `atlas-graph`'s internal error shape) up
   to a `QMessageBox` telling the person their `DependsOn` graph has a
   loop. This is a real, reachable state (it's trivial to accidentally
@@ -413,12 +413,12 @@ Organized by module, roughly in the order each decision arose.
   it needed a real, non-crashing answer.
 - **A second occurrence of the same "edit tool drops the next
   `TEST_CASE` line" mistake from earlier sessions** happened twice
-  while adding these tests — once in `test_graph_engine.cpp`, once in
+  while adding these tests - once in `test_graph_engine.cpp`, once in
   `test_workspace_controller.cpp`. Both times, an insertion edit
   silently swallowed the following test's `TEST_CASE(...)` declaration,
   leaving its body orphaned inside the previous test. Caught both times
   by a brace-balance + `grep -c "^TEST_CASE"` sanity check before
-  trusting a clean compile — worth treating as a standing habit after
+  trusting a clean compile - worth treating as a standing habit after
   any insertion-style edit to a test file, not just when something
   looks suspicious.
 
@@ -427,22 +427,22 @@ Organized by module, roughly in the order each decision arose.
 - **Matching logic lives in `atlas-core` as a pure, Qt-free scoring
   function (`matchScore`), not in `atlas-graph` or `atlas-ui`.**
   "Does this object's text match this query" doesn't need graph
-  structure or Qt — it's a property of a single `KnowledgeObject`.
+  structure or Qt - it's a property of a single `KnowledgeObject`.
   `GraphEngine::search()` is a thin layer applying that function across
   every live node and ranking the results; `WorkspaceController::search()`
   resolves ids back to full objects, same pattern as
   `allKnowledgeObjects()`.
-- **v1 searches Title/Definition/Problem Solved/Why It Exists/Notes —
+- **v1 searches Title/Definition/Problem Solved/Why It Exists/Notes -
   not Examples/MiniProjects/References.** Those are comparatively
   rarely where the differentiating text lives, and including them
   means iterating nested vectors-of-structs for a benefit with no
   evidence anyone needs it yet. Easy to extend later.
-- **Search results rank by relevance, not alphabetically — a
+- **Search results rank by relevance, not alphabetically - a
   deliberate departure from `allKnowledgeObjects()`'s sort order.**
   Title matches outweigh body matches; matching in two fields outranks
   matching in only one. A deterministic tie-break (by id string) was
   added specifically because `GraphEngine`'s internal storage is a hash
-  map — without it, two identical searches could return tied results in
+  map - without it, two identical searches could return tied results in
   a different order purely from hash-map iteration order, which would
   make the list look like it's "jumping around" for no reason.
 - **An empty query is handled differently at each layer, on purpose.**
@@ -452,16 +452,16 @@ Organized by module, roughly in the order each decision arose.
   returns every live node, unranked. `WorkspaceController::search("")`
   explicitly delegates to `allKnowledgeObjects()` instead, so clearing
   the search box gives back the same familiar alphabetical order the
-  plain list view uses — not `GraphEngine`'s hash-map order.
+  plain list view uses - not `GraphEngine`'s hash-map order.
 - **Verified fast at the scale that mattered, not assumed fast.** Linear
-  scan, no indexing — and that's fine: ~200ms to rank all 10,000 nodes,
+  scan, no indexing - and that's fine: ~200ms to rank all 10,000 nodes,
   measured under ASan/UBSan overhead (faster in Release). No debouncing
   added to the search box; there's no evidence it's needed at this cost
   per keystroke.
 
 ## Why some things look the way they do
 
-- **IDs are UUIDs, not sequential integers** — so objects created in
+- **IDs are UUIDs, not sequential integers** - so objects created in
   different sessions, imports, or (eventually) plugins never collide
   when merged.
 - **`KnowledgeObject` has no "Depends On" / "Used By" fields.** Those
@@ -478,7 +478,7 @@ Organized by module, roughly in the order each decision arose.
   `atlas::core::toDisplayString` / `*FromString` in `enums.hpp`.
 - **`KnowledgeObject::create()` and `KnowledgeObject::reconstruct()`
   are two different factories on purpose.** Authoring a new concept and
-  loading an existing one from storage have different invariants —
+  loading an existing one from storage have different invariants -
   `create()` generates a fresh id and timestamps; `reconstruct()`
   restores them exactly. Conflating the two either makes `create()`
   accept an id/timestamps it shouldn't, or makes loading silently
@@ -486,7 +486,7 @@ Organized by module, roughly in the order each decision arose.
   `Relationship`.
 - **SQLite is used via the system dev package in this sandbox.** For
   shipping Atlas cross-platform (M9), vendoring the SQLite amalgamation
-  is the better long-term choice — it guarantees the same SQLite
+  is the better long-term choice - it guarantees the same SQLite
   version everywhere and removes a dependency on a system package that
   may not exist on a fresh Windows/macOS machine. That swap is isolated
   to `modules/persistence/CMakeLists.txt`.
@@ -498,7 +498,7 @@ Organized by module, roughly in the order each decision arose.
   `atlas-persistence`.** It takes domain objects directly via
   `addNode`/`addEdge`; populating it from the database is the
   composition root's job (eventually `atlas-app`), not this module's.
-  This keeps the graph engine fully testable with synthetic data —
+  This keeps the graph engine fully testable with synthetic data -
   which is what makes the 10,000-node smoke test possible without ever
   touching SQLite.
 - **Graph storage uses dense vectors + an id-to-index map, not
@@ -507,21 +507,21 @@ Organized by module, roughly in the order each decision arose.
   gets walked during traversal, for cache locality at 10k+ scale.
   Deletions are tombstoned (slot cleared, not erased) rather than
   physically removed, since erasing from a dense vector's middle would
-  invalidate every later index — worse at scale than a dead slot.
+  invalidate every later index - worse at scale than a dead slot.
 - **`addEdge` rejects a symmetric edge stored in the reverse pair
   order as a duplicate, even though the database's `UNIQUE(source_id,
   target_id, type)` constraint would not catch it.** "A RelatedTo B"
   and "B RelatedTo A" are the same fact for a symmetric type; expressing
   "unique unordered pair" in SQL isn't worth the complexity when this
-  layer — the one that actually understands `isSymmetric()` — already
+  layer - the one that actually understands `isSymmetric()` - already
   guards every write path that will exist in practice. Documented as an
   accepted gap in the database's defense-in-depth, not an oversight.
-- **`nodes_`/`edges_` are `std::deque`, not `std::vector` — found and
+- **`nodes_`/`edges_` are `std::deque`, not `std::vector` - found and
   fixed after the fact, not designed in from the start.** The original
   `vector`-backed version had a real heap-use-after-free:
   `findNode()`/`findEdge()` return raw pointers into the backing
   storage, and a `vector` reallocates on growth, invalidating every
-  pointer into it. No test caught this — none held a pointer from
+  pointer into it. No test caught this - none held a pointer from
   `findNode()` across a later `addNode()` call, which is exactly the
   pattern a UI naturally does (e.g. a cached "selected node" pointer
   while the user keeps adding concepts). Confirmed with
@@ -534,66 +534,66 @@ Organized by module, roughly in the order each decision arose.
   method (`createKnowledgeObject`, `updateKnowledgeObject`,
   `removeKnowledgeObject`) follows this without exception. It's what
   makes the graph always either consistent with the database or
-  strictly behind it — never ahead, never diverged — without any
+  strictly behind it - never ahead, never diverged - without any
   rollback-on-failure logic anywhere in this class. `updateKnowledgeObject`
   specifically copies the current object, mutates the copy, persists
-  the copy, and only then calls `GraphEngine::updateNode()` — the live
+  the copy, and only then calls `GraphEngine::updateNode()` - the live
   graph is never touched until the database write has already
   succeeded.
 - **`Result<T,E>` was missing its non-const lvalue `value()`/`error()`
-  overloads — caught by `-Wredundant-move`, not by a passing test
+  overloads - caught by `-Wredundant-move`, not by a passing test
   suite.** Without a plain `T& value() &` overload, calling `.value()`
   on a named non-const `Result` had no matching non-const candidate
   and silently fell back to the `const&` one. The practical consequence:
   `WorkspaceController::load()`'s `for (auto& object : result.value())`
   loop was binding `object` as `const KnowledgeObject&`, making every
-  `std::move(object)` inside it a silent copy instead of a move — every
+  `std::move(object)` inside it a silent copy instead of a move - every
   object loaded from the database at startup was being copied, not
   moved, into the graph. Fixed in `atlas-core`, with `Result<T,E>` now
   getting the dedicated test file it should have had from M0.
 - **CMake's AUTOMOC didn't discover any of `atlas-ui`'s `Q_OBJECT`
-  headers on the first attempt** — `add_library` only listed the `.cpp`
+  headers on the first attempt** - `add_library` only listed the `.cpp`
   files, and AUTOMOC's header-discovery heuristic across a separate
   `include/`/`src/` split didn't find them, producing an empty
   `mocs_compilation.cpp` and four "undefined reference to vtable"
   linker errors with no compile-time warning at all. Fixed by listing
-  the `Q_OBJECT` headers explicitly as target sources — the robust,
+  the `Q_OBJECT` headers explicitly as target sources - the robust,
   unambiguous way to guarantee AUTOMOC sees them, rather than relying
   on its include-graph discovery.
 - **Qt widget tests run under the `offscreen` platform plugin**, set
   automatically for that one `ctest` entry via
-  `set_tests_properties(... ENVIRONMENT ...)` — not exported globally,
+  `set_tests_properties(... ENVIRONMENT ...)` - not exported globally,
   so running `atlas_app` directly still uses a real display. One
   `QApplication`, constructed once in a custom `main()`, shared by every
   test in `atlas_ui_tests` (including the plain-`QObject`
-  controller/model tests) — only one `QApplication` may exist per
+  controller/model tests) - only one `QApplication` may exist per
   process, so it's simplest for every UI test to share it rather than
   splitting Qt-widget tests into a separate binary.
 - **Layout is computed once per structural graph change, never
   continuously simulated.** "Smooth at 10,000 nodes" is two different
-  problems: GPU-batched pan/zoom (easy — the camera is a transform
+  problems: GPU-batched pan/zoom (easy - the camera is a transform
   matrix update, not a geometry rebuild) versus continuous force-
   directed physics at that scale (genuinely hard, O(n²) per frame
   without spatial partitioning). The spec needs the first, not the
   second.
 - **Naive O(n²) repulsion measured at 10.8 seconds for one layout pass
-  at 10,000 nodes — far too slow even as a one-time computation.**
+  at 10,000 nodes - far too slow even as a one-time computation.**
   Replaced with a uniform-grid (cell-list) approximation: repulsion
   decays as 1/distance², so contributions beyond a 3x3 neighborhood of
   grid cells are already negligible, the same principle Barnes-Hut
   generalizes with a quadtree. Brought it to ~550-900ms in Release.
-  Built only after measuring the naive version was too slow — not
-  speculative — same empirical bar as every other performance decision
+  Built only after measuring the naive version was too slow - not
+  speculative - same empirical bar as every other performance decision
   in this project. A first pass at the fix also repeated an earlier
   mistake: using `unordered_map<KnowledgeObjectId, Point2D>` in the hot
   loop, meaning every pairwise force check did several 16-byte-UUID
   hash lookups. All hashing is now confined to a one-time setup phase;
-  the simulation loop itself touches only dense arrays — the same
+  the simulation loop itself touches only dense arrays - the same
   "stable id for identity, dense index for the hot path" lesson from
   `atlas-graph`'s `GraphEngine`, just not carried into this module the
   first time.
 - **`GraphCanvasItem` draws all nodes in one `QSGGeometryNode`
-  (`DrawTriangles`) and all edges in another (`DrawLines`)** — one GPU
+  (`DrawTriangles`) and all edges in another (`DrawLines`)** - one GPU
   draw call per category regardless of node count. This is the actual
   payoff of choosing Qt Quick over `QGraphicsView` back when the
   rendering backend was decided: `QGraphicsView` does CPU-side
@@ -603,7 +603,7 @@ Organized by module, roughly in the order each decision arose.
   layout), never on every frame of a drag.
 - **Ubuntu splits Qt6's QML *import* modules from the C++ runtime
   libraries into separate packages** (`libqt6qmlworkerscript6` vs
-  `qml6-module-qtqml-workerscript`) — `apt install qt6-declarative-dev`
+  `qml6-module-qtqml-workerscript`) - `apt install qt6-declarative-dev`
   alone wasn't enough; loading even a bare `import QtQuick` failed with
   "module is not installed" until `qml6-module-qtquick`,
   `qml6-module-qtquick-window`, and `qml6-module-qtqml-workerscript`
@@ -614,7 +614,7 @@ Organized by module, roughly in the order each decision arose.
   canvas**: the first version of the `GraphWindow` smoke test called
   `window.findChild<GraphCanvasItem*>(...)` on the `QWidget` itself.
   `GraphCanvasItem` lives in the QML scene graph rooted at
-  `QQuickWidget::rootObject()` — a different object tree entirely, not
+  `QQuickWidget::rootObject()` - a different object tree entirely, not
   reachable via the enclosing widget's child hierarchy. Fixed by adding
   a proper `GraphWindow::canvasItem()` accessor rather than working
   around it in the test.
@@ -622,14 +622,14 @@ Organized by module, roughly in the order each decision arose.
   empty list and a broken window looked identical (both just blank
   white), and a single new row was easy to miss against a blank
   background with no visual cue anything had changed. No test caught
-  this — it's not the kind of thing a unit test checks. Fixed with an
+  this - it's not the kind of thing a unit test checks. Fixed with an
   empty-state placeholder (swapped via `QStackedWidget`, checked with
   `currentWidget()` in tests rather than `isVisible()`, which depends
-  on the window actually being shown via `show()` — something tests
+  on the window actually being shown via `show()` - something tests
   correctly never do) and alternating row colors.
 - **Relationship creation reuses the list view's existing row
   selection, not canvas-click node picking.** Building this surfaced
-  that the canvas has no node-picking at all — every mouse press
+  that the canvas has no node-picking at all - every mouse press
   starts a pan, regardless of where you click. Canvas-click selection
   is a real, separate feature (camera-transform-aware hit-testing)
   that was never built, just implicitly assumed. Building it now would
@@ -640,7 +640,7 @@ Organized by module, roughly in the order each decision arose.
   found necessary while designing where relationship signals should
   go.** Adding `relationshipAdded`/`relationshipRemoved` alongside the
   existing three would have made five signals for every view to
-  remember to wire up correctly — and tracing it through surfaced a
+  remember to wire up correctly - and tracing it through surfaced a
   real gap: `removeKnowledgeObject`'s cascade (deleting relationships
   that touched the removed object) never fired any
   relationship-specific signal for those cascaded removals. A single
@@ -649,7 +649,7 @@ Organized by module, roughly in the order each decision arose.
   to wire up. Same "full reset over precise incremental tracking"
   trade as the list model's own refresh strategy, applied one level up.
 - **`GraphEngine::hasDuplicateEdge` is public now, not an `addEdge()`-
-  only implementation detail** — specifically so `createRelationship`
+  only implementation detail** - specifically so `createRelationship`
   can check it *before* writing anything to the database. The
   database's `UNIQUE(source_id, target_id, type)` constraint doesn't
   catch a symmetric type's reverse-pair duplicate (documented back in

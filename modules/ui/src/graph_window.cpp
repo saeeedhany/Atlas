@@ -22,11 +22,11 @@ namespace {
 
 using atlas::core::Difficulty;
 
-// Color-codes nodes by intrinsic Difficulty — cheap, immediately
+// Color-codes nodes by intrinsic Difficulty - cheap, immediately
 // useful visual mapping that reinforces the domain model rather than
 // being arbitrary decoration. A real legend/styling pass is later work.
 // The four colors themselves live in atlas::render::Theme (tuned
-// separately per light/dark for contrast) — this function just picks
+// separately per light/dark for contrast) - this function just picks
 // the right index; it has no color literals of its own anymore.
 QColor colorForDifficulty(Difficulty difficulty, const atlas::render::Theme& theme) {
     switch (difficulty) {
@@ -80,7 +80,7 @@ GraphWindow::GraphWindow(WorkspaceController& controller, QWidget* parent, bool 
 
     // Best-effort: centers over the parent when the window manager
     // honors requested geometry (floating mode). A tiling WM may
-    // override this entirely, which is fine — this just avoids
+    // override this entirely, which is fine - this just avoids
     // multiple utility windows spawning stacked at an identical
     // default position when it doesn't.
     if (parent != nullptr) {
@@ -126,7 +126,7 @@ void GraphWindow::setTheme(atlas::render::ThemeMode mode) {
     quickWidget_->setClearColor(atlas::render::themeFor(themeMode_).background);
     // refreshGraph() both retints node colors (colorForDifficulty
     // depends on themeMode_) and pushes the new theme into the canvas
-    // item for dots/edges/selection rings — one call covers both, same
+    // item for dots/edges/selection rings - one call covers both, same
     // "single refresh path" reasoning as WorkspaceController::graphChanged.
     refreshGraph();
 }
@@ -165,11 +165,11 @@ void GraphWindow::onNodeHovered(const QString& id) {
     if (!object.has_value()) return;
 
     // Rich text: bold title, then a couple of the fields most useful
-    // for "should I click into this" at a glance — difficulty and
+    // for "should I click into this" at a glance - difficulty and
     // confidence (the two axes that actually distinguish concepts,
     // per atlas-core's design notes), plus the start of the
     // definition if there is one. Deliberately not the full
-    // definition/notes/examples — a tooltip that's a wall of text
+    // definition/notes/examples - a tooltip that's a wall of text
     // defeats the point of a quick glance.
     QString text = QString("<b>%1</b>").arg(QString::fromStdString(object->title()).toHtmlEscaped());
     text += QString("<br>%1 &middot; %2")
@@ -217,7 +217,7 @@ void GraphWindow::updateHighlight() {
     // Neighborhood = direct DependsOn neighbors in both directions +
     // direct Uses/Related/etc. neighbors. Using Direction::Both gives
     // us everyone immediately connected, regardless of edge direction
-    // or type — the most immediately useful view.
+    // or type - the most immediately useful view.
     auto directNeighbors = graph.neighbors(selectedId, std::nullopt,
                                              atlas::graph::GraphEngine::Direction::Both);
 
@@ -278,7 +278,7 @@ void GraphWindow::refreshGraph() {
 
     auto* canvas = canvasItem();
     if (canvas != nullptr) {
-        // Wire up once — connect is idempotent across repeated
+        // Wire up once - connect is idempotent across repeated
         // refreshGraph() calls because Qt deduplicates identical
         // signal/slot connections on the same pair of objects.
         connect(canvas, &atlas::render::GraphCanvasItem::nodeClicked,

@@ -3,7 +3,7 @@
 # atlas-graph (M2) and above. The system SQLite dev package is used for
 # this sandbox build; for cross-platform shipping (M9), vendoring the
 # SQLite amalgamation instead removes the dependency on a system
-# package that may not exist on a fresh Windows/macOS machine — see
+# package that may not exist on a fresh Windows/macOS machine - see
 # README for the trade-off. Swapping the SQLite source is isolated to
 # this one CMakeLists.txt.
 find_package(SQLite3 REQUIRED)

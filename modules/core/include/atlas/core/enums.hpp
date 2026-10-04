@@ -5,7 +5,7 @@
 
 namespace atlas::core {
 
-// Intrinsic difficulty of a concept — a property of the concept itself,
+// Intrinsic difficulty of a concept - a property of the concept itself,
 // independent of any one user's mastery of it.
 enum class Difficulty {
     Beginner,
@@ -14,7 +14,7 @@ enum class Difficulty {
     Expert,
 };
 
-// A user's self-assessed mastery of a concept — independent of the
+// A user's self-assessed mastery of a concept - independent of the
 // concept's intrinsic Difficulty. Two separate axes on purpose: a
 // Beginner-difficulty concept can still have low Confidence if it was
 // never practiced.

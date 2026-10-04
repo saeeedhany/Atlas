@@ -63,7 +63,7 @@ TEST_CASE("RelationshipListModel drops a row when the controller removes the rel
 
 TEST_CASE("RelationshipListModel reflects cascaded removal when a KnowledgeObject is deleted") {
     // The exact scenario that motivated collapsing every controller
-    // signal into one graphChanged — this view only listens to that
+    // signal into one graphChanged - this view only listens to that
     // single signal, so it can't miss a cascade.
     auto db = openTestDatabase();
     WorkspaceController controller(db);

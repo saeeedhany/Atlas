@@ -17,7 +17,7 @@ enum class ValidationError {
 };
 
 // A single concept in the knowledge graph. Holds only intrinsic
-// content — relationships to other KnowledgeObjects live in the graph
+// content - relationships to other KnowledgeObjects live in the graph
 // engine (M2), never as fields here. Storing "Depends On" / "Used By"
 // here too would duplicate the same fact in two places with no single
 // source of truth (see M0 design notes).
@@ -30,7 +30,7 @@ public:
 
     // Plain data-transfer struct describing the complete state of a
     // KnowledgeObject as stored. Used only at the persistence boundary
-    // — see reconstruct() below.
+    // - see reconstruct() below.
     struct StorageRecord {
         KnowledgeObjectId id;
         std::string title;
@@ -50,7 +50,7 @@ public:
         // after StorageRecord already had many positional-brace-init
         // call sites across every module's tests (see
         // docs/DECISIONS.md's "enums are stored as text" entry for the
-        // general spirit — small, deliberate storage-shape decisions
+        // general spirit - small, deliberate storage-shape decisions
         // documented in one place). A default member initializer lets
         // every existing `StorageRecord{a, b, c, ...}` call keep
         // compiling unchanged; only call sites that need to set a
@@ -66,16 +66,16 @@ public:
     // (an existing id and historical timestamps, not freshly generated
     // ones). Still validates the title: a corrupted database row should
     // fail loudly here rather than produce an invalid in-memory object.
-    // This is deliberately separate from create() — create() expresses
+    // This is deliberately separate from create() - create() expresses
     // "a new concept was authored," reconstruct() expresses "a concept
     // is being loaded back." Conflating them either makes create() take
     // an id/timestamps it shouldn't, or makes reconstruct() go through
-    // mutators that stamp updatedAt to "now" on every load — both wrong.
+    // mutators that stamp updatedAt to "now" on every load - both wrong.
     static Result<KnowledgeObject, ValidationError> reconstruct(StorageRecord record);
 
     // Title is the only field with a real invariant (must be
     // non-empty), so it's the only mutator that can fail. Everything
-    // else is a plain setter — a concept can legitimately have a blank
+    // else is a plain setter - a concept can legitimately have a blank
     // definition while it's still being authored.
     Result<void, ValidationError> renameTo(std::string newTitle);
     void redefineAs(std::string newDefinition);
@@ -85,7 +85,7 @@ public:
     void addMiniProject(MiniProject project);
     void addReference(Reference reference);
 
-    // Whole-list replacement, not incremental add/remove — mirrors how
+    // Whole-list replacement, not incremental add/remove - mirrors how
     // atlas-persistence already treats these three fields (delete
     // every child row for this object, then reinsert the current list;
     // see KnowledgeObjectRepository's design notes). An editing UI
@@ -99,7 +99,7 @@ public:
     void setDifficulty(Difficulty difficulty);
     void setConfidence(ConfidenceLevel confidence);
 
-    // No validation possible to fail here (unlike renameTo) — every
+    // No validation possible to fail here (unlike renameTo) - every
     // TopicId is equally valid as far as this class can tell; whether
     // it refers to a Topic that actually exists is a WorkspaceController/
     // repository-layer concern, the same division of responsibility as

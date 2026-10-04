@@ -1,5 +1,5 @@
 # atlas-graph: in-memory index over KnowledgeObjects and Relationships.
-# Depends on atlas-core only — deliberately not on atlas-persistence.
+# Depends on atlas-core only - deliberately not on atlas-persistence.
 # See module header comment for why.
 
 add_library(atlas_graph STATIC

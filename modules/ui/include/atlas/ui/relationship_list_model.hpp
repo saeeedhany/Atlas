@@ -11,7 +11,7 @@
 namespace atlas::ui {
 
 // Mirrors KnowledgeObjectListModel's structure and its "full reset on
-// every change" simplicity — see that class's header comment for the
+// every change" simplicity - see that class's header comment for the
 // rationale, which applies identically here.
 class RelationshipListModel : public QAbstractListModel {
     Q_OBJECT

@@ -13,7 +13,7 @@ namespace atlas::ui {
 
 // Backs a QListView with the controller's KnowledgeObjects. Refreshes
 // via a full model reset on every controller signal, rather than
-// fine-grained row insert/remove — deliberately simple: at this
+// fine-grained row insert/remove - deliberately simple: at this
 // milestone's data volumes a reset is imperceptible, and precise
 // index-tracking logic is exactly the kind of code that's easy to get
 // subtly wrong. Revisit only once a full reset is actually visible to
@@ -36,7 +36,7 @@ public:
     // Empty = show everything (alphabetical, via
     // WorkspaceController::allKnowledgeObjects()). Non-empty = ranked
     // search results via WorkspaceController::search(). Triggers an
-    // immediate refresh() — the model doesn't wait for the next
+    // immediate refresh() - the model doesn't wait for the next
     // graphChanged signal to apply a new query.
     void setSearchQuery(QString query);
     const QString& currentQuery() const { return searchQuery_; }

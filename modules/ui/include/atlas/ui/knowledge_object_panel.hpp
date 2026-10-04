@@ -31,7 +31,7 @@ class KnowledgeObjectPanel : public QWidget {
     Q_OBJECT
 
 public:
-    // topicId defaults to Uncategorized — see GraphWindow's
+    // topicId defaults to Uncategorized - see GraphWindow's
     // constructor comment for why that keeps every existing call site
     // (mostly tests, all single-arg) meaning what it already meant.
     explicit KnowledgeObjectPanel(WorkspaceController& controller,
@@ -40,13 +40,13 @@ public:
 
     // Re-scopes an existing panel in place (see GraphWindow::setTopic
     // for the matching "reuse the widget, don't reconstruct it" reasoning).
-    // Clears the search box and selection — a search term or a
+    // Clears the search box and selection - a search term or a
     // selected row from the old topic has no meaning in the new one.
     void setTopic(atlas::core::TopicId topicId);
     const atlas::core::TopicId& topic() const { return topicId_; }
 
 signals:
-    // Fires whenever the list selection changes — including to
+    // Fires whenever the list selection changes - including to
     // nullopt when the selection is cleared (e.g. after a delete).
     // MainWindow listens to this to drive canvas highlighting; nothing
     // in this class knows or cares that a canvas exists.

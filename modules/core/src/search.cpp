@@ -19,7 +19,7 @@ bool containsCaseInsensitive(std::string_view haystack, const std::string& lower
 }
 
 // Title ranks highest, then the fields roughly in the order a reader
-// would scan them. Each field contributes its weight at most once —
+// would scan them. Each field contributes its weight at most once -
 // summed, not maxed, so an object matching in two fields ranks above
 // one matching in only the stronger of the two.
 constexpr int kTitleWeight = 100;

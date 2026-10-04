@@ -189,8 +189,8 @@ TEST_CASE("removeNode on an unknown id returns false") {
 TEST_CASE("a pointer from findNode survives many subsequent insertions") {
     // Regression test: the original implementation stored nodes in a
     // std::vector, whose reallocation on growth invalidates pointers
-    // to existing elements. This pattern — hold a pointer, then insert
-    // more nodes — is exactly what a UI naturally does (e.g. a cached
+    // to existing elements. This pattern - hold a pointer, then insert
+    // more nodes - is exactly what a UI naturally does (e.g. a cached
     // "selected node" pointer while the user keeps adding concepts),
     // so it isn't a contrived case. Backing storage is std::deque now,
     // specifically because appending to a deque never invalidates
@@ -372,7 +372,7 @@ TEST_CASE("transitiveDependencies follows a chain and a diamond without duplicat
                 .hasValue());
 
     auto deps = graph.transitiveDependencies(aId);
-    CHECK(deps.size() == 3);  // B, C, D — D reached via both paths but counted once
+    CHECK(deps.size() == 3);  // B, C, D - D reached via both paths but counted once
 }
 
 TEST_CASE("topologicalOrder places every dependency before its dependents") {
@@ -467,7 +467,7 @@ TEST_CASE("learningRoadmapFor orders prerequisites before the target, and exclud
     REQUIRE(result.hasValue());
     const auto& roadmap = result.value();
 
-    REQUIRE(roadmap.size() == 3);  // A, B, C — not the unrelated node
+    REQUIRE(roadmap.size() == 3);  // A, B, C - not the unrelated node
     CHECK(std::find(roadmap.begin(), roadmap.end(), unrelatedId) == roadmap.end());
 
     auto position = [&](const KnowledgeObjectId& id) {
@@ -505,7 +505,7 @@ TEST_CASE("learningRoadmapFor a diamond dependency includes the shared prerequis
 
     auto result = graph.learningRoadmapFor(aId);
     REQUIRE(result.hasValue());
-    CHECK(result.value().size() == 4);  // A, B, C, D — D counted once despite two paths
+    CHECK(result.value().size() == 4);  // A, B, C, D - D counted once despite two paths
 }
 
 TEST_CASE("learningRoadmapFor reports a cycle if the target's dependency chain has one") {

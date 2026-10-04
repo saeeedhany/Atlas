@@ -59,7 +59,7 @@ TEST_CASE("TopicSelectorWidget's row label reflects the topic's member count") {
     REQUIRE(listWidget != nullptr);
 
     // Find the "Operating Systems" row specifically rather than
-    // assuming row order — list order follows allTopics()'s
+    // assuming row order - list order follows allTopics()'s
     // alphabetical sort, which is an implementation detail this test
     // shouldn't depend on.
     QListWidgetItem* osItem = nullptr;
@@ -102,14 +102,14 @@ TEST_CASE("Activating a row emits topicChosen with that row's TopicId") {
     }
     REQUIRE(row >= 0);
     listWidget->setCurrentRow(row);
-    // QListWidget::itemActivated is a protected Qt signal — not
+    // QListWidget::itemActivated is a protected Qt signal - not
     // callable from outside QListWidget, even to simulate activation
     // for a test. Invoking TopicSelectorWidget's own (private) slot by
     // name through the meta-object system is the standard Qt way
     // around that: Q_OBJECT registers slots for invocation regardless
     // of their C++ access specifier, which is the whole point of the
-    // mechanism. onItemActivated() takes no arguments — it reads
-    // listWidget_->currentRow() itself — so there's also no QVariant
+    // mechanism. onItemActivated() takes no arguments - it reads
+    // listWidget_->currentRow() itself - so there's also no QVariant
     // marshalling to worry about here.
     QMetaObject::invokeMethod(&widget, "onItemActivated");
 
@@ -130,7 +130,7 @@ TEST_CASE("the topic list has a custom context menu policy, so right-click can o
 
 TEST_CASE("requesting a context menu at a position with no item does nothing, not a crash") {
     // Deliberately does not attempt to drive the resulting QMenu::exec()
-    // for a right-click that DOES land on an item — QMenu::exec() is a
+    // for a right-click that DOES land on an item - QMenu::exec() is a
     // blocking modal call, and the equivalent technique for
     // TwoFieldItemDialog's own modal (QApplication::activeModalWidget()
     // inside a QTimer::singleShot) proved unreliable under the

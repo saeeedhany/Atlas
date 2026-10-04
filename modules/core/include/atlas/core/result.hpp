@@ -7,7 +7,7 @@
 namespace atlas::core {
 
 // Minimal Result<T, E> for fallible operations where exceptions are
-// undesirable (e.g. across a future plugin/ABI boundary — see M0
+// undesirable (e.g. across a future plugin/ABI boundary - see M0
 // design notes). Deliberately small: only what M0 actually needs.
 // No monadic map/and_then yet; add only when a real use case appears.
 template <typename T, typename E>
@@ -20,7 +20,7 @@ public:
     explicit operator bool() const { return hasValue(); }
 
     // All three ref-qualified overloads exist deliberately, mirroring
-    // std::optional/std::variant — not just the const& and && pair.
+    // std::optional/std::variant - not just the const& and && pair.
     // Without the plain `&` overload, calling .value() on a named
     // non-const Result has no matching non-const candidate, so it
     // silently falls back to the const& overload. That's not just a

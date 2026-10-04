@@ -16,7 +16,7 @@ enum class RelationshipValidationError {
 
 // A directed, typed edge between two KnowledgeObjects, identified only
 // by their IDs. Relationship has no knowledge of the KnowledgeObject
-// class at all — full decoupling. Only the graph engine (M2) ever
+// class at all - full decoupling. Only the graph engine (M2) ever
 // holds both and links them.
 //
 // Self-loop is the only validation rule that belongs here: it's a
@@ -29,7 +29,7 @@ public:
         KnowledgeObjectId sourceId, KnowledgeObjectId targetId, RelationshipType type,
         std::optional<std::string> note = std::nullopt);
 
-    // Plain data-transfer struct for the persistence boundary — same
+    // Plain data-transfer struct for the persistence boundary - same
     // rationale as KnowledgeObject::StorageRecord.
     struct StorageRecord {
         RelationshipId id;

@@ -17,12 +17,12 @@ class KnowledgeObjectPanel;
 class GraphWindow;
 class TopicSelectorWidget;
 
-// The application shell: a QStackedWidget with two pages —
+// The application shell: a QStackedWidget with two pages -
 // TopicSelectorWidget (the launch screen) and the workspace view (the
 // panel+canvas splitter this class already owned before topics
 // existed). One MainWindow, one long-lived panel_/canvas_ pair, reused
 // and re-scoped per topic via KnowledgeObjectPanel::setTopic /
-// GraphWindow::setTopic — not reconstructed per topic switch — so
+// GraphWindow::setTopic - not reconstructed per topic switch - so
 // switching topics can crossfade a stable pair of widgets instead of
 // tearing down and rebuilding the QML canvas every time.
 class MainWindow : public QMainWindow {
@@ -47,7 +47,7 @@ private slots:
 private:
     // Crossfades stack_ from whatever page is current to `page`: fades
     // the current page out, swaps the stack's current widget, fades
-    // the new page in. ~180ms each way — enough to read as a
+    // the new page in. ~180ms each way - enough to read as a
     // transition, not enough to feel laggy tapping between a handful
     // of topics. No-op if `page` is already current.
     void switchToPage(QWidget* page);

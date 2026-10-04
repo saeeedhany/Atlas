@@ -1,7 +1,7 @@
 // Determines a real engineering question empirically, the same way
 // M2's scale test did: is naive O(n^2) repulsion fast enough at
 // 10,000 nodes for a one-time layout computation (not continuous
-// simulation — see M4 design notes), or does this milestone need
+// simulation - see M4 design notes), or does this milestone need
 // Barnes-Hut / grid-bucketing before it can be called done?
 //
 // No hardcoded pass/fail threshold here on purpose. This test reports

@@ -1,13 +1,13 @@
 # Atlas
 
-A visual knowledge navigation system — not a note-taking app.
+A visual knowledge navigation system - not a note-taking app.
 
 ## The problem this exists to solve
 
 People don't forget concepts because they're difficult. They forget
 because they can't see how concepts relate to each other. Notes and
 wikis store knowledge as isolated documents; Atlas stores it as a
-graph, because that's closer to how understanding actually works —
+graph, because that's closer to how understanding actually works -
 you don't really know recursion until you can see how it relates to
 stack frames, to mathematical induction, to the call stack, to tail
 calls. Atlas is built to make those relationships first-class,
@@ -19,7 +19,7 @@ Every concept in Atlas is a **Knowledge Object** with:
 
 | Field | Purpose |
 |---|---|
-| Title | Required — the only field with a real invariant |
+| Title | Required - the only field with a real invariant |
 | Definition | What it is |
 | Problem it solves | Why anyone would reach for it |
 | Why it exists | The historical/design motivation |
@@ -28,16 +28,16 @@ Every concept in Atlas is a **Knowledge Object** with:
 | References | Where to read more |
 | Notes | Free-form, personal |
 | Difficulty | Intrinsic to the concept (Beginner -> Expert) |
-| Confidence | Your own mastery of it (Unknown -> Mastered) — a separate axis from Difficulty on purpose |
+| Confidence | Your own mastery of it (Unknown -> Mastered) - a separate axis from Difficulty on purpose |
 
 Concepts never store their own relationships as fields. "Depends On"
-and "Used By" look like attributes but are actually graph edges — see
+and "Used By" look like attributes but are actually graph edges - see
 [Architecture](#architecture) for why that distinction is load-bearing.
 
-Every Knowledge Object belongs to exactly one **Topic** — a named,
+Every Knowledge Object belongs to exactly one **Topic** - a named,
 top-level grouping ("Operating Systems," "Databases," "Distributed
 Systems"). Topics don't nest. Relationships can't cross Topic
-boundaries — connecting two concepts is only meaningful within the
+boundaries - connecting two concepts is only meaningful within the
 scope you're actively mapping, and cross-topic edges would make a
 single Topic's graph impossible to reason about on its own. Every
 pre-existing Knowledge Object (and everything created without an
@@ -53,32 +53,32 @@ A directed, typed edge between two Knowledge Objects:
 
 The first seven are directional (A depends on B is not the same claim
 as B depends on A). `RelatedTo`, `AlternativeTo`, and `OppositeOf` are
-symmetric — A RelatedTo B is the same fact as B RelatedTo A, and the
+symmetric - A RelatedTo B is the same fact as B RelatedTo A, and the
 system actually enforces that (see `isSymmetric()` in `atlas-core` and
 the duplicate-detection notes in `docs/DECISIONS.md`).
 
-## The full feature set — built vs. planned
+## The full feature set - built vs. planned
 
 | Feature | Status |
 |---|---|
-| Knowledge Object CRUD | **Built** — including Examples/Mini Projects/References editing, not just the core fields |
-| Relationship CRUD | **Built** (via list selection, not canvas clicks — see below) |
+| Knowledge Object CRUD | **Built** - including Examples/Mini Projects/References editing, not just the core fields |
+| Relationship CRUD | **Built** (via list selection, not canvas clicks - see below) |
 | Topics (top-level grouping, scoped relationships) | **Built** |
 | SQLite storage, offline-first | **Built** |
-| Interactive graph canvas, pan/zoom | **Built** — circular nodes with a permanent border, hover tooltips (title/difficulty/confidence/definition), distinct rings for selected/neighbor/hovered states, nodes/edges ease into place on structural changes instead of snapping |
-| App-wide dark/light theming | **Built** — applies to every window and dialog, not just the main window (see Current State) |
-| Large graph support (10,000+ nodes) | **Built and load-tested** — see Current State below |
-| Dependency visualization (topological ordering) | **Built** — right-click a node on the canvas for a scoped, ordered dependency chain |
-| Fast search | **Built** — ranked, case-insensitive, ~200ms even at 10,000 nodes (see Current State) |
-| Relationship highlighting | **Built** — click a node on the canvas to highlight it and its immediate neighbors; click empty space to clear |
-| Canvas-click node selection | **Built** — click to select; drag still pans, distinguished by a movement threshold |
-| Learning roadmap generation | **Built** — `learningRoadmapFor()` combines topological order with one node's dependency closure; same right-click action as dependency visualization above, since these turned out to be one feature, not two (see `docs/DECISIONS.md`) |
-| Unified window (list + canvas together, topic-scoped) | **Built** — topic selector as the landing page, workspace view (panel + canvas) reachable per-topic, with a fade transition between them |
-| Dark/light theme | **Built** — one four-color palette, two derived modes, applied via a scoped stylesheet |
-| Project suggestions | **Built** — ranked by readiness (are the prerequisites already known) and leverage (how much does mastering this unlock elsewhere), scoped to a Topic, computed entirely from graph structure — no AI |
+| Interactive graph canvas, pan/zoom | **Built** - circular nodes with a permanent border, hover tooltips (title/difficulty/confidence/definition), distinct rings for selected/neighbor/hovered states, nodes/edges ease into place on structural changes instead of snapping |
+| App-wide dark/light theming | **Built** - applies to every window and dialog, not just the main window (see Current State) |
+| Large graph support (10,000+ nodes) | **Built and load-tested** - see Current State below |
+| Dependency visualization (topological ordering) | **Built** - right-click a node on the canvas for a scoped, ordered dependency chain |
+| Fast search | **Built** - ranked, case-insensitive, ~200ms even at 10,000 nodes (see Current State) |
+| Relationship highlighting | **Built** - click a node on the canvas to highlight it and its immediate neighbors; click empty space to clear |
+| Canvas-click node selection | **Built** - click to select; drag still pans, distinguished by a movement threshold |
+| Learning roadmap generation | **Built** - `learningRoadmapFor()` combines topological order with one node's dependency closure; same right-click action as dependency visualization above, since these turned out to be one feature, not two (see `docs/DECISIONS.md`) |
+| Unified window (list + canvas together, topic-scoped) | **Built** - topic selector as the landing page, workspace view (panel + canvas) reachable per-topic, with a fade transition between them |
+| Dark/light theme | **Built** - one four-color palette, two derived modes, applied via a scoped stylesheet |
+| Project suggestions | **Built** - ranked by readiness (are the prerequisites already known) and leverage (how much does mastering this unlock elsewhere), scoped to a Topic, computed entirely from graph structure - no AI |
 | AI-assisted relationship suggestions | Not built |
 | Plugin architecture | Not built |
-| Cross-platform packaging | Not built — Linux-developed only so far, no Windows/macOS verification |
+| Cross-platform packaging | Not built - Linux-developed only so far, no Windows/macOS verification |
 
 ## Architecture
 
@@ -126,7 +126,7 @@ atlas-app           the composition root: opens the real database file,
 mutation writes to the database first, and only touches the in-memory
 graph after that write has already succeeded.** That ordering is what
 makes the graph always either consistent with the database or strictly
-behind it — never ahead, never diverged — without any
+behind it - never ahead, never diverged - without any
 rollback-on-failure logic anywhere in the codebase.
 
 ## Current state
@@ -153,9 +153,9 @@ asks for:**
 - `GraphEngine` holds 10,000 nodes and ~30,000 edges and runs a full
   BFS traversal + topological sort over them in well under a second.
 - `GraphEngine::search()` ranks all 10,000 nodes by relevance in
-  ~200ms — under sanitizer overhead; faster in Release.
+  ~200ms - under sanitizer overhead; faster in Release.
 - `ForceDirectedLayout` computes a full 50-iteration layout pass over
-  the same graph in ~525ms in a Release build — after a real
+  the same graph in ~525ms in a Release build - after a real
   algorithmic correction (naive O(n^2) repulsion measured at **10.8
   seconds** before being replaced with a grid-based approximation; see
   `docs/DECISIONS.md`).
@@ -172,26 +172,26 @@ click a node to highlight its neighborhood, right-click for a learning
 roadmap), switch between dark and light theme, delete things, restart
 the app and have it all still be there.
 
-**Known, deliberate gaps — not oversights:**
+**Known, deliberate gaps - not oversights:**
 - No continuous force-directed physics simulation (nodes don't drift
   in real time while just sitting there, the way Obsidian's graph can).
   Layout is still computed once per structural change and animated
-  *toward* that result with an easing curve — a deliberate middle
+  *toward* that result with an easing curve - a deliberate middle
   ground that gives most of the "graph feels alive" effect without
   reopening the earlier, reasoned decision to avoid per-frame O(n²)
   physics at the node counts this app targets (see `docs/DECISIONS.md`).
 - No AI suggestions, no plugin system.
 - No per-node visual customization (custom color/icon overriding the
-  default difficulty-based color) — the canvas redesign made the
+  default difficulty-based color) - the canvas redesign made the
   *default* appearance solid; letting a person override it per-node is
   separate, larger scope, not yet built.
-- `GraphCanvasItem` (the Qt Quick canvas) has no dedicated test file —
+- `GraphCanvasItem` (the Qt Quick canvas) has no dedicated test file -
   a pre-existing gap, not introduced by any specific pass. Its
   `updatePaintNode`/hover-event behavior needs a real `QQuickWindow` to
   test properly (unlike everything else in `atlas-ui`, which is plain
   `QWidget`-based and testable headlessly); that test infrastructure
   doesn't exist in this project yet.
-- Cross-platform packaging hasn't been attempted — built and tested on
+- Cross-platform packaging hasn't been attempted - built and tested on
   Linux only so far.
 - No threading: all database/graph operations run synchronously on the
   UI thread. Fine at current data volumes; will need revisiting before
@@ -203,7 +203,7 @@ the app and have it all still be there.
   to change; cross-cutting concerns (validation, persistence, graph
   indexing, rendering) live in separate, separately-testable layers
   rather than being mixed into one God class.
-- **`Result<T,E>`, not exceptions, at every fallible boundary** — a
+- **`Result<T,E>`, not exceptions, at every fallible boundary** - a
   deliberate choice made in the first milestone specifically because a
   future plugin system will eventually cross a C ABI where C++
   exceptions aren't safe to propagate.
@@ -211,10 +211,10 @@ the app and have it all still be there.
   against the implementation.** Several real bugs (a dangling-pointer
   use-after-free, a silent copy-instead-of-move, a usability gap where
   an empty list and a broken window were indistinguishable) were only
-  caught because of this discipline — and a few were only caught
+  caught because of this discipline - and a few were only caught
   *despite* it, by actually running the app, which is exactly why that
   step never got skipped. See `docs/DECISIONS.md` for specifics.
-- **Verify empirically, not by assumption** — every performance claim
+- **Verify empirically, not by assumption** - every performance claim
   in this README (the 10k-node numbers, the layout timing, the
   before/after of the O(n^2) fix) was measured in this repository, not
   estimated.
@@ -227,7 +227,7 @@ cmake --build build -j
 ctest --test-dir build
 ```
 
-Requires a C++20 compiler, CMake 3.21+, and Qt6 — Widgets, Quick, and
+Requires a C++20 compiler, CMake 3.21+, and Qt6 - Widgets, Quick, and
 QuickWidgets components.
 
 **Ubuntu/Debian:**
@@ -245,13 +245,13 @@ load, that package split is the first thing to rule out).
 
 No other dependencies are fetched or required to build
 `atlas-core`/`atlas-persistence`/`atlas-graph`/`atlas-render`'s Qt-free
-layout math on their own — `doctest.h` is vendored directly in
+layout math on their own - `doctest.h` is vendored directly in
 `third_party/doctest/` rather than pulled at build time, in keeping
 with Atlas's own offline-first philosophy extending to its build
 process. If Qt6 isn't available at all, configure with
 `-DATLAS_BUILD_UI=OFF` to build and test everything below the UI layer.
 
-Run the actual application with `./build/modules/app/atlas_app` — it
+Run the actual application with `./build/modules/app/atlas_app` - it
 creates a SQLite database under the OS's standard application-data
 directory on first run (e.g. `~/.local/share/atlas_app/atlas.db` on
 Linux).
@@ -264,13 +264,13 @@ typed Relationships, search, highlighting, dependency visualization,
 roadmap generation, project suggestions, a unified themed window. What
 remains:
 
-1. AI-assisted relationship suggestions — local heuristics first,
+1. AI-assisted relationship suggestions - local heuristics first,
    optional online model when available (see the offline-first vs. AI
    posture decided early in this project).
-2. Plugin architecture — sandboxed, versioned, offline-safe.
+2. Plugin architecture - sandboxed, versioned, offline-safe.
 3. Cross-platform packaging.
 
 For the detailed "why does this specific thing look this way" history
-— every bug found, every algorithmic correction, every cross-module
-gap discovered while building the next layer — see
+- every bug found, every algorithmic correction, every cross-module
+gap discovered while building the next layer - see
 [`docs/DECISIONS.md`](docs/DECISIONS.md).

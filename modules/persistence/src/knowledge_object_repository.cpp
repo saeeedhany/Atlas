@@ -72,9 +72,9 @@ Result<void, PersistenceError> upsertMainRow(sqlite3* db, const KnowledgeObject&
     return Result<void, PersistenceError>::ok();
 }
 
-// Child collections (examples, mini-projects, references) are small —
+// Child collections (examples, mini-projects, references) are small -
 // a handful of items per object, nothing like the 10k+-node scale the
-// graph itself needs to handle — so "delete everything for this
+// graph itself needs to handle - so "delete everything for this
 // parent, then re-insert the current list" is simple, always correct,
 // and fast enough. No diffing logic to get wrong.
 Result<void, PersistenceError> replaceChildRows(sqlite3* db, const KnowledgeObject& object) {

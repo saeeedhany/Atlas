@@ -79,7 +79,7 @@ std::string Uuid::toString() const {
 }  // namespace atlas::core
 
 size_t std::hash<atlas::core::Uuid>::operator()(const atlas::core::Uuid& id) const noexcept {
-    // FNV-1a over the 16 raw bytes — simple, fast, good enough for an
+    // FNV-1a over the 16 raw bytes - simple, fast, good enough for an
     // in-memory hash map key. Not used for any security purpose.
     constexpr uint64_t kPrime = 1099511628211ull;
     uint64_t hash = 14695981039346656037ull;

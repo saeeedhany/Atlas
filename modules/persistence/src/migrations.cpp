@@ -84,7 +84,7 @@ constexpr std::array<Migration, 3> kMigrations{{
             updated_at INTEGER NOT NULL
         );
 
-        -- Fixed id (the nil UUID — see atlas::core::uncategorizedTopicId()),
+        -- Fixed id (the nil UUID - see atlas::core::uncategorizedTopicId()),
         -- not a generated one: every pre-existing KnowledgeObject gets
         -- backfilled into this one topic below, and the app needs to
         -- be able to name that same topic from C++ without a round
@@ -98,7 +98,7 @@ constexpr std::array<Migration, 3> kMigrations{{
 
         -- Nullable at the schema level (SQLite can't cheaply add a
         -- NOT NULL column with no default to an existing table without
-        -- a full table rebuild) — "every object has a topic" is
+        -- a full table rebuild) - "every object has a topic" is
         -- enforced in code, at the WorkspaceController boundary, the
         -- same way KnowledgeObject's own invariants are enforced in
         -- code rather than by the schema.

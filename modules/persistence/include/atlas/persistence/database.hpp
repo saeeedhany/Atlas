@@ -18,7 +18,7 @@ using atlas::core::Result;
 // Owns a single SQLite connection for the lifetime of the object: opens
 // the database file, turns on foreign-key enforcement (off by default
 // in SQLite, and we rely on it for cascade deletes), enables WAL mode,
-// and runs any pending schema migrations — all before the constructor
+// and runs any pending schema migrations - all before the constructor
 // returns successfully. A Database that exists is a Database that's
 // ready to use.
 class Database {
