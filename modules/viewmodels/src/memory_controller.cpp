@@ -49,11 +49,15 @@ Result<void, ControllerFailure> MemoryController::load() {
     if (!fresh.hasValue()) return Out::err(persistenceFailure(fresh.error()));
 
     states_.clear();
+    bool loadedFromCache = false;
     if (fresh.value()) {
         auto stored = repository_.allStates();
-        if (!stored.hasValue()) return Out::err(persistenceFailure(stored.error()));
-        for (auto& state : stored.value()) states_.emplace(state.item, state);
-    } else {
+        if (stored.hasValue()) {
+            for (auto& state : stored.value()) states_.emplace(state.item, state);
+            loadedFromCache = true;
+        }
+    }
+    if (!loadedFromCache) {
         states_ = ledger_.replay(events_, clock_(), rules_.boostFn());
         std::vector<MemoryState> rebuilt;
         rebuilt.reserve(states_.size());

@@ -1,9 +1,11 @@
 #include <QDateTime>
+#include <QTemporaryDir>
 
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/learning_repository.hpp"
 #include "atlas/viewmodels/memory_controller.hpp"
 #include "doctest.h"
+#include "raw_sql.hpp"
 
 using namespace atlas::core;
 using namespace atlas::persistence;
@@ -11,8 +13,8 @@ using namespace atlas::viewmodels;
 
 namespace {
 
-Database openTestDatabase() {
-    auto result = Database::open(":memory:");
+Database openTestDatabase(const std::string& path) {
+    auto result = Database::open(path);
     REQUIRE(result.hasValue());
     return std::move(result).value();
 }
@@ -34,7 +36,9 @@ ReviewEvent reviewOf(const KnowledgeObjectId& id, TimePoint at, Grade grade) {
 }
 
 struct Fixture {
-    Database db = openTestDatabase();
+    QTemporaryDir dir;
+    std::string path = dir.filePath("atlas.db").toStdString();
+    Database db = openTestDatabase(path);
     WorkspaceController workspace{db};
     TimePoint now = noonToday();
     Clock clock = [this] { return now; };
@@ -77,6 +81,51 @@ TEST_CASE("a fresh cache is loaded as stored") {
     REQUIRE(second.load().hasValue());
     CHECK(second.states().size() == 1);
     CHECK(second.events().size() == 1);
+}
+
+TEST_CASE("a fresh cache with a corrupt row is rebuilt from the log") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    LearningRepository repository(f.db);
+    REQUIRE(repository.record({reviewOf(tree, f.now, Grade::Good)}, {}).hasValue());
+    atlas::learning::StateMap replayed;
+    {
+        MemoryController first(f.db, f.workspace, f.clock);
+        REQUIRE(first.load().hasValue());
+        replayed = first.states();
+    }
+    REQUIRE(repository.isCacheFresh(atlas::learning::kReplayVersion).value());
+    REQUIRE(executeRawSql(f.path, "UPDATE memory_states SET phase = 'garbage';"));
+    REQUIRE_FALSE(repository.allStates().hasValue());
+
+    MemoryController memory(f.db, f.workspace, f.clock);
+    REQUIRE(memory.load().hasValue());
+
+    const auto& state = memory.states().at(ItemRef::forConcept(tree));
+    const auto& expected = replayed.at(ItemRef::forConcept(tree));
+    CHECK(state.phase == expected.phase);
+    CHECK(state.stability == doctest::Approx(expected.stability));
+    CHECK(state.difficulty == doctest::Approx(expected.difficulty));
+    CHECK(state.reviewCount == expected.reviewCount);
+    CHECK(repository.allStates().hasValue());
+}
+
+TEST_CASE("a fresh cache is used instead of replaying the log") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    LearningRepository repository(f.db);
+    auto stored = MemoryState{ItemRef::forConcept(tree)};
+    stored.phase = Phase::Review;
+    stored.stability = 7.0;
+    stored.difficulty = 5.0;
+    stored.lastReviewedAt = f.now;
+    REQUIRE(repository.record({reviewOf(tree, f.now, Grade::Good)}, {stored}).hasValue());
+    REQUIRE(repository.replaceStates({stored}, atlas::learning::kReplayVersion).hasValue());
+
+    MemoryController memory(f.db, f.workspace, f.clock);
+    REQUIRE(memory.load().hasValue());
+
+    CHECK(memory.states().at(ItemRef::forConcept(tree)).stability == doctest::Approx(7.0));
 }
 
 TEST_CASE("recall chance is empty for concepts never reviewed") {
