@@ -2,6 +2,7 @@
 
 #include <QAbstractListModel>
 #include <QString>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
 #include <vector>
@@ -16,6 +17,7 @@ class TopicsModel : public QAbstractListModel, public ProvidedSingleton<TopicsMo
     QML_NAMED_ELEMENT(Topics)
     QML_SINGLETON
     Q_PROPERTY(int count READ count NOTIFY countChanged)
+    Q_PROPERTY(QVariantList entries READ entries NOTIFY countChanged)
 
 public:
     enum Role { IdRole = Qt::UserRole + 1, NameRole, ConceptCountRole, IsUncategorizedRole };
@@ -26,6 +28,7 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
     int count() const { return static_cast<int>(rows_.size()); }
+    QVariantList entries() const;
 
     Q_INVOKABLE QString createTopic(const QString& name);
     Q_INVOKABLE bool rename(const QString& id, const QString& name);

@@ -89,3 +89,16 @@ TEST_CASE("a topic loading failure is reported and keeps the previous rows") {
     CHECK(f.topics.count() == 2);
     CHECK(f.at(0, TopicsModel::NameRole).toString() == "OS");
 }
+
+TEST_CASE("entries list every topic in row order for QML pickers") {
+    Fixture f;
+    QString databases = f.topics.createTopic("Databases");
+    auto entries = f.topics.entries();
+    REQUIRE(entries.size() == f.topics.count());
+    for (int row = 0; row < f.topics.count(); ++row) {
+        auto entry = entries[row].toMap();
+        CHECK(entry.value("topicId") == f.at(row, TopicsModel::IdRole));
+        CHECK(entry.value("name") == f.at(row, TopicsModel::NameRole));
+        CHECK(entry.value("uncategorized").toBool() == (entry.value("topicId").toString() != databases));
+    }
+}

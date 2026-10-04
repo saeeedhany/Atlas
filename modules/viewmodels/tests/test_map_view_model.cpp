@@ -273,3 +273,36 @@ TEST_CASE("attaching a new canvas disconnects the old one") {
     emit newCanvas.nodeClicked(idString(tree));
     CHECK(f.map.selectedId() == idString(tree));
 }
+
+TEST_CASE("edges carry relationship ids and info lookups describe concepts and links") {
+    Fixture f;
+    auto tree = f.addConcept("Tree", uncategorizedTopicId());
+    auto btree = f.addConcept("B-Tree", uncategorizedTopicId());
+    auto link = f.workspace.createRelationship(btree, tree, RelationshipType::DependsOn, std::string("needs a tree")).value();
+    QCoreApplication::processEvents();
+    REQUIRE(f.map.edges().size() == 1);
+    CHECK(f.map.edges()[0].id == idString(link));
+
+    auto concept_ = f.map.conceptInfo(idString(tree));
+    CHECK(concept_.value("title").toString() == "Tree");
+    CHECK(concept_.value("recall").toDouble() < 0.0);
+    CHECK(concept_.value("topic").toString() == "Uncategorized");
+
+    auto info = f.map.linkInfo(idString(link));
+    CHECK(info.value("sourceId").toString() == idString(btree));
+    CHECK(info.value("source").toString() == "B-Tree");
+    CHECK(info.value("target").toString() == "Tree");
+    CHECK(info.value("typeName").toString() == "depends on");
+    CHECK(info.value("note").toString() == "needs a tree");
+    CHECK(f.map.linkInfo("garbage").isEmpty());
+}
+
+TEST_CASE("a single topic view never offers topic collapse") {
+    Fixture f;
+    auto os = f.topic("OS");
+    f.addConcept("Paging", os);
+    QCoreApplication::processEvents();
+    CHECK_FALSE(f.map.nodes()[0].groupKey.isEmpty());
+    f.map.setTopicId(idString(os));
+    CHECK(f.map.nodes()[0].groupKey.isEmpty());
+}

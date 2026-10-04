@@ -1,5 +1,7 @@
 #include "atlas/viewmodels/topics_model.hpp"
 
+#include <QVariantMap>
+
 #include <unordered_map>
 
 #include "atlas/viewmodels/ids.hpp"
@@ -92,6 +94,15 @@ QString TopicsModel::nameOf(const QString& id) const {
         if (row.id == id) return row.name;
     }
     return {};
+}
+
+QVariantList TopicsModel::entries() const {
+    QVariantList list;
+    for (const auto& row : rows_) {
+        list.append(QVariantMap{{"topicId", row.id}, {"name", row.name}, {"conceptCount", row.conceptCount},
+                                {"uncategorized", row.uncategorized}});
+    }
+    return list;
 }
 
 }  // namespace atlas::viewmodels

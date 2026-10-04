@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "atlas/viewmodels/concept_links_model.hpp"
 #include "atlas/viewmodels/ids.hpp"
 
 namespace atlas::viewmodels {
@@ -66,7 +67,8 @@ void MapViewModel::setTopicId(const QString& topicId) {
 void MapViewModel::setSelectedId(const QString& conceptId) {
     auto parsed = parseId<KnowledgeObjectId>(conceptId);
     QString normalized = parsed ? idString(*parsed) : QString();
-    if (!isShown(normalized)) normalized.clear();
+    bool known = parsed && workspace_->graph().findNode(*parsed) != nullptr;
+    if (!isShown(normalized) && !(refreshPending_ && known)) normalized.clear();
     if (normalized == selectedId_) return;
     selectedId_ = normalized;
     applySelection();
@@ -115,7 +117,7 @@ void MapViewModel::refresh() {
         node.recall = memory_->recallChance(ItemRef::forConcept(object.id())).value_or(-1.0);
         node.ghost = !member;
         if (object.topicId()) {
-            node.groupKey = idString(*object.topicId());
+            if (!topic) node.groupKey = idString(*object.topicId());
             auto name = topicNames_.find(object.topicId()->toString());
             if (name != topicNames_.end()) node.groupLabel = toQString(name->second);
         }
@@ -129,6 +131,7 @@ void MapViewModel::refresh() {
         bool targetIn = members.contains(link.targetId());
         if (!sourceIn && !targetIn) continue;
         RenderEdge edge;
+        edge.id = idString(link.id());
         edge.sourceId = idString(link.sourceId());
         edge.targetId = idString(link.targetId());
         edge.directed = !atlas::core::isSymmetric(link.type());
@@ -191,6 +194,34 @@ QVariantList MapViewModel::search(const QString& query) const {
         if (results.size() == kSearchLimit) break;
     }
     return results;
+}
+
+QVariantMap MapViewModel::conceptInfo(const QString& id) const {
+    auto conceptId = parseId<KnowledgeObjectId>(id);
+    const auto* object = conceptId ? workspace_->graph().findNode(*conceptId) : nullptr;
+    if (object == nullptr) return {};
+    QString topic;
+    if (object->topicId()) {
+        auto name = topicNames_.find(object->topicId()->toString());
+        if (name != topicNames_.end()) topic = toQString(name->second);
+    }
+    return {{"title", toQString(object->title())},
+            {"recall", memory_->recallChance(ItemRef::forConcept(*conceptId)).value_or(-1.0)},
+            {"topic", topic}};
+}
+
+QVariantMap MapViewModel::linkInfo(const QString& linkId) const {
+    auto id = parseId<atlas::core::RelationshipId>(linkId);
+    const auto* link = id ? workspace_->graph().findEdge(*id) : nullptr;
+    if (link == nullptr) return {};
+    const auto* source = workspace_->graph().findNode(link->sourceId());
+    const auto* target = workspace_->graph().findNode(link->targetId());
+    return {{"sourceId", idString(link->sourceId())},
+            {"targetId", idString(link->targetId())},
+            {"source", source ? toQString(source->title()) : QString()},
+            {"target", target ? toQString(target->title()) : QString()},
+            {"typeName", relationshipLabel(link->type())},
+            {"note", toQString(link->note().value_or(""))}};
 }
 
 QString MapViewModel::createConcept(const QString& title) {

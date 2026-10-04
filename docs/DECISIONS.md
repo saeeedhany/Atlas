@@ -697,4 +697,4 @@ Organized by module, roughly in the order each decision arose.
 - A corrupt memory cache is rebuilt from the log at startup instead of blocking it.
 - New concepts start near their linked neighbors, else near their topic's center, so topics form regions on the map.
 - Ghost nodes are drawn at their own saved positions rather than at the edge of the view.
-- Canvas labels are cached across scene updates, and hover or selection changes rebuild only the highlight layer.
+- Canvas labels are cached across scene updates; hover rebuilds only the highlight layer, while selection still rebuilds everything because it dims other nodes.

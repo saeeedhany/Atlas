@@ -19,6 +19,8 @@ class PlacementController : public QObject {
     Q_OBJECT
 
 public:
+    static constexpr double kMaxStartingOffset = 40.0;
+
     PlacementController(atlas::persistence::Database& database, WorkspaceController& workspace,
                         QObject* parent = nullptr);
 
@@ -44,5 +46,7 @@ private:
     std::unordered_map<KnowledgeObjectId, atlas::core::Placement> placements_;
     bool loaded_ = false;
 };
+
+atlas::render::Point2D startingOffsetFor(const KnowledgeObjectId& id);
 
 }  // namespace atlas::viewmodels

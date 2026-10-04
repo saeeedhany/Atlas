@@ -5,6 +5,7 @@
 #include <QQuickItem>
 #include <QString>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 #include <optional>
@@ -43,6 +44,8 @@ public:
 
     Q_INVOKABLE void attach(QQuickItem* canvas);
     Q_INVOKABLE QVariantList search(const QString& query) const;
+    Q_INVOKABLE QVariantMap conceptInfo(const QString& id) const;
+    Q_INVOKABLE QVariantMap linkInfo(const QString& linkId) const;
     Q_INVOKABLE QString createConcept(const QString& title);
     Q_INVOKABLE void tidy();
     Q_INVOKABLE void refresh();

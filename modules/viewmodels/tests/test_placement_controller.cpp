@@ -1,4 +1,5 @@
 #include <cmath>
+#include <string>
 
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/placement_repository.hpp"
@@ -174,4 +175,26 @@ TEST_CASE("a pinned concept stays pinned after a restart") {
     REQUIRE(second.load().hasValue());
     CHECK(second.isPinned(f.a));
     CHECK_FALSE(second.isPinned(f.b));
+}
+
+TEST_CASE("tidy does nothing before load") {
+    Fixture f;
+    PlacementController placements(f.db, f.workspace);
+    REQUIRE(placements.tidy().hasValue());
+    PlacementRepository repository(f.db);
+    CHECK(repository.findAll().value().empty());
+}
+
+TEST_CASE("starting offsets never put a new concept on top of its seed point") {
+    Fixture f;
+    for (const auto& object : f.workspace.allKnowledgeObjects()) {
+        auto offset = startingOffsetFor(object.id());
+        double length = std::hypot(offset.x, offset.y);
+        CHECK(length >= 0.25 * PlacementController::kMaxStartingOffset - 1e-9);
+        CHECK(length <= PlacementController::kMaxStartingOffset + 1e-9);
+    }
+    for (int i = 0; i < 50; ++i) {
+        auto offset = startingOffsetFor(f.addConcept(("N" + std::to_string(i)).c_str()));
+        CHECK(std::hypot(offset.x, offset.y) >= 0.25 * PlacementController::kMaxStartingOffset - 1e-9);
+    }
 }

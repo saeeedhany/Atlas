@@ -16,8 +16,6 @@ Result<void, ControllerFailure> persistenceFailure(const atlas::persistence::Per
     return Result<void, ControllerFailure>::err({ControllerErrorCode::PersistenceFailed, error.detail});
 }
 
-constexpr double kMaxStartingOffset = 40.0;
-
 struct Centroid {
     double sumX = 0.0;
     double sumY = 0.0;
@@ -31,15 +29,16 @@ struct Centroid {
     atlas::render::Point2D center() const { return {sumX / count, sumY / count}; }
 };
 
-atlas::render::Point2D offsetFor(const KnowledgeObjectId& id) {
+}  // namespace
+
+atlas::render::Point2D startingOffsetFor(const KnowledgeObjectId& id) {
     constexpr double kTwoPi = 6.283185307179586;
     size_t hash = std::hash<std::string>{}(id.toString());
     double angle = kTwoPi * static_cast<double>(hash % 360) / 360.0;
-    double radius = kMaxStartingOffset * static_cast<double>((hash / 360) % 101) / 100.0;
+    double radius = PlacementController::kMaxStartingOffset *
+                    (0.25 + 0.75 * static_cast<double>((hash / 360) % 101) / 100.0);
     return {radius * std::cos(angle), radius * std::sin(angle)};
 }
-
-}  // namespace
 
 PlacementController::PlacementController(atlas::persistence::Database& database, WorkspaceController& workspace,
                                          QObject* parent)
@@ -79,7 +78,7 @@ atlas::render::Point2D PlacementController::startingPointFor(const KnowledgeObje
     if (neighbors.count > 0) base = neighbors.center();
     else if (peers.count > 0) base = peers.center();
     else if (everything.count > 0) base = everything.center();
-    auto offset = offsetFor(id);
+    auto offset = startingOffsetFor(id);
     return {base.x + offset.x, base.y + offset.y};
 }
 
@@ -118,6 +117,7 @@ Result<void, ControllerFailure> PlacementController::arrange() {
 }
 
 Result<void, ControllerFailure> PlacementController::tidy() {
+    if (!loaded_) return Result<void, ControllerFailure>::ok();
     forgetRemovedConcepts();
     LayoutHints hints;
     for (const auto& [id, placement] : placements_) {
