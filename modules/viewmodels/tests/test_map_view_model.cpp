@@ -245,6 +245,29 @@ TEST_CASE("a selection outside the new scope is cleared") {
     CHECK(f.map.selectedId().isEmpty());
 }
 
+TEST_CASE("a known concept can be selected before the pending refresh shows it") {
+    Fixture f;
+    auto os = f.topic("OS");
+    auto databases = f.topic("Databases");
+    f.settle();
+
+    auto tree = f.addConcept("Tree", uncategorizedTopicId());
+    REQUIRE(f.node(tree) == nullptr);
+    f.map.setSelectedId(idString(tree));
+    CHECK(f.map.selectedId() == idString(tree));
+    f.settle();
+    CHECK(f.node(tree) != nullptr);
+    CHECK(f.map.selectedId() == idString(tree));
+
+    f.map.setTopicId(idString(databases));
+    auto paging = f.addConcept("Paging", os);
+    f.map.setSelectedId(idString(paging));
+    CHECK(f.map.selectedId() == idString(paging));
+    f.settle();
+    CHECK(f.node(paging) == nullptr);
+    CHECK(f.map.selectedId().isEmpty());
+}
+
 TEST_CASE("deleting the scoped topic resets the scope") {
     Fixture f;
     auto os = f.topic("OS");
