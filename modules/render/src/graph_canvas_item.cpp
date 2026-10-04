@@ -219,6 +219,7 @@ GraphCanvasItem::GraphCanvasItem(QQuickItem* parent) : QQuickItem(parent) {
 
 GraphCanvasItem::LabelLayout GraphCanvasItem::makeLabel(const QString& text) {
     LabelLayout label;
+    label.text = text;
     label.layout = std::make_shared<QTextLayout>(text, labelFont());
     label.layout->setCacheEnabled(true);
     label.layout->beginLayout();
@@ -229,6 +230,22 @@ GraphCanvasItem::LabelLayout GraphCanvasItem::makeLabel(const QString& text) {
     }
     label.layout->endLayout();
     return label;
+}
+
+void GraphCanvasItem::syncLabels(std::unordered_map<QString, LabelLayout>& cache,
+                                 const std::unordered_map<QString, QString>& wanted) {
+    for (const auto& [key, text] : wanted) {
+        auto found = cache.find(key);
+        if (found == cache.end() || found->second.text != text) cache.insert_or_assign(key, makeLabel(text));
+    }
+    for (auto it = cache.begin(); it != cache.end();) {
+        it = wanted.contains(it->first) ? std::next(it) : cache.erase(it);
+    }
+}
+
+const QTextLayout* GraphCanvasItem::labelLayoutFor(const QString& id) const {
+    auto found = labelLayouts_.find(id);
+    return found == labelLayouts_.end() ? nullptr : found->second.layout.get();
 }
 
 void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<RenderEdge> edges) {
@@ -246,15 +263,16 @@ void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<Re
     }
     targetPositions_ = std::move(targets);
 
-    labelLayouts_.clear();
+    std::unordered_map<QString, QString> nodeLabels;
     for (const auto& node : nodes_) {
-        if (!node.label.isEmpty()) labelLayouts_.emplace(node.id, makeLabel(elideLabel(node.label)));
+        if (!node.label.isEmpty()) nodeLabels.emplace(node.id, elideLabel(node.label));
     }
-    groupLayouts_.clear();
+    syncLabels(labelLayouts_, nodeLabels);
+    std::unordered_map<QString, QString> groupLabels;
     for (const auto& group : summarizeGroups(nodes_, targetPositions_)) {
-        groupLayouts_.emplace(group.key,
-                              makeLabel(QStringLiteral("%1 (%2)").arg(elideLabel(group.label)).arg(group.memberCount)));
+        groupLabels.emplace(group.key, QStringLiteral("%1 (%2)").arg(elideLabel(group.label)).arg(group.memberCount));
     }
+    syncLabels(groupLayouts_, groupLabels);
 
     bool hadGroups = hasGroups_;
     hasGroups_ = std::any_of(nodes_.begin(), nodes_.end(), [](const RenderNode& node) { return !node.groupKey.isEmpty(); });
@@ -284,6 +302,7 @@ void GraphCanvasItem::tickAnimation() {
 }
 
 void GraphCanvasItem::setHighlight(const QString& selectedId, const std::unordered_set<QString>& neighborIds) {
+    if (selectedId == selectedId_ && neighborIds == neighborIds_) return;
     selectedId_ = selectedId;
     neighborIds_ = neighborIds;
     dataDirty_ = true;
@@ -291,6 +310,7 @@ void GraphCanvasItem::setHighlight(const QString& selectedId, const std::unorder
 }
 
 void GraphCanvasItem::clearHighlight() {
+    if (selectedId_.isEmpty() && neighborIds_.empty()) return;
     selectedId_.clear();
     neighborIds_.clear();
     dataDirty_ = true;
@@ -350,7 +370,7 @@ int GraphCanvasItem::hitTest(double worldX, double worldY) const {
     return -1;
 }
 
-void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
+void GraphCanvasItem::buildHighlight(SceneVertices& out, const Theme& theme) const {
     bool hasHighlight = !selectedId_.isEmpty();
     for (const auto& node : nodes_) {
         Vec2 center = positionOf(node.id);
@@ -360,7 +380,15 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
         if (isSelected) appendTriangles(out.highlight, ringArc(center, kSelectRingRadius, kSelectRingThickness, 1.0), theme.selectedRing);
         else if (isNeighbor) appendTriangles(out.highlight, ringArc(center, kNeighborRingRadius, kHighlightThickness, 1.0), theme.neighborRing);
         else if (isHovered) appendTriangles(out.highlight, ringArc(center, kHoverRingRadius, kHighlightThickness, 1.0), theme.hoverRing);
+    }
+}
 
+void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
+    bool hasHighlight = !selectedId_.isEmpty();
+    for (const auto& node : nodes_) {
+        Vec2 center = positionOf(node.id);
+        bool isSelected = node.id == selectedId_;
+        bool isNeighbor = hasHighlight && neighborIds_.contains(node.id);
         int alpha = node.ghost ? kGhostAlphaPercent : 100;
         bool dimmed = hasHighlight && !isSelected && !isNeighbor;
         QColor border = faded(theme.nodeBorder, alpha);
@@ -485,6 +513,7 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         if (collapsed()) {
             buildGroups(scene, theme);
         } else {
+            buildHighlight(scene, theme);
             buildNodes(scene, theme);
             buildEdges(scene, theme);
         }
@@ -495,7 +524,13 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         upload(root->childAtIndex(FillLayer), scene.fills);
         upload(root->childAtIndex(MemoryLayer), scene.memory);
         dataDirty_ = false;
+        highlightDirty_ = false;
         labelsDirty_ = true;
+    } else if (highlightDirty_) {
+        SceneVertices scene;
+        if (!collapsed()) buildHighlight(scene, theme);
+        upload(root->childAtIndex(HighlightLayer), scene.highlight);
+        highlightDirty_ = false;
     }
     if (labelsDirty_) {
         fillLabels(labels, ghostLabels, theme);
@@ -557,7 +592,7 @@ void GraphCanvasItem::hoverMoveEvent(QHoverEvent* event) {
     }
     if (hovered != hoveredId_) {
         hoveredId_ = hovered;
-        dataDirty_ = true;
+        highlightDirty_ = true;
         update();
         emit nodeHovered(hoveredId_);
     }
@@ -567,7 +602,7 @@ void GraphCanvasItem::hoverMoveEvent(QHoverEvent* event) {
 void GraphCanvasItem::hoverLeaveEvent(QHoverEvent* event) {
     if (!hoveredId_.isEmpty()) {
         hoveredId_.clear();
-        dataDirty_ = true;
+        highlightDirty_ = true;
         update();
         emit nodeHovered(QString{});
     }

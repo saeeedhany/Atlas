@@ -1,5 +1,7 @@
 #include "atlas/viewmodels/topics_model.hpp"
 
+#include <unordered_map>
+
 #include "atlas/viewmodels/ids.hpp"
 
 namespace atlas::viewmodels {
@@ -14,11 +16,16 @@ TopicsModel::TopicsModel(WorkspaceController& workspace, QObject* parent)
 }
 
 void TopicsModel::refresh() {
+    std::unordered_map<TopicId, int> conceptCounts;
+    for (const auto& object : workspace_->allKnowledgeObjects()) {
+        if (object.topicId()) ++conceptCounts[*object.topicId()];
+    }
     beginResetModel();
     rows_.clear();
     for (const auto& topic : workspace_->allTopics()) {
+        auto counted = conceptCounts.find(topic.id());
         rows_.push_back(Row{idString(topic.id()), toQString(topic.name()),
-                            static_cast<int>(workspace_->knowledgeObjectsInTopic(topic.id()).size()),
+                            counted == conceptCounts.end() ? 0 : counted->second,
                             topic.id() == atlas::core::uncategorizedTopicId()});
     }
     endResetModel();

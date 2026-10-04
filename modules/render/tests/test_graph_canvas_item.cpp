@@ -95,3 +95,27 @@ TEST_CASE("without group keys the canvas never collapses") {
     CHECK_FALSE(canvas.collapsed());
     CHECK(canvas.groupAt(22, 20).isEmpty());
 }
+
+TEST_CASE("label layouts are reused across scene updates and rebuilt only when their text changes") {
+    GraphCanvasItem canvas;
+    canvas.setGraphData({makeNode("a", 0, 0, "t1"), makeNode("b", 10, 0, "t1")}, {});
+    const QTextLayout* first = canvas.labelLayoutFor("a");
+    const QTextLayout* second = canvas.labelLayoutFor("b");
+    REQUIRE(first != nullptr);
+    REQUIRE(second != nullptr);
+
+    canvas.setGraphData({makeNode("a", 5, 5, "t1"), makeNode("b", 10, 0, "t1")}, {});
+    CHECK(canvas.labelLayoutFor("a") == first);
+    CHECK(canvas.labelLayoutFor("b") == second);
+
+    auto renamed = makeNode("b", 10, 0, "t1");
+    renamed.label = "Renamed";
+    canvas.setGraphData({makeNode("a", 5, 5, "t1"), renamed}, {});
+    CHECK(canvas.labelLayoutFor("a") == first);
+    REQUIRE(canvas.labelLayoutFor("b") != nullptr);
+    CHECK(canvas.labelLayoutFor("b") != second);
+    CHECK(canvas.labelLayoutFor("b")->text() == "Renamed");
+
+    canvas.setGraphData({makeNode("a", 5, 5, "t1")}, {});
+    CHECK(canvas.labelLayoutFor("b") == nullptr);
+}

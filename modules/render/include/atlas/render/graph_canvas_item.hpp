@@ -80,6 +80,8 @@ public:
     bool collapsed() const { return hasGroups_ && scale_ < kCollapseZoom; }
     Q_INVOKABLE QString groupAt(double screenX, double screenY) const;
 
+    const QTextLayout* labelLayoutFor(const QString& id) const;
+
 signals:
     void nodeClicked(QString id);
     void nodeRightClicked(QString id);
@@ -99,15 +101,19 @@ protected:
 
 private:
     struct LabelLayout {
+        QString text;
         std::shared_ptr<QTextLayout> layout;
         qreal width = 0.0;
     };
 
     static LabelLayout makeLabel(const QString& text);
+    static void syncLabels(std::unordered_map<QString, LabelLayout>& cache,
+                           const std::unordered_map<QString, QString>& wanted);
     int hitTest(double worldX, double worldY) const;
     Vec2 positionOf(const QString& id) const;
     QPointF toScreen(QPointF world) const;
     void tickAnimation();
+    void buildHighlight(SceneVertices& out, const Theme& theme) const;
     void buildNodes(SceneVertices& out, const Theme& theme) const;
     void buildEdges(SceneVertices& out, const Theme& theme) const;
     void buildGroups(SceneVertices& out, const Theme& theme) const;
@@ -138,6 +144,7 @@ private:
     bool backgroundDirty_ = true;
     bool hasGroups_ = false;
     bool dataDirty_ = true;
+    bool highlightDirty_ = true;
     bool labelsDirty_ = true;
 };
 
