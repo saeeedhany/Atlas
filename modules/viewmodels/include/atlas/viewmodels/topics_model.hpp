@@ -35,6 +35,7 @@ public:
     Q_INVOKABLE bool remove(const QString& id);
     Q_INVOKABLE QString nameOf(const QString& id) const;
     Q_INVOKABLE void refresh();
+    Q_INVOKABLE QVariantList suggestProjects(const QString& topicId) const;
 
 signals:
     void countChanged();

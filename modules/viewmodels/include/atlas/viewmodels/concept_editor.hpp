@@ -72,6 +72,7 @@ public:
     Q_INVOKABLE bool save();
     Q_INVOKABLE bool remove();
     Q_INVOKABLE void revert();
+    Q_INVOKABLE QVariantList roadmap();
 
 signals:
     void loaded();

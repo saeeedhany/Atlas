@@ -105,4 +105,23 @@ QVariantList TopicsModel::entries() const {
     return list;
 }
 
+QVariantList TopicsModel::suggestProjects(const QString& topicId) const {
+    auto id = parseId<TopicId>(topicId);
+    if (!id) return {};
+    QVariantList ideas;
+    for (const auto& suggestion : workspace_->suggestProjects(*id)) {
+        const auto& object = suggestion.knowledgeObject;
+        QVariantList projects;
+        for (const auto& project : object.miniProjects()) {
+            projects.append(QVariantMap{{"title", toQString(project.title)}, {"description", toQString(project.description)}});
+        }
+        ideas.append(QVariantMap{{"id", idString(object.id())},
+                                 {"title", toQString(object.title())},
+                                 {"readiness", suggestion.readiness},
+                                 {"leverage", suggestion.leverage},
+                                 {"projects", projects}});
+    }
+    return ideas;
+}
+
 }  // namespace atlas::viewmodels

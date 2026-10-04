@@ -7,6 +7,7 @@ Rectangle {
     id: bar
 
     property var results: []
+    property var ideas: []
     readonly property bool canEditTopic: {
         let entry = Topics.entries.find(topic => topic.topicId === MapView.topicId)
         return entry !== undefined && !entry.uncategorized
@@ -14,6 +15,11 @@ Rectangle {
 
     signal focusRequested(string id)
     signal fitRequested()
+
+    function openIdeas() {
+        ideas = Topics.suggestProjects(MapView.topicId)
+        ideasPopup.open()
+    }
 
     function syncTopic() {
         topicBox.currentIndex = Math.max(0, topicBox.indexOfValue(MapView.topicId))
@@ -114,6 +120,13 @@ Rectangle {
             onClicked: topicPopup.open()
         }
 
+        AppButton {
+            id: ideasButton
+            text: "Ideas"
+            enabled: MapView.topicId !== ""
+            onClicked: bar.openIdeas()
+        }
+
         AppTextField {
             id: searchField
             objectName: "searchField"
@@ -148,6 +161,85 @@ Rectangle {
         AppButton {
             text: "Tidy"
             onClicked: MapView.tidy()
+        }
+    }
+
+    Popup {
+        id: ideasPopup
+        parent: ideasButton
+        y: ideasButton.height + 6
+        width: 380
+        padding: 16
+
+        enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Motion.appear } }
+        exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Motion.fade } }
+
+        background: Rectangle {
+            radius: Theme.radius
+            color: Theme.surfaceRaised
+            border.color: Theme.border
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 10
+
+            SectionLabel { text: "Project ideas" }
+            Text {
+                Layout.fillWidth: true
+                visible: bar.ideas.length === 0
+                text: "Add mini projects to concepts in this topic to see ideas here."
+                color: Theme.textMuted
+                font.pixelSize: Theme.fontBody
+                wrapMode: Text.Wrap
+            }
+            Repeater {
+                model: bar.ideas
+
+                delegate: ColumnLayout {
+                    id: idea
+
+                    required property var modelData
+
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: idea.modelData.title
+                        color: Theme.text
+                        font.pixelSize: Theme.fontBody
+                        elide: Text.ElideRight
+
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            onTapped: {
+                                ideasPopup.close()
+                                bar.focusRequested(idea.modelData.id)
+                            }
+                        }
+                    }
+                    Text {
+                        text: "Ready " + Math.round(idea.modelData.readiness * 100) + "%  -  unlocks "
+                              + idea.modelData.leverage
+                        color: Theme.textMuted
+                        font.family: Theme.mono
+                        font.pixelSize: Theme.fontSmall
+                    }
+                    Repeater {
+                        model: idea.modelData.projects
+
+                        delegate: Text {
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            text: "- " + modelData.title
+                            color: Theme.textMuted
+                            font.pixelSize: Theme.fontSmall
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 #include <string>
 
 #include "atlas/viewmodels/ids.hpp"
+#include "atlas/viewmodels/workspace_controller.hpp"
 #include "doctest.h"
 #include "qml_fixture.hpp"
 
@@ -150,4 +151,19 @@ TEST_CASE("focusing another topic's concept keeps the scope when the draft canno
     CHECK(f.context().map().selectedId() == indexing);
     CHECK(f.context().conceptEditor().conceptId() == indexing);
     CHECK(overlay->property("focusId").toString().isEmpty());
+}
+
+TEST_CASE("the ideas popup lists project ideas for the topic") {
+    QmlFixture f;
+    QString topic = f.context().topics().createTopic("Databases");
+    auto id = f.context().workspace().createKnowledgeObject("Index", *parseId<TopicId>(topic)).value();
+    KnowledgeObjectEdits edits;
+    edits.miniProjects = std::vector<MiniProject>{{"Build a B-Tree", "Insert and search"}};
+    REQUIRE(f.context().workspace().updateKnowledgeObject(id, edits).hasValue());
+    f.context().map().setTopicId(topic);
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto* bar = QmlFixture::child(window.get(), "topicBar");
+    REQUIRE(QMetaObject::invokeMethod(bar, "openIdeas"));
+    CHECK(bar->property("ideas").toList().size() == 1);
 }

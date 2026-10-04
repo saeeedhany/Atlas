@@ -1,5 +1,10 @@
+#include "atlas/viewmodels/ids.hpp"
+#include "atlas/viewmodels/workspace_controller.hpp"
 #include "doctest.h"
 #include "qml_fixture.hpp"
+
+using namespace atlas::core;
+using namespace atlas::viewmodels;
 
 namespace {
 
@@ -114,4 +119,18 @@ TEST_CASE("confirming delete removes the concept and closes the panel") {
     QmlFixture::settle();
     CHECK(p.f.context().map().conceptCount() == 1);
     CHECK_FALSE(p.panel->property("shown").toBool());
+}
+
+TEST_CASE("the panel shows what to learn first") {
+    PanelFixture p;
+    REQUIRE(p.f.context()
+                .workspace()
+                .createRelationship(*parseId<KnowledgeObjectId>(p.a), *parseId<KnowledgeObjectId>(p.b),
+                                    RelationshipType::DependsOn, std::nullopt)
+                .hasValue());
+    QmlFixture::settle();
+    p.select(p.a);
+    auto path = p.panel->property("path").toList();
+    REQUIRE(path.size() == 1);
+    CHECK(path[0].toMap().value("title").toString() == "Beta");
 }

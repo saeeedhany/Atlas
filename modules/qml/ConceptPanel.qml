@@ -7,6 +7,7 @@ Rectangle {
     id: panel
 
     readonly property bool shown: Concept.exists
+    property var path: []
 
     signal focusRequested(string id)
 
@@ -19,6 +20,10 @@ Rectangle {
             return
         deletePopup.close()
         MapView.selectedId = ""
+    }
+
+    function refreshPath() {
+        path = Concept.exists ? Concept.roadmap() : []
     }
 
     function syncTopic() {
@@ -36,8 +41,16 @@ Rectangle {
 
     Connections {
         target: Concept
-        function onLoaded() { panel.syncTopic() }
+        function onLoaded() {
+            panel.syncTopic()
+            panel.refreshPath()
+        }
         function onEdited() { panel.syncTopic() }
+    }
+
+    Connections {
+        target: MapView
+        function onSceneChanged() { panel.refreshPath() }
     }
 
     MouseArea {
@@ -195,6 +208,28 @@ Rectangle {
             LinksEditor {
                 Layout.fillWidth: true
                 onFocusRequested: id => panel.focusRequested(id)
+            }
+
+            SectionLabel {
+                visible: panel.path.length > 0
+                text: "Learn first"
+            }
+            Repeater {
+                model: panel.path
+
+                delegate: Text {
+                    required property var modelData
+                    required property int index
+
+                    Layout.fillWidth: true
+                    text: (index + 1) + ".  " + modelData.title
+                    color: Theme.text
+                    font.pixelSize: Theme.fontBody
+                    elide: Text.ElideRight
+
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: panel.focusRequested(modelData.id) }
+                }
             }
 
             RowLayout {

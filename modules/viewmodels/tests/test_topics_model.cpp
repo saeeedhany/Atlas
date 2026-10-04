@@ -102,3 +102,19 @@ TEST_CASE("entries list every topic in row order for QML pickers") {
         CHECK(entry.value("uncategorized").toBool() == (entry.value("topicId").toString() != databases));
     }
 }
+
+TEST_CASE("project ideas come from concepts with mini projects") {
+    Fixture f;
+    QString topic = f.topics.createTopic("Databases");
+    auto id = f.workspace.createKnowledgeObject("Index", *parseId<TopicId>(topic)).value();
+    KnowledgeObjectEdits edits;
+    edits.miniProjects = std::vector<MiniProject>{{"Build a B-Tree", "Insert and search"}};
+    REQUIRE(f.workspace.updateKnowledgeObject(id, edits).hasValue());
+
+    auto ideas = f.topics.suggestProjects(topic);
+    REQUIRE(ideas.size() == 1);
+    auto idea = ideas[0].toMap();
+    CHECK(idea.value("title").toString() == "Index");
+    CHECK(idea.value("projects").toList()[0].toMap().value("title").toString() == "Build a B-Tree");
+    CHECK(f.topics.suggestProjects("garbage").isEmpty());
+}

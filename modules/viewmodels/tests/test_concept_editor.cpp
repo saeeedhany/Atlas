@@ -123,3 +123,20 @@ TEST_CASE("pinning writes through to the placement") {
     CHECK(f.placements.isPinned(f.tree));
     CHECK(f.editor.pinned());
 }
+
+TEST_CASE("the roadmap lists what to learn first, in order") {
+    Fixture f;
+    auto c = f.workspace.createKnowledgeObject("C").value();
+    auto b = f.workspace.createKnowledgeObject("B").value();
+    auto a = f.workspace.createKnowledgeObject("A").value();
+    REQUIRE(f.workspace.createRelationship(a, b, RelationshipType::DependsOn, std::nullopt).hasValue());
+    REQUIRE(f.workspace.createRelationship(b, c, RelationshipType::DependsOn, std::nullopt).hasValue());
+    f.editor.setConceptId(idString(a));
+    auto path = f.editor.roadmap();
+    REQUIRE(path.size() == 2);
+    CHECK(path[0].toMap().value("title").toString() == "C");
+    CHECK(path[1].toMap().value("title").toString() == "B");
+
+    f.editor.setConceptId(idString(c));
+    CHECK(f.editor.roadmap().isEmpty());
+}

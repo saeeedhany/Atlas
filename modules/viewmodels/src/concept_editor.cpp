@@ -172,4 +172,22 @@ bool ConceptEditor::remove() {
 
 void ConceptEditor::revert() { load(); }
 
+QVariantList ConceptEditor::roadmap() {
+    auto id = parseId<KnowledgeObjectId>(conceptId_);
+    if (!id || !exists_) return {};
+    auto path = workspace_->roadmapFor(*id);
+    if (!path.hasValue()) {
+        if (path.error().code == WorkspaceController::RoadmapErrorCode::CycleDetected) {
+            emit errorOccurred(tr("These prerequisites depend on each other in a loop"));
+        }
+        return {};
+    }
+    QVariantList steps;
+    for (const auto& object : path.value()) {
+        if (object.id() == *id) continue;
+        steps.append(QVariantMap{{"id", idString(object.id())}, {"title", toQString(object.title())}});
+    }
+    return steps;
+}
+
 }  // namespace atlas::viewmodels
