@@ -30,7 +30,7 @@ constexpr int kEdgeAttempts = 30'000;
 
 }  // namespace
 
-TEST_CASE("GraphEngine handles 10,000 nodes and ~30,000 edges without an algorithmic blowup") {
+TEST_CASE("GraphEngine handles 10,000 nodes and ~30,000 edges without an algorithmic blowup" * doctest::test_suite("scale")) {
     GraphEngine graph;
     std::vector<KnowledgeObjectId> ids;
     ids.reserve(kNodeCount);

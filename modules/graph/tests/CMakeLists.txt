@@ -10,4 +10,6 @@ target_include_directories(atlas_graph_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/doctest
 )
 
-add_test(NAME atlas_graph_tests COMMAND atlas_graph_tests)
+add_test(NAME atlas_graph_tests COMMAND atlas_graph_tests --test-suite-exclude=scale)
+add_test(NAME atlas_graph_scale_tests COMMAND atlas_graph_tests --test-suite=scale)
+set_tests_properties(atlas_graph_scale_tests PROPERTIES LABELS scale)

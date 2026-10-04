@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --cap-add SYS_PTRACE
+    strategy:
+      matrix:
+        preset: [dev, asan]
+    steps:
+      - name: Install toolchain
+        run: pacman -Syu --noconfirm base-devel cmake ninja git sqlite qt6-base qt6-declarative
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}

@@ -24,7 +24,7 @@ constexpr int kNodeCount = 10'000;
 constexpr int kEdgeAttempts = 30'000;
 }  // namespace
 
-TEST_CASE("layout timing at 10,000 nodes / ~30,000 edges, default 50 iterations") {
+TEST_CASE("layout timing at 10,000 nodes / ~30,000 edges, default 50 iterations" * doctest::test_suite("scale")) {
     GraphEngine graph;
     std::vector<KnowledgeObjectId> ids;
     ids.reserve(kNodeCount);
