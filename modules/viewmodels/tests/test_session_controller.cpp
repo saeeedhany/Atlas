@@ -71,6 +71,23 @@ struct Fixture {
         return link;
     }
 
+    void reviewLink(const RelationshipId& link) {
+        ReviewEvent event;
+        event.id = Uuid::generate();
+        event.item = ItemRef::forLink(link);
+        event.sessionId = Uuid::generate();
+        event.deviceId = "test";
+        event.reviewedAt = now - std::chrono::minutes(30);
+        event.grade = Grade::Good;
+        REQUIRE(memory.record({event}).hasValue());
+    }
+
+    int edgesMarked(atlas::render::EdgeMark mark) const {
+        int count = 0;
+        for (const auto& edge : map.edges()) count += edge.mark == mark ? 1 : 0;
+        return count;
+    }
+
     QVariantMap feedbackAt(int index) const { return session.feedback()[index].toMap(); }
 };
 
@@ -176,7 +193,7 @@ TEST_CASE("hints point at missing neighbors and wrong names show as confused") {
     bool confusedShown = false;
     for (const auto& entry : f.session.feedback()) {
         auto map = entry.toMap();
-        if (map.value("outcome").toString() == "confused") confusedShown = map.value("title").toString() == "Gamma";
+        if (map.value("outcome").toString() == "confused") confusedShown = confusedShown || map.value("title").toString() == "Gamma";
     }
     CHECK(confusedShown);
     bool confusedEdge = false;
@@ -217,4 +234,84 @@ TEST_CASE("quitting keeps completed focuses and finishing restores the map") {
     CHECK(f.session.stage() == "idle");
     CHECK_FALSE(f.map.inSession());
     CHECK(f.map.topicId() == idString(os));
+}
+
+TEST_CASE("every introduced link is hidden but only due ones are graded") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha");
+    auto beta = f.addConcept("Beta");
+    auto gamma = f.addConcept("Gamma");
+    f.introduce(gamma);
+    auto older = f.dueLink(alpha, gamma);
+    f.reviewLink(older);
+    f.dueLink(alpha, beta);
+
+    REQUIRE(f.session.start());
+    REQUIRE(f.session.focusId() == idString(alpha));
+    CHECK(f.session.hiddenCount() == 2);
+    CHECK(f.edgesMarked(atlas::render::EdgeMark::Hidden) == 2);
+
+    REQUIRE(f.session.addRecalled(idString(beta), 0, true));
+    REQUIRE(f.session.addRecalled(idString(gamma), 0, true));
+    auto before = f.memory.events().size();
+    REQUIRE(f.session.submitRebuild(3));
+    CHECK(f.edgesMarked(atlas::render::EdgeMark::Hidden) == 0);
+    CHECK(f.edgesMarked(atlas::render::EdgeMark::Confused) == 0);
+    CHECK(f.session.feedback().size() == 1);
+    f.session.continueToExplain();
+    REQUIRE(f.session.submitExplain(3, 3, QString()));
+    int linkEvents = 0;
+    for (size_t i = before; i < f.memory.events().size(); ++i) {
+        linkEvents += f.memory.events()[i].item.kind == atlas::core::ItemKind::Link ? 1 : 0;
+    }
+    CHECK(linkEvents == 2);
+}
+
+TEST_CASE("a concept deleted before its turn is skipped") {
+    Fixture f;
+    f.addConcept("Alpha");
+    f.addConcept("Beta");
+    REQUIRE(f.session.start());
+    auto first = f.session.focusId();
+    auto firstId = parseId<KnowledgeObjectId>(first).value();
+    KnowledgeObjectId other = firstId;
+    for (const auto& object : f.workspace.allKnowledgeObjects()) {
+        if (object.id() != firstId) other = object.id();
+    }
+    REQUIRE(f.workspace.removeKnowledgeObject(other).hasValue());
+    REQUIRE(f.session.submitExplain(3, 3, QString()));
+    CHECK(f.session.stage() == "summary");
+    CHECK(f.memory.events().size() == 1);
+}
+
+TEST_CASE("a link deleted mid rebuild records no event for it") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha");
+    auto beta = f.addConcept("Beta");
+    auto link = f.dueLink(alpha, beta);
+    REQUIRE(f.session.start());
+    REQUIRE(f.session.submitRebuild(3));
+    f.session.continueToExplain();
+    REQUIRE(f.workspace.removeRelationship(link).hasValue());
+    auto before = f.memory.events().size();
+    REQUIRE(f.session.submitExplain(3, 3, QString()));
+    for (size_t i = before; i < f.memory.events().size(); ++i) {
+        CHECK(f.memory.events()[i].item.kind != atlas::core::ItemKind::Link);
+    }
+}
+
+TEST_CASE("a failed write in a rebuild focus keeps the focus") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha");
+    auto beta = f.addConcept("Beta");
+    f.dueLink(alpha, beta);
+    REQUIRE(f.session.start());
+    REQUIRE(f.session.submitRebuild(3));
+    f.session.continueToExplain();
+    auto before = f.memory.events().size();
+    REQUIRE(executeRawSql(f.path, "DROP TABLE review_events"));
+    CHECK_FALSE(f.session.submitExplain(3, 3, QString()));
+    CHECK(f.session.stage() == "explain");
+    CHECK(f.session.focusNumber() == 1);
+    CHECK(f.memory.events().size() == before);
 }

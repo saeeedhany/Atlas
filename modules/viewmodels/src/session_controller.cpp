@@ -92,7 +92,7 @@ std::chrono::milliseconds SessionController::sinceStageStart() const {
     return std::chrono::duration_cast<std::chrono::milliseconds>(memory_->now() - stageStartedAt_);
 }
 
-std::vector<RelationshipId> SessionController::hiddenLinks() const {
+std::vector<RelationshipId> SessionController::gradedLinks() const {
     std::vector<RelationshipId> links;
     for (const auto& item : current().plan.items) {
         if (item.kind == ItemKind::Link) links.push_back(RelationshipId(item.id));
@@ -133,8 +133,30 @@ bool SessionController::start() {
     recorded_.clear();
     previousTopic_ = map_->topicId();
     map_->setTopicId(QString());
-    enterFocus();
+    seekFocus();
     return true;
+}
+
+void SessionController::seekFocus() {
+    while (index_ < queue_.size() && workspace_->graph().findNode(current().plan.conceptId) == nullptr) ++index_;
+    if (index_ < queue_.size()) enterFocus();
+    else showSummary();
+}
+
+bool SessionController::itemExists(const ItemRef& item) const {
+    if (item.kind == ItemKind::Link) return workspace_->graph().findEdge(RelationshipId(item.id)) != nullptr;
+    return workspace_->graph().findNode(KnowledgeObjectId(item.id)) != nullptr;
+}
+
+std::unordered_set<QString> SessionController::introducedLinks() const {
+    std::unordered_set<QString> links;
+    const auto& focus = current().plan.conceptId;
+    for (const auto& id : workspace_->graph().allEdgeIds()) {
+        const auto* link = workspace_->graph().findEdge(id);
+        if (link == nullptr || (link->sourceId() != focus && link->targetId() != focus)) continue;
+        if (memory_->rules().isLinkReady(id, memory_->states())) links.insert(idString(id));
+    }
+    return links;
 }
 
 void SessionController::enterFocus() {
@@ -144,8 +166,9 @@ void SessionController::enterFocus() {
     feedback_.clear();
     marks_ = SessionMarks{};
     marks_.focusId = idString(current().plan.conceptId);
-    for (const auto& link : hiddenLinks()) marks_.hiddenLinks.insert(idString(link));
-    stage_ = marks_.hiddenLinks.empty() ? Stage::Explain : Stage::Rebuild;
+    bool rebuilds = !gradedLinks().empty();
+    if (rebuilds) marks_.hiddenLinks = introducedLinks();
+    stage_ = rebuilds ? Stage::Rebuild : Stage::Explain;
     if (stage_ == Stage::Explain) prepareExplain();
     stageStartedAt_ = memory_->now();
     pushMarks();
@@ -199,7 +222,7 @@ void SessionController::removeRecalled(int index) {
 QString SessionController::hint() {
     if (stage_ != Stage::Rebuild) return {};
     const auto& focus = current().plan.conceptId;
-    for (const auto& linkId : hiddenLinks()) {
+    for (const auto& linkId : gradedLinks()) {
         const auto* link = workspace_->graph().findEdge(linkId);
         if (link == nullptr) continue;
         auto other = link->sourceId() == focus ? link->targetId() : link->sourceId();
@@ -218,9 +241,21 @@ bool SessionController::submitRebuild(int certainty) {
     auto predicted = atlas::core::certaintyFromInt(certainty);
     if (!predicted) return fail(tr("Choose how sure you are first"));
     const auto& focus = current().plan.conceptId;
-    atlas::learning::RebuildAnswer answer{focus, *predicted, recalled_, hinted_, sinceStageStart()};
+    auto neighbors = workspace_->graph().neighbors(focus, std::nullopt, atlas::graph::GraphEngine::Direction::Both);
+    std::vector<KnowledgeObjectId> gradedEnds;
+    for (const auto& linkId : gradedLinks()) {
+        const auto* link = workspace_->graph().findEdge(linkId);
+        if (link != nullptr) gradedEnds.push_back(link->sourceId() == focus ? link->targetId() : link->sourceId());
+    }
+    std::vector<atlas::learning::RecalledLink> judged;
+    for (const auto& named : recalled_) {
+        bool linked = std::find(neighbors.begin(), neighbors.end(), named.other) != neighbors.end();
+        bool graded = std::find(gradedEnds.begin(), gradedEnds.end(), named.other) != gradedEnds.end();
+        if (!linked || graded) judged.push_back(named);
+    }
+    atlas::learning::RebuildAnswer answer{focus, *predicted, judged, hinted_, sinceStageStart()};
     atlas::learning::RebuildGrader grader(workspace_->graph());
-    auto graded = grader.grade(answer, hiddenLinks(), atlas::learning::medianRebuildResponse(memory_->events()));
+    auto graded = grader.grade(answer, gradedLinks(), atlas::learning::medianRebuildResponse(memory_->events()));
 
     TimePoint now = memory_->now();
     pending_.clear();
@@ -239,13 +274,13 @@ bool SessionController::submitRebuild(int certainty) {
         feedback_.append(QVariantMap{
             {"title", titleOf(other)}, {"typeName", relationshipLabel(link->type())}, {"outcome", outcomeName(mark)}});
     }
-    auto neighbors = workspace_->graph().neighbors(focus, std::nullopt, atlas::graph::GraphEngine::Direction::Both);
     for (const auto& named : recalled_) {
         if (std::find(neighbors.begin(), neighbors.end(), named.other) != neighbors.end()) continue;
         marks_.confused.push_back(idString(named.other));
         feedback_.append(QVariantMap{{"title", titleOf(named.other)}, {"typeName", QString()}, {"outcome", "confused"}});
     }
     marks_.hinted.clear();
+    marks_.hiddenLinks.clear();
     stage_ = Stage::Feedback;
     pushMarks();
     emit changed();
@@ -315,7 +350,10 @@ bool SessionController::submitExplain(int certainty, int grade, const QString& w
     auto explain = makeEvent(explainItem_, Exercise::Explain, *predicted, *graded, memory_->now());
     explain.responseTime = sinceStageStart();
     events.push_back(explain);
-    if (auto saved = memory_->record(events); !saved.hasValue()) return fail(toQString(saved.error().detail));
+    std::erase_if(events, [this](const ReviewEvent& event) { return !itemExists(event.item); });
+    if (!events.empty()) {
+        if (auto saved = memory_->record(events); !saved.hasValue()) return fail(toQString(saved.error().detail));
+    }
 
     recorded_.insert(recorded_.end(), events.begin(), events.end());
     bool surprised = std::any_of(events.begin(), events.end(), [](const ReviewEvent& event) {
@@ -331,8 +369,7 @@ bool SessionController::submitExplain(int certainty, int grade, const QString& w
 
 void SessionController::advance() {
     ++index_;
-    if (index_ < queue_.size()) enterFocus();
-    else showSummary();
+    seekFocus();
 }
 
 void SessionController::showSummary() {

@@ -6,6 +6,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <chrono>
+#include <unordered_set>
 #include <vector>
 
 #include "atlas/learning/rebuild_grader.hpp"
@@ -98,7 +99,10 @@ private:
     bool fail(const QString& message);
     bool active() const { return stage_ != Stage::Idle && stage_ != Stage::Summary; }
     const Attempt& current() const { return queue_[index_]; }
-    std::vector<atlas::core::RelationshipId> hiddenLinks() const;
+    std::vector<atlas::core::RelationshipId> gradedLinks() const;
+    std::unordered_set<QString> introducedLinks() const;
+    bool itemExists(const atlas::core::ItemRef& item) const;
+    void seekFocus();
     bool isNamed(const atlas::core::KnowledgeObjectId& id) const;
     QString titleOf(const atlas::core::KnowledgeObjectId& id) const;
     std::chrono::milliseconds sinceStageStart() const;
