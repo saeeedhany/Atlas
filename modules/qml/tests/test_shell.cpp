@@ -23,7 +23,7 @@ TEST_CASE("Today counts the work waiting") {
     QmlFixture::settle();
     auto* today = QmlFixture::child(window.get(), "todayOverlay");
     CHECK(today->property("headline").toString().startsWith("2 items"));
-    CHECK(today->property("actionText").toString() == "Open the map");
+    CHECK(today->property("actionText").toString() == "Start session");
 }
 
 TEST_CASE("switching the theme recolors the window at once") {

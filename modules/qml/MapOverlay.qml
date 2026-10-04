@@ -72,7 +72,10 @@ Item {
             Qt.callLater(overlay.settle)
         }
         function onSceneChanged() { Qt.callLater(overlay.settle) }
-        function onSelectedIdChanged() { overlay.openConcept(MapView.selectedId) }
+        function onSelectedIdChanged() {
+            if (Session.stage === "idle")
+                overlay.openConcept(MapView.selectedId)
+        }
     }
 
     Connections {

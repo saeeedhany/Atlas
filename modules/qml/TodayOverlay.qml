@@ -10,12 +10,15 @@ Item {
                                      : Today.caughtUp ? "All caught up"
                                      : Today.itemCount + (Today.itemCount === 1 ? " item" : " items")
                                        + ", about " + Today.estimatedMinutes + " min"
-    readonly property string actionText: Today.empty ? "Add your first concept" : "Open the map"
+    readonly property string action: Today.empty ? "add" : Today.caughtUp ? "map" : "session"
+    readonly property string actionText: action === "add" ? "Add your first concept"
+                                       : action === "map" ? "Open the map"
+                                       : "Start session"
 
-    signal actionTriggered(bool addConcept)
+    signal actionTriggered(string action)
 
     function act() {
-        actionTriggered(Today.empty)
+        actionTriggered(action)
     }
 
     opacity: shown ? 1 : 0

@@ -21,8 +21,10 @@ qt_add_qml_module(atlas_qml
         MapOverlay.qml
         NavRail.qml
         Motion.qml
+        CertaintyPicker.qml
         Ring.qml
         SectionLabel.qml
+        SessionScreen.qml
         SettingsScreen.qml
         StartupError.qml
         Theme.qml

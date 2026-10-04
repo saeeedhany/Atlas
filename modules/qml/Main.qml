@@ -57,6 +57,8 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         width: Theme.railWidth
         current: window.page
+        enabled: Session.stage === "idle"
+        opacity: enabled ? 1 : 0.5
         onSelected: name => window.show(name)
     }
 
@@ -88,11 +90,24 @@ ApplicationWindow {
             objectName: "todayOverlay"
             anchors.fill: parent
             shown: window.page === "today"
-            onActionTriggered: addConcept => {
+            onActionTriggered: action => {
+                if (action === "session") {
+                    if (Session.start())
+                        window.show("session")
+                    return
+                }
                 window.show("map")
-                if (addConcept)
+                if (action === "add")
                     mapOverlay.focusNewConcept()
             }
+        }
+
+        SessionScreen {
+            objectName: "sessionScreen"
+            anchors.fill: parent
+            canvas: canvas
+            shown: window.page === "session"
+            onDone: window.show("map")
         }
 
         SettingsScreen {
@@ -124,6 +139,10 @@ ApplicationWindow {
     }
     Connections {
         target: ConceptLinks
+        function onErrorOccurred(message) { toast.show(message) }
+    }
+    Connections {
+        target: Session
         function onErrorOccurred(message) { toast.show(message) }
     }
 }
