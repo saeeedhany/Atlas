@@ -30,7 +30,10 @@ struct RenderNode {
     bool ghost = false;
     QString groupKey;
     QString groupLabel;
+    bool hinted = false;
 };
+
+enum class EdgeMark { None, Hidden, Recalled, Partial, Missed, Confused };
 
 struct RenderEdge {
     QString id{};
@@ -39,6 +42,7 @@ struct RenderEdge {
     bool directed = true;
     bool contrast = false;
     bool ghost = false;
+    EdgeMark mark = EdgeMark::None;
 };
 
 struct RenderGroup {
@@ -90,6 +94,9 @@ public:
     Q_INVOKABLE void zoomAt(double factor, double screenX, double screenY);
     Q_INVOKABLE QVariant screenPositionOf(const QString& id) const;
     Q_INVOKABLE QString linkAt(double screenX, double screenY) const;
+
+    double shownRecallOf(const QString& id) const;
+    const std::unordered_set<QString>& highlightedNeighbors() const { return neighborIds_; }
 
     const QTextLayout* labelLayoutFor(const QString& id) const;
 
@@ -145,6 +152,8 @@ private:
 
     std::unordered_map<QString, QPointF> targetPositions_;
     std::unordered_map<QString, QPointF> currentPositions_;
+    std::unordered_map<QString, double> shownRecall_;
+    std::unordered_map<QString, double> targetRecall_;
     QTimer* animationTimer_;
 
     QString selectedId_;

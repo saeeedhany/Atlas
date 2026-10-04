@@ -197,3 +197,32 @@ TEST_CASE("resizing the canvas reports a view change so culled geometry is rebui
     canvas.setSize(QSizeF(1600, 1200));
     CHECK(changes > 0);
 }
+
+TEST_CASE("hidden links are neither drawn targets nor hoverable") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    RenderEdge edge;
+    edge.id = "link";
+    edge.sourceId = "a";
+    edge.targetId = "b";
+    edge.mark = EdgeMark::Hidden;
+    canvas.setGraphData({makeNode("a", 0, 0, ""), makeNode("b", 400, 0, "")}, {edge});
+    canvas.centerOn("a");
+    QPointF middle = (canvas.screenPositionOf("a").toPointF() + canvas.screenPositionOf("b").toPointF()) / 2.0;
+    CHECK(canvas.linkAt(middle.x(), middle.y()).isEmpty());
+    CHECK(canvas.edges()[0].mark == EdgeMark::Hidden);
+}
+
+TEST_CASE("memory rings ease to new values unless motion is reduced") {
+    GraphCanvasItem canvas;
+    canvas.setGraphData({makeNode("a", 0, 0, "", 0.2)}, {});
+    CHECK(canvas.shownRecallOf("a") == doctest::Approx(0.2));
+    canvas.setGraphData({makeNode("a", 0, 0, "", 0.9)}, {});
+    CHECK(canvas.shownRecallOf("a") == doctest::Approx(0.2));
+
+    canvas.setProperty("animated", false);
+    canvas.setGraphData({makeNode("a", 0, 0, "", 0.5)}, {});
+    CHECK(canvas.shownRecallOf("a") == doctest::Approx(0.5));
+    CHECK(canvas.shownRecallOf("missing") == -1.0);
+}

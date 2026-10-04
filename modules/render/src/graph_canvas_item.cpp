@@ -78,6 +78,10 @@ constexpr float kMinDotSpacingPx = 18.0f;
 constexpr float kMaxDotSpacingPx = 72.0f;
 constexpr float kDotRadius = 1.3f;
 constexpr int kLabelPixelSize = 11;
+constexpr double kRecallEase = 0.06;
+constexpr double kRecallEpsilon = 0.002;
+constexpr float kHintRingRadius = 21.0f;
+constexpr int kHintAlphaPercent = 60;
 
 enum Layer { HighlightLayer, EdgeLayer, ArrowLayer, BorderLayer, FillLayer, MemoryLayer, LayerCount };
 
@@ -269,6 +273,20 @@ void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<Re
     }
     targetPositions_ = std::move(targets);
 
+    std::unordered_map<QString, double> recallTargets;
+    bool recallMoving = false;
+    for (const auto& node : nodes_) {
+        recallTargets[node.id] = node.recall;
+        auto shown = shownRecall_.find(node.id);
+        if (shown == shownRecall_.end() || !animated_) shownRecall_[node.id] = node.recall;
+        else if (shown->second != node.recall) recallMoving = true;
+    }
+    for (auto it = shownRecall_.begin(); it != shownRecall_.end();) {
+        it = recallTargets.contains(it->first) ? std::next(it) : shownRecall_.erase(it);
+    }
+    targetRecall_ = std::move(recallTargets);
+    if (recallMoving && !animationTimer_->isActive()) animationTimer_->start();
+
     std::unordered_map<QString, QString> nodeLabels;
     for (const auto& node : nodes_) {
         if (!node.label.isEmpty()) nodeLabels.emplace(node.id, elideLabel(node.label));
@@ -288,6 +306,11 @@ void GraphCanvasItem::setGraphData(std::vector<RenderNode> nodes, std::vector<Re
     if (hadGroups != hasGroups_ && scale_ < kCollapseZoom) emit zoomChanged();
     if (!animationTimer_->isActive()) animationTimer_->start();
     fitOnce();
+}
+
+double GraphCanvasItem::shownRecallOf(const QString& id) const {
+    auto shown = shownRecall_.find(id);
+    return shown == shownRecall_.end() ? -1.0 : shown->second;
 }
 
 void GraphCanvasItem::fitOnce() {
@@ -314,6 +337,14 @@ void GraphCanvasItem::tickAnimation() {
         stillMoving = true;
         nodesChanged = true;
         current += delta * kEaseFactor;
+    }
+    for (auto& [id, shown] : shownRecall_) {
+        double target = targetRecall_[id];
+        if (shown == target) continue;
+        if (shown < 0.0 || target < 0.0 || std::abs(target - shown) <= kRecallEpsilon) shown = target;
+        else shown += (target - shown) * kRecallEase;
+        nodesChanged = true;
+        stillMoving = stillMoving || shown != target;
     }
     if (cameraMoving_) {
         double nextScale = scale_ + (targetScale_ - scale_) * kEaseFactor;
@@ -451,6 +482,7 @@ QString GraphCanvasItem::linkAt(double screenX, double screenY) const {
     if (collapsed()) return {};
     QPointF point(screenX, screenY);
     for (const auto& edge : edges_) {
+        if (edge.mark == EdgeMark::Hidden) continue;
         auto from = currentPositions_.find(edge.sourceId);
         auto to = currentPositions_.find(edge.targetId);
         if (from == currentPositions_.end() || to == currentPositions_.end()) continue;
@@ -510,6 +542,7 @@ void GraphCanvasItem::buildHighlight(SceneVertices& out, const Theme& theme) con
         if (isSelected) appendTriangles(out.highlight, ringArc(center, kSelectRingRadius, kSelectRingThickness, 1.0), theme.selectedRing);
         else if (isNeighbor) appendTriangles(out.highlight, ringArc(center, kNeighborRingRadius, kHighlightThickness, 1.0), theme.neighborRing);
         else if (isHovered) appendTriangles(out.highlight, ringArc(center, kHoverRingRadius, kHighlightThickness, 1.0), theme.hoverRing);
+        if (node.hinted) appendTriangles(out.highlight, ringArc(center, kHintRingRadius, kHighlightThickness, 1.0), faded(theme.accent, kHintAlphaPercent));
     }
 }
 
@@ -530,7 +563,7 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
         }
         appendDisc(out.borders, center, kNodeRadius + kNodeBorderWidth, border);
         appendDisc(out.fills, center, kNodeRadius, fill);
-        appendMemoryRing(out.memory, center, kMemoryRingRadius, kMemoryRingThickness, node.recall, theme,
+        appendMemoryRing(out.memory, center, kMemoryRingRadius, kMemoryRingThickness, shownRecallOf(node.id), theme,
                          dimmed ? std::min(alpha, kDimmedRingAlphaPercent) : alpha);
     }
 }
@@ -539,17 +572,27 @@ void GraphCanvasItem::buildEdges(SceneVertices& out, const Theme& theme) const {
     bool hasHighlight = !selectedId_.isEmpty();
     float trim = kMemoryRingRadius + kMemoryRingThickness / 2 + 2.0f;
     for (const auto& edge : edges_) {
+        if (edge.mark == EdgeMark::Hidden) continue;
         Vec2 from = positionOf(edge.sourceId);
         Vec2 to = positionOf(edge.targetId);
         if (!segmentMayCross(cullRect_, QPointF(from.x, from.y), QPointF(to.x, to.y))) continue;
         bool touchesSelection = edge.sourceId == selectedId_ || edge.targetId == selectedId_;
-        QColor color = hasHighlight && !touchesSelection ? theme.edgeDimmed : theme.edge;
+        bool dimmable = hasHighlight && !touchesSelection && edge.mark == EdgeMark::None;
+        QColor color = dimmable ? theme.edgeDimmed : theme.edge;
+        switch (edge.mark) {
+            case EdgeMark::Recalled: color = theme.ringStrong; break;
+            case EdgeMark::Partial: color = theme.ringMedium; break;
+            case EdgeMark::Missed:
+            case EdgeMark::Confused: color = theme.ringWeak; break;
+            default: break;
+        }
         if (edge.ghost) color = faded(color, kGhostAlphaPercent);
+        bool dashed = edge.contrast || edge.mark == EdgeMark::Confused;
 
         Vec2 start = trimmedEnd(to, from, trim);
         Vec2 end = trimmedEnd(from, to, edge.directed ? trim + kArrowLength : trim);
         std::vector<LineSegment> segments =
-            edge.contrast ? dashedLine(start, end, kDashLength, kDashGap) : std::vector<LineSegment>{{start, end}};
+            dashed ? dashedLine(start, end, kDashLength, kDashGap) : std::vector<LineSegment>{{start, end}};
         for (const auto& segment : segments) {
             out.edges.push_back({segment.from.x, segment.from.y, color});
             out.edges.push_back({segment.to.x, segment.to.y, color});

@@ -329,3 +329,54 @@ TEST_CASE("a single topic view never offers topic collapse") {
     f.map.setTopicId(idString(os));
     CHECK(f.map.nodes()[0].groupKey.isEmpty());
 }
+
+TEST_CASE("session marks hide, color, and annotate the focus's links") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha", uncategorizedTopicId());
+    auto beta = f.addConcept("Beta", uncategorizedTopicId());
+    auto gamma = f.addConcept("Gamma", uncategorizedTopicId());
+    auto link = f.workspace.createRelationship(alpha, beta, RelationshipType::DependsOn, std::nullopt).value();
+    f.settle();
+
+    SessionMarks marks;
+    marks.focusId = idString(alpha);
+    marks.hiddenLinks.insert(idString(link));
+    marks.hinted.insert(idString(beta));
+    f.map.setSessionMarks(marks);
+    REQUIRE(f.map.inSession());
+    REQUIRE(f.map.edges().size() == 1);
+    CHECK(f.map.edges()[0].mark == atlas::render::EdgeMark::Hidden);
+    CHECK(f.node(beta)->hinted);
+
+    marks.outcomes[idString(link)] = atlas::render::EdgeMark::Recalled;
+    marks.confused.push_back(idString(gamma));
+    f.map.setSessionMarks(marks);
+    REQUIRE(f.map.edges().size() == 2);
+    CHECK(f.map.edges()[0].mark == atlas::render::EdgeMark::Recalled);
+    CHECK(f.map.edges()[1].mark == atlas::render::EdgeMark::Confused);
+    CHECK(f.map.edges()[1].targetId == idString(gamma));
+
+    f.map.clearSessionMarks();
+    CHECK_FALSE(f.map.inSession());
+    REQUIRE(f.map.edges().size() == 1);
+    CHECK(f.map.edges()[0].mark == atlas::render::EdgeMark::None);
+}
+
+TEST_CASE("a session selection never highlights neighbors") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha", uncategorizedTopicId());
+    auto beta = f.addConcept("Beta", uncategorizedTopicId());
+    f.workspace.createRelationship(alpha, beta, RelationshipType::DependsOn, std::nullopt).value();
+    f.settle();
+    atlas::render::GraphCanvasItem canvas;
+    f.map.attach(&canvas);
+
+    f.map.setSelectedId(idString(alpha));
+    CHECK(canvas.highlightedNeighbors().contains(idString(beta)));
+
+    SessionMarks marks;
+    marks.focusId = idString(alpha);
+    f.map.setSessionMarks(marks);
+    f.map.setSelectedId(idString(alpha));
+    CHECK(canvas.highlightedNeighbors().empty());
+}

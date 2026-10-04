@@ -116,6 +116,7 @@ void MapViewModel::refresh() {
         node.color = palette_->nodeFill();
         node.recall = memory_->recallChance(ItemRef::forConcept(object.id())).value_or(-1.0);
         node.ghost = !member;
+        node.hinted = marks_.hinted.contains(node.id);
         if (object.topicId()) {
             if (!topic) node.groupKey = idString(*object.topicId());
             auto name = topicNames_.find(object.topicId()->toString());
@@ -137,6 +138,20 @@ void MapViewModel::refresh() {
         edge.directed = !atlas::core::isSymmetric(link.type());
         edge.contrast = link.type() == RelationshipType::AlternativeTo || link.type() == RelationshipType::OppositeOf;
         edge.ghost = !sourceIn || !targetIn;
+        if (auto outcome = marks_.outcomes.find(edge.id); outcome != marks_.outcomes.end()) edge.mark = outcome->second;
+        else if (marks_.hiddenLinks.contains(edge.id)) edge.mark = atlas::render::EdgeMark::Hidden;
+        edges_.push_back(edge);
+    }
+    for (const auto& wrongId : marks_.confused) {
+        auto focus = parseId<KnowledgeObjectId>(marks_.focusId);
+        auto wrong = parseId<KnowledgeObjectId>(wrongId);
+        if (!focus || !wrong || !shown.contains(*focus) || !shown.contains(*wrong)) continue;
+        RenderEdge edge;
+        edge.id = QStringLiteral("confused:") + wrongId;
+        edge.sourceId = marks_.focusId;
+        edge.targetId = wrongId;
+        edge.directed = false;
+        edge.mark = atlas::render::EdgeMark::Confused;
         edges_.push_back(edge);
     }
     conceptCount_ = static_cast<int>(members.size());
@@ -149,6 +164,16 @@ void MapViewModel::refresh() {
     emit sceneChanged();
 }
 
+void MapViewModel::setSessionMarks(SessionMarks marks) {
+    marks_ = std::move(marks);
+    refresh();
+}
+
+void MapViewModel::clearSessionMarks() {
+    marks_ = SessionMarks{};
+    refresh();
+}
+
 void MapViewModel::pushToCanvas() {
     if (!canvas_) return;
     canvas_->setTheme(palette_->mode());
@@ -158,6 +183,10 @@ void MapViewModel::pushToCanvas() {
 
 void MapViewModel::applySelection() {
     if (!canvas_) return;
+    if (inSession()) {
+        canvas_->setHighlight(selectedId_, {});
+        return;
+    }
     auto selected = parseId<KnowledgeObjectId>(selectedId_);
     if (!selected) {
         canvas_->clearHighlight();

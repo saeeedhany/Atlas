@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "atlas/render/graph_canvas_item.hpp"
@@ -21,6 +22,14 @@
 #include "atlas/viewmodels/workspace_controller.hpp"
 
 namespace atlas::viewmodels {
+
+struct SessionMarks {
+    QString focusId;
+    std::unordered_set<QString> hiddenLinks;
+    std::unordered_map<QString, atlas::render::EdgeMark> outcomes;
+    std::vector<QString> confused;
+    std::unordered_set<QString> hinted;
+};
 
 class MapViewModel : public QObject, public ProvidedSingleton<MapViewModel> {
     Q_OBJECT
@@ -53,6 +62,10 @@ public:
     const std::vector<atlas::render::RenderNode>& nodes() const { return nodes_; }
     const std::vector<atlas::render::RenderEdge>& edges() const { return edges_; }
 
+    void setSessionMarks(SessionMarks marks);
+    void clearSessionMarks();
+    bool inSession() const { return !marks_.focusId.isEmpty(); }
+
 signals:
     void topicIdChanged();
     void selectedIdChanged();
@@ -60,6 +73,7 @@ signals:
     void errorOccurred(const QString& message);
 
 private:
+    SessionMarks marks_;
     std::optional<atlas::core::TopicId> scope() const;
     void scheduleRefresh();
     void dropMissingScope();
