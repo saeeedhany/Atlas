@@ -698,3 +698,18 @@ Organized by module, roughly in the order each decision arose.
 - New concepts start near their linked neighbors, else near their topic's center, so topics form regions on the map.
 - Ghost nodes are drawn at their own saved positions rather than at the edge of the view.
 - Canvas labels are cached across scene updates; hover rebuilds only the highlight layer, while selection still rebuilds everything because it dims other nodes.
+
+## QML shell (plan 3)
+
+- The map canvas is one layer under every page; Today, Map, and Settings are overlays on top of it.
+- Only `Main.qml` imports `Atlas.Render`; other components receive the canvas as `property Item canvas`.
+- `Theme` forwards the C++ `Palette`; `Motion` holds the single curve and every duration, all zero when motion is reduced, and opacity changes fall back to 120 ms fades.
+- Controls use the Basic style, recolored through the window palette.
+- Concept fields write the draft on every edit. Switching concepts, closing the panel, or closing the window saves it; if that save fails, the selection stays on the unsaved concept and a toast says why.
+- View model errors appear as a toast for 4 s, never as a modal dialog.
+- `AppStartup` turns a database that cannot be opened or loaded into a readable startup error window.
+- The `atlas` app keeps the application name `atlas_app` so it shares the existing data folder until Plan 4 removes the old app.
+- Camera moves ease on the canvas animation timer. Geometry is culled to a rect one viewport larger than the view and rebuilt only when the view leaves it or the topic collapse state flips.
+- A topic change fits the view to the new scope; focusing a concept from search or creation centers on it instead.
+- Search on the map finds concepts in the current topic; choose All topics to search everywhere.
+- Single topic views keep topic labels on nodes but never collapse into topic bubbles.
