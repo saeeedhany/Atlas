@@ -1,5 +1,6 @@
 add_executable(atlas_viewmodels_tests
     test_appearance.cpp
+    test_concept_editor.cpp
     test_main.cpp
     test_map_view_model.cpp
     test_memory_controller.cpp
