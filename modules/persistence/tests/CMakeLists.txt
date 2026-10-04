@@ -4,6 +4,7 @@ add_executable(atlas_persistence_tests
     test_knowledge_object_repository.cpp
     test_relationship_repository.cpp
     test_topic_repository.cpp
+    test_migration_three.cpp
 )
 
 target_link_libraries(atlas_persistence_tests PRIVATE atlas_persistence)

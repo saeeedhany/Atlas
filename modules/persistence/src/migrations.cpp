@@ -21,7 +21,7 @@ struct Migration {
 // migration that's already been released, only append new ones. The
 // schema_migrations table is what lets us tell, for any given .db file
 // on a person's disk, exactly which of these has already been applied.
-constexpr std::array<Migration, 2> kMigrations{{
+constexpr std::array<Migration, 3> kMigrations{{
     {1, "Initial schema: knowledge objects, relationships, and child content tables", R"sql(
         CREATE TABLE knowledge_objects (
             id TEXT PRIMARY KEY,
@@ -106,6 +106,62 @@ constexpr std::array<Migration, 2> kMigrations{{
             WHERE topic_id IS NULL;
 
         CREATE INDEX idx_knowledge_objects_topic_id ON knowledge_objects(topic_id);
+    )sql"},
+    {3, "Learning: review log, memory state cache, node placements", R"sql(
+        CREATE TABLE review_events (
+            id TEXT PRIMARY KEY,
+            item_kind TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            device_id TEXT NOT NULL,
+            reviewed_at INTEGER NOT NULL,
+            elapsed_days REAL NOT NULL,
+            exercise TEXT NOT NULL,
+            predicted INTEGER NOT NULL,
+            grade INTEGER NOT NULL,
+            hints_used INTEGER NOT NULL,
+            wrong_target_id TEXT,
+            response_ms INTEGER NOT NULL
+        );
+        CREATE INDEX idx_review_events_item ON review_events(item_kind, item_id, reviewed_at);
+
+        CREATE TABLE memory_states (
+            item_kind TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            stability REAL NOT NULL,
+            difficulty REAL NOT NULL,
+            last_reviewed_at INTEGER,
+            due_at INTEGER,
+            review_count INTEGER NOT NULL,
+            lapse_count INTEGER NOT NULL,
+            PRIMARY KEY (item_kind, item_id)
+        );
+
+        CREATE TABLE memory_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
+        CREATE TABLE node_placements (
+            concept_id TEXT PRIMARY KEY REFERENCES knowledge_objects(id) ON DELETE CASCADE,
+            x REAL NOT NULL,
+            y REAL NOT NULL,
+            pinned INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TRIGGER trg_knowledge_objects_forget_learning AFTER DELETE ON knowledge_objects
+        BEGIN
+            DELETE FROM review_events WHERE item_kind = 'concept' AND item_id = OLD.id;
+            DELETE FROM memory_states WHERE item_kind = 'concept' AND item_id = OLD.id;
+            UPDATE review_events SET wrong_target_id = NULL WHERE wrong_target_id = OLD.id;
+        END;
+
+        CREATE TRIGGER trg_relationships_forget_learning AFTER DELETE ON relationships
+        BEGIN
+            DELETE FROM review_events WHERE item_kind = 'link' AND item_id = OLD.id;
+            DELETE FROM memory_states WHERE item_kind = 'link' AND item_id = OLD.id;
+        END;
     )sql"},
 }};
 

@@ -37,6 +37,8 @@ public:
     void bindText(int index, std::string_view value);
     void bindOptionalText(int index, const std::optional<std::string>& value);
     void bindInt64(int index, int64_t value);
+    void bindDouble(int index, double value);
+    void bindOptionalInt64(int index, std::optional<int64_t> value);
 
     // true => a row is available (read via columnX); false => done.
     Result<bool, PersistenceError> step();
@@ -44,6 +46,8 @@ public:
     std::string columnText(int index) const;
     std::optional<std::string> columnOptionalText(int index) const;
     int64_t columnInt64(int index) const;
+    double columnDouble(int index) const;
+    std::optional<int64_t> columnOptionalInt64(int index) const;
 
 private:
     Statement(sqlite3_stmt* stmt, sqlite3* db);
@@ -51,5 +55,17 @@ private:
     sqlite3_stmt* stmt_ = nullptr;
     sqlite3* db_ = nullptr;  // not owned; used only for sqlite3_errmsg
 };
+
+template <typename Body>
+Result<void, PersistenceError> inTransaction(sqlite3* db, Body&& body) {
+    auto begin = execute(db, "BEGIN;");
+    if (!begin.hasValue()) return begin;
+    auto result = body();
+    if (!result.hasValue()) {
+        execute(db, "ROLLBACK;");
+        return result;
+    }
+    return execute(db, "COMMIT;");
+}
 
 }  // namespace atlas::persistence::detail

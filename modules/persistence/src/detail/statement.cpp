@@ -98,4 +98,21 @@ std::optional<std::string> Statement::columnOptionalText(int index) const {
 
 int64_t Statement::columnInt64(int index) const { return sqlite3_column_int64(stmt_, index); }
 
+void Statement::bindDouble(int index, double value) { sqlite3_bind_double(stmt_, index, value); }
+
+void Statement::bindOptionalInt64(int index, std::optional<int64_t> value) {
+    if (value.has_value()) {
+        bindInt64(index, *value);
+    } else {
+        sqlite3_bind_null(stmt_, index);
+    }
+}
+
+double Statement::columnDouble(int index) const { return sqlite3_column_double(stmt_, index); }
+
+std::optional<int64_t> Statement::columnOptionalInt64(int index) const {
+    if (sqlite3_column_type(stmt_, index) == SQLITE_NULL) return std::nullopt;
+    return columnInt64(index);
+}
+
 }  // namespace atlas::persistence::detail
