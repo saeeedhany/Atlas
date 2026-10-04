@@ -42,12 +42,11 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 2
 
-                Text { text: "Dark theme"; color: Theme.text; font.pixelSize: Theme.fontBody }
-                Text { text: "Graphite dark, or its light twin."; color: Theme.textMuted; font.pixelSize: Theme.fontSmall }
+                Text { Layout.fillWidth: true; text: "Dark theme"; color: Theme.text; font.pixelSize: Theme.fontBody }
+                Text { Layout.fillWidth: true; text: "Graphite dark, or its light twin."; color: Theme.textMuted; font.pixelSize: Theme.fontSmall }
             }
             AppSwitch {
                 objectName: "darkThemeSwitch"
-                Layout.alignment: Qt.AlignRight
                 checked: AppSettings.darkTheme
                 onToggled: AppSettings.darkTheme = checked
             }
@@ -60,12 +59,11 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 2
 
-                Text { text: "Reduce motion"; color: Theme.text; font.pixelSize: Theme.fontBody }
-                Text { text: "Movement becomes short fades."; color: Theme.textMuted; font.pixelSize: Theme.fontSmall }
+                Text { Layout.fillWidth: true; text: "Reduce motion"; color: Theme.text; font.pixelSize: Theme.fontBody }
+                Text { Layout.fillWidth: true; text: "Movement becomes short fades."; color: Theme.textMuted; font.pixelSize: Theme.fontSmall }
             }
             AppSwitch {
                 objectName: "reducedMotionSwitch"
-                Layout.alignment: Qt.AlignRight
                 checked: AppSettings.reducedMotion
                 onToggled: AppSettings.reducedMotion = checked
             }
@@ -92,7 +90,6 @@ Rectangle {
             }
             SpinBox {
                 objectName: "newPerDayBox"
-                Layout.alignment: Qt.AlignRight
                 from: 1
                 to: 20
                 value: AppSettings.newPerDay

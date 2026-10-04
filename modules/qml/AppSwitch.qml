@@ -5,6 +5,9 @@ Switch {
     id: control
 
     font.pixelSize: Theme.fontBody
+    padding: 0
+    implicitWidth: text === "" ? indicator.implicitWidth : contentItem.implicitWidth
+    implicitHeight: Math.max(indicator.implicitHeight, contentItem.implicitHeight)
     opacity: enabled ? 1 : 0.4
 
     indicator: Rectangle {
@@ -14,7 +17,9 @@ Switch {
                                : control.mirrored ? control.width - width - control.rightPadding : control.leftPadding
         y: control.topPadding + (control.availableHeight - height) / 2
         radius: height / 2
-        color: control.checked ? Theme.accent : Theme.border
+        color: control.checked ? Theme.accent : Theme.surfaceRaised
+        border.width: 1
+        border.color: control.checked ? Theme.accent : Theme.border
 
         Behavior on color { ColorAnimation { duration: Motion.fast } }
 
@@ -24,7 +29,7 @@ Switch {
             radius: 8
             y: 3
             x: control.checked ? parent.width - width - 3 : 3
-            color: control.checked ? Theme.background : Theme.text
+            color: control.checked ? Theme.background : Theme.textMuted
 
             Behavior on x {
                 enabled: !Motion.reduced

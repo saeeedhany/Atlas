@@ -1,6 +1,8 @@
 #include "doctest.h"
 #include "qml_fixture.hpp"
 
+#include <QQuickItem>
+
 TEST_CASE("settings controls write and follow the app settings") {
     QmlFixture f;
     auto screen = f.create("SettingsScreen", {{"shown", true}});
@@ -23,4 +25,20 @@ TEST_CASE("settings controls write and follow the app settings") {
     perDay->setProperty("value", 8);
     REQUIRE(QMetaObject::invokeMethod(perDay, "valueModified"));
     CHECK(f.context().settings().newPerDay() == 8);
+}
+
+TEST_CASE("settings switches and the spin box share the right edge") {
+    QmlFixture f;
+    auto screen = f.create("SettingsScreen", {{"shown", true}, {"width", 900}, {"height", 700}});
+    QmlFixture::settle();
+
+    auto rightEdge = [&](const char* name) {
+        auto* item = qobject_cast<QQuickItem*>(QmlFixture::child(screen.get(), name));
+        REQUIRE(item != nullptr);
+        return item->mapToItem(qobject_cast<QQuickItem*>(screen.get()), QPointF(item->width(), 0)).x();
+    };
+
+    const double spin = rightEdge("newPerDayBox");
+    CHECK(rightEdge("darkThemeSwitch") == doctest::Approx(spin));
+    CHECK(rightEdge("reducedMotionSwitch") == doctest::Approx(spin));
 }
