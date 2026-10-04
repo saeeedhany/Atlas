@@ -40,6 +40,7 @@ double Fsrs::retrievability(double elapsed, double stability) const {
 
 double Fsrs::recallChance(const MemoryState& state, TimePoint now) const {
     if (state.phase == Phase::New || !state.lastReviewedAt) return 0.0;
+    if (!std::isfinite(state.stability) || state.stability <= 0.0) return 0.0;
     return retrievability(elapsedDays(*state.lastReviewedAt, now), state.stability);
 }
 

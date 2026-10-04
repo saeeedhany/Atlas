@@ -45,6 +45,7 @@ TEST_CASE("stability updates match the reference values") {
     CHECK(fsrs.recallStability(5.0, 10.0, 0.7, Grade::Good) == doctest::Approx(81.7063939568).epsilon(kEps));
     CHECK(fsrs.forgetStability(5.0, 10.0, 0.9) == doctest::Approx(1.3919869730).epsilon(kEps));
     CHECK(fsrs.shortTermStability(2.3065, Grade::Good) == doctest::Approx(2.3065).epsilon(kEps));
+    CHECK(fsrs.shortTermStability(2.3065, Grade::Hard) == doctest::Approx(2.3065).epsilon(1e-8));
     CHECK(fsrs.shortTermStability(2.3065, Grade::Again) == doctest::Approx(0.7750839829).epsilon(kEps));
 }
 
@@ -110,4 +111,15 @@ TEST_CASE("an item never reviewed has zero recall chance") {
     Fsrs fsrs;
     MemoryState fresh{ItemRef::forConcept(KnowledgeObjectId::generate())};
     CHECK(fsrs.recallChance(fresh, day(0)) == 0.0);
+}
+
+TEST_CASE("a reviewed item with zero or invalid stability has zero recall chance") {
+    Fsrs fsrs;
+    auto state = fsrs.review(MemoryState{ItemRef::forConcept(KnowledgeObjectId::generate())},
+                             Grade::Good, day(0));
+    REQUIRE(state.phase == Phase::Review);
+    state.stability = 0.0;
+    CHECK(fsrs.recallChance(state, day(1)) == 0.0);
+    state.stability = std::nan("");
+    CHECK(fsrs.recallChance(state, day(1)) == 0.0);
 }
