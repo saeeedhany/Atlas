@@ -94,7 +94,8 @@ std::vector<GradedLink> RebuildGrader::grade(const RebuildAnswer& answer,
 
     for (size_t i = 0; i < answer.recalled.size(); ++i) {
         const auto& named = answer.recalled[i].other;
-        if (!used[i] && !contains(targets, named)) attachWrongTarget(graded, targets, named, answer.focus);
+        if (used[i] || named == answer.focus || contains(targets, named)) continue;
+        attachWrongTarget(graded, targets, named, answer.focus);
     }
     return graded;
 }

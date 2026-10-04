@@ -118,6 +118,16 @@ TEST_CASE("naming a hidden neighbor twice is not reported as a confusion") {
     for (const auto& link : graded) CHECK_FALSE(link.wrongTarget.has_value());
 }
 
+TEST_CASE("naming the focus itself is never reported as a confusion") {
+    Fixture f;
+    auto graded = f.grader.grade(f.answer({{f.btree, RelationshipType::DependsOn, true}}),
+                                 f.hidden, std::nullopt);
+    for (const auto& link : graded) {
+        CHECK(link.grade == Grade::Again);
+        CHECK_FALSE(link.wrongTarget.has_value());
+    }
+}
+
 TEST_CASE("two links to the same concept are matched by type first") {
     GraphEngine graph;
     auto a = addConcept(graph, "A");
