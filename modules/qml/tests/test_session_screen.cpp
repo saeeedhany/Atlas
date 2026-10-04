@@ -90,3 +90,24 @@ TEST_CASE("starting a session keeps the focus selected over an unsaved draft") {
     CHECK(f.context().session().stage() != "idle");
     CHECK(f.context().map().selectedId() == f.context().session().focusId());
 }
+
+TEST_CASE("a new session starts with a clean screen") {
+    QmlFixture f;
+    f.context().map().createConcept("Tree");
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto* today = QmlFixture::child(window.get(), "todayOverlay");
+    auto* screen = QmlFixture::child(window.get(), "sessionScreen");
+    REQUIRE(QMetaObject::invokeMethod(today, "act"));
+    REQUIRE(QMetaObject::invokeMethod(screen, "chooseCertainty", Q_ARG(int, 3)));
+    REQUIRE(QMetaObject::invokeMethod(screen, "reveal"));
+    f.context().session().quit();
+    REQUIRE(QMetaObject::invokeMethod(screen, "finish"));
+
+    f.context().map().createConcept("Graph");
+    QmlFixture::settle();
+    REQUIRE(QMetaObject::invokeMethod(today, "act"));
+    CHECK(f.context().session().stage() != "idle");
+    CHECK(screen->property("certainty").toInt() == 0);
+    CHECK_FALSE(screen->property("revealed").toBool());
+}

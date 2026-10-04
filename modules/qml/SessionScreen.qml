@@ -25,9 +25,21 @@ Item {
         candidates = []
     }
 
+    function reset() {
+        certainty = 0
+        revealed = false
+        answer.clear()
+        writtenKey.clear()
+        findField.clear()
+        candidates = []
+    }
+
     function submitRebuild() {
-        if (Session.submitRebuild(certainty))
-            certainty = 0
+        if (!Session.submitRebuild(certainty))
+            return
+        certainty = 0
+        findField.clear()
+        candidates = []
     }
 
     function reveal() {
@@ -35,25 +47,29 @@ Item {
     }
 
     function grade(value: int) {
-        if (!Session.submitExplain(certainty, value, writtenKey.text))
-            return
-        certainty = 0
-        revealed = false
-        answer.clear()
-        writtenKey.clear()
+        if (Session.submitExplain(certainty, value, writtenKey.text))
+            reset()
     }
 
     function finish() {
         Session.finish()
         followedFocus = ""
+        reset()
         done()
     }
 
     function follow() {
-        if (!canvas || Session.focusId === "" || Session.focusId === followedFocus)
+        if (Session.stage === "idle") {
+            followedFocus = ""
+            reset()
+            return
+        }
+        if (Session.focusId === followedFocus)
             return
         followedFocus = Session.focusId
-        canvas.centerOn(Session.focusId)
+        reset()
+        if (canvas && followedFocus !== "")
+            canvas.centerOn(followedFocus)
     }
 
     function outcomeColor(outcome) {
