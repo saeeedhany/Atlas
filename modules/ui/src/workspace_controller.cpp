@@ -176,15 +176,6 @@ Result<RelationshipId, ControllerFailure> WorkspaceController::createRelationshi
         return Result<RelationshipId, ControllerFailure>::err(
             {ControllerErrorCode::NotFound, "No KnowledgeObject with that id"});
     }
-    // std::optional::operator== handles every case correctly in one
-    // comparison: both nullopt (equal), both set to the same Topic
-    // (equal), or one/both differ (not equal) — no separate has_value()
-    // branch needed.
-    if (sourceObject->topicId() != targetObject->topicId()) {
-        return Result<RelationshipId, ControllerFailure>::err(
-            {ControllerErrorCode::ValidationFailed,
-             "Concepts in different topics can't be connected to each other"});
-    }
     // Checked against the graph *before* writing anything: the database's
     // UNIQUE(source_id, target_id, type) constraint doesn't catch a
     // symmetric type's reverse-pair duplicate, but GraphEngine does.

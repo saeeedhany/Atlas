@@ -235,25 +235,14 @@ atlas::render::GraphCanvasItem* GraphWindow::canvasItem() const {
 }
 
 void GraphWindow::refreshGraph() {
-    // A temporary, topic-scoped GraphEngine, built fresh each refresh —
-    // not a filter applied after computing layout on the whole
-    // workspace. Two things fall out of that for free: (1) force-
-    // directed physics never lets an off-screen, different-topic node
-    // pull this topic's layout around, and (2) since
-    // WorkspaceController::createRelationship rejects any cross-topic
-    // edge, every relationship touching a member of this topic is
-    // guaranteed to have both endpoints inside it too — so "keep every
-    // relationship whose source is a member" below never has to also
-    // check the target. GraphEngine itself stays completely topic-
-    // agnostic (see docs/DECISIONS.md's reasoning for why graph
-    // structure and display/scoping concerns are kept apart) — this
-    // construction lives here, in the UI layer, not in atlas-graph.
+    // Links into other topics are left out of a single topic's view.
     atlas::graph::GraphEngine topicGraph;
     for (auto& object : controller_->knowledgeObjectsInTopic(topicId_)) {
         topicGraph.addNode(std::move(object));
     }
     for (auto& relationship : controller_->allRelationships()) {
-        if (topicGraph.findNode(relationship.sourceId()) != nullptr) {
+        if (topicGraph.findNode(relationship.sourceId()) != nullptr &&
+            topicGraph.findNode(relationship.targetId()) != nullptr) {
             topicGraph.addEdge(std::move(relationship));
         }
     }

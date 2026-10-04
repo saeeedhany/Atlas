@@ -113,3 +113,24 @@ TEST_CASE("GraphWindow::setTopic scopes refreshGraph to that topic's members and
     window.setTopic(os);
     CHECK(window.canvasItem() != nullptr);
 }
+
+TEST_CASE("GraphWindow shows a topic that has links into another topic") {
+    auto dbResult = Database::open(":memory:");
+    REQUIRE(dbResult.hasValue());
+    auto db = std::move(dbResult).value();
+
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    auto os = controller.createTopic("Operating Systems").value();
+    auto databases = controller.createTopic("Databases").value();
+    auto paging = controller.createKnowledgeObject("Paging", os).value();
+    auto indexing = controller.createKnowledgeObject("Indexing", databases).value();
+    REQUIRE(controller.createRelationship(indexing, paging, RelationshipType::Uses, std::nullopt)
+                .hasValue());
+
+    GraphWindow window(controller, nullptr, true, os);
+    CHECK(window.canvasItem() != nullptr);
+    window.setTopic(databases);
+    CHECK(window.canvasItem() != nullptr);
+}

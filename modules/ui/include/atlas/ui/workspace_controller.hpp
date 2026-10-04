@@ -122,15 +122,7 @@ public:
     // comment for why.
     std::vector<KnowledgeObject> knowledgeObjectsInTopic(const TopicId& topicId) const;
 
-    // Rejects a self-loop, rejects a duplicate — including, for a
-    // symmetric type, the same pair stored in reverse order — and
-    // rejects connecting two KnowledgeObjects in different Topics.
-    // The topic check is here, not on Relationship or KnowledgeObject:
-    // it's an app-level rule about how two objects may relate (same
-    // division as the duplicate-edge check), not something intrinsic
-    // to either class. All three checks run against the in-memory
-    // graph *before* writing anything, so a rejection is never
-    // discovered only after the database has already accepted a row.
+    // Rejects self-loops and duplicates, including a symmetric pair stored in reverse.
     Result<RelationshipId, ControllerFailure> createRelationship(
         const KnowledgeObjectId& sourceId, const KnowledgeObjectId& targetId, RelationshipType type,
         std::optional<std::string> note);

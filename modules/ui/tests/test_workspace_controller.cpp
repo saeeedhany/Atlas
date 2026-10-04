@@ -444,7 +444,7 @@ TEST_CASE("knowledgeObjectsInTopic only returns members of that topic") {
     CHECK(dbMembers.front().title() == "Indexing");
 }
 
-TEST_CASE("createRelationship rejects connecting KnowledgeObjects in different topics") {
+TEST_CASE("createRelationship connects KnowledgeObjects in different topics") {
     auto db = openTestDatabase();
     WorkspaceController controller(db);
     REQUIRE(controller.load().hasValue());
@@ -456,9 +456,28 @@ TEST_CASE("createRelationship rejects connecting KnowledgeObjects in different t
 
     auto result =
         controller.createRelationship(paging, indexing, RelationshipType::RelatedTo, std::nullopt);
-    CHECK(!result.hasValue());
-    CHECK(result.error().code == ControllerErrorCode::ValidationFailed);
-    CHECK(controller.allRelationships().empty());
+    REQUIRE(result.hasValue());
+    CHECK(controller.allRelationships().size() == 1);
+}
+
+TEST_CASE("moving a concept to another topic keeps its relationships") {
+    auto db = openTestDatabase();
+    WorkspaceController controller(db);
+    REQUIRE(controller.load().hasValue());
+
+    auto first = controller.createTopic("First").value();
+    auto second = controller.createTopic("Second").value();
+    auto a = controller.createKnowledgeObject("A", first).value();
+    auto b = controller.createKnowledgeObject("B", first).value();
+    REQUIRE(controller.createRelationship(a, b, RelationshipType::DependsOn, std::nullopt).hasValue());
+
+    KnowledgeObjectEdits edits;
+    edits.topicId = second;
+    REQUIRE(controller.updateKnowledgeObject(a, edits).hasValue());
+
+    CHECK(controller.allRelationships().size() == 1);
+    RelationshipRepository repository(db);
+    CHECK(repository.findAll().value().size() == 1);
 }
 
 TEST_CASE("createRelationship allows connecting two KnowledgeObjects in the same topic") {
