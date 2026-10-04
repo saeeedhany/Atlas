@@ -8,27 +8,36 @@ Item {
     property bool active: false
     property string focusId
     property bool fitPending: false
+    property bool focusWaited: false
 
     function focusNewConcept() {
         topicBar.focusNewConcept()
     }
 
     function focusConcept(id: string) {
+        if (Object.keys(MapView.conceptInfo(id)).length === 0)
+            return
         MapView.selectedId = id
         if (MapView.selectedId !== id) {
             MapView.topicId = ""
             MapView.selectedId = id
         }
         focusId = id
+        focusWaited = false
         Qt.callLater(settle)
     }
 
     function settle() {
         if (!canvas)
             return
-        if (focusId !== "") {
-            if (canvas.screenPositionOf(focusId) === undefined)
+        if (focusId !== "" && canvas.screenPositionOf(focusId) === undefined) {
+            if (!focusWaited) {
+                focusWaited = true
                 return
+            }
+            focusId = ""
+        }
+        if (focusId !== "") {
             canvas.centerOn(focusId)
             focusId = ""
             fitPending = false
@@ -81,7 +90,7 @@ Item {
         anchors.top: parent.top
         anchors.margins: Theme.gap * 2
         onFocusRequested: id => overlay.focusConcept(id)
-        onFitRequested: overlay.canvas.fitToContent()
+        onFitRequested: if (overlay.canvas) overlay.canvas.fitToContent()
     }
 
     Shortcut {

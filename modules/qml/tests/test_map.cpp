@@ -83,3 +83,31 @@ TEST_CASE("the hover card describes concepts and links") {
     REQUIRE(QMetaObject::invokeMethod(card, "showLink", Q_ARG(QString, QString())));
     CHECK_FALSE(card->property("shown").toBool());
 }
+
+TEST_CASE("focusing an unknown concept changes nothing") {
+    QmlFixture f;
+    auto os = f.context().topics().createTopic("OS");
+    f.context().map().setTopicId(os);
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto* overlay = QmlFixture::child(window.get(), "mapOverlay");
+    REQUIRE(QMetaObject::invokeMethod(overlay, "focusConcept", Q_ARG(QString, "missing")));
+    QmlFixture::settle();
+    CHECK(f.context().map().topicId() == os);
+    CHECK(overlay->property("focusId").toString().isEmpty());
+}
+
+TEST_CASE("a focus that never resolves does not block topic fits") {
+    QmlFixture f;
+    auto os = f.context().topics().createTopic("OS");
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto* overlay = QmlFixture::child(window.get(), "mapOverlay");
+    overlay->setProperty("focusId", "ghost");
+    f.context().map().setTopicId(os);
+    QmlFixture::settle();
+    REQUIRE(QMetaObject::invokeMethod(overlay, "settle"));
+    QmlFixture::settle();
+    CHECK(overlay->property("focusId").toString().isEmpty());
+    CHECK_FALSE(overlay->property("fitPending").toBool());
+}
