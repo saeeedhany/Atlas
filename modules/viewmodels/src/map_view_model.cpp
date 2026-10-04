@@ -2,6 +2,7 @@
 
 #include <QVariantMap>
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -22,6 +23,7 @@ MapViewModel::MapViewModel(WorkspaceController& workspace, MemoryController& mem
                            Palette& palette, QObject* parent)
     : QObject(parent), workspace_(&workspace), memory_(&memory), placements_(&placements), palette_(&palette) {
     connect(workspace_, &WorkspaceController::graphChanged, this, &MapViewModel::scheduleRefresh);
+    connect(workspace_, &WorkspaceController::topicsChanged, this, &MapViewModel::dropMissingScope);
     connect(workspace_, &WorkspaceController::topicsChanged, this, &MapViewModel::scheduleRefresh);
     connect(memory_, &MemoryController::memoryChanged, this, &MapViewModel::scheduleRefresh);
     connect(placements_, &PlacementController::placementsChanged, this, &MapViewModel::scheduleRefresh);
@@ -41,8 +43,20 @@ std::optional<TopicId> MapViewModel::scope() const {
     return parseId<TopicId>(topicId_);
 }
 
+void MapViewModel::dropMissingScope() {
+    auto topic = scope();
+    if (!topic || workspace_->findTopic(*topic)) return;
+    topicId_.clear();
+    emit topicIdChanged();
+}
+
+bool MapViewModel::isShown(const QString& conceptId) const {
+    return std::any_of(nodes_.begin(), nodes_.end(), [&](const RenderNode& node) { return node.id == conceptId; });
+}
+
 void MapViewModel::setTopicId(const QString& topicId) {
-    QString normalized = parseId<TopicId>(topicId) ? topicId : QString();
+    auto parsed = parseId<TopicId>(topicId);
+    QString normalized = parsed ? idString(*parsed) : QString();
     if (normalized == topicId_) return;
     topicId_ = normalized;
     emit topicIdChanged();
@@ -50,8 +64,11 @@ void MapViewModel::setTopicId(const QString& topicId) {
 }
 
 void MapViewModel::setSelectedId(const QString& conceptId) {
-    if (conceptId == selectedId_) return;
-    selectedId_ = conceptId;
+    auto parsed = parseId<KnowledgeObjectId>(conceptId);
+    QString normalized = parsed ? idString(*parsed) : QString();
+    if (!isShown(normalized)) normalized.clear();
+    if (normalized == selectedId_) return;
+    selectedId_ = normalized;
     applySelection();
     emit selectedIdChanged();
 }
@@ -117,12 +134,9 @@ void MapViewModel::refresh() {
     }
     conceptCount_ = static_cast<int>(members.size());
 
-    if (!selectedId_.isEmpty()) {
-        auto selected = parseId<KnowledgeObjectId>(selectedId_);
-        if (!selected || workspace_->graph().findNode(*selected) == nullptr) {
-            selectedId_.clear();
-            emit selectedIdChanged();
-        }
+    if (!selectedId_.isEmpty() && !isShown(selectedId_)) {
+        selectedId_.clear();
+        emit selectedIdChanged();
     }
     pushToCanvas();
     emit sceneChanged();
@@ -156,6 +170,7 @@ void MapViewModel::attach(QQuickItem* item) {
         emit errorOccurred(tr("The map canvas is unavailable"));
         return;
     }
+    if (canvas_ && canvas_ != canvas) disconnect(canvas_, nullptr, this, nullptr);
     canvas_ = canvas;
     connect(canvas, &GraphCanvasItem::nodeClicked, this, &MapViewModel::setSelectedId, Qt::UniqueConnection);
     connect(canvas, &GraphCanvasItem::groupClicked, this, &MapViewModel::setTopicId, Qt::UniqueConnection);

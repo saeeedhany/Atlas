@@ -57,6 +57,8 @@ signals:
 private:
     std::optional<atlas::core::TopicId> scope() const;
     void scheduleRefresh();
+    void dropMissingScope();
+    bool isShown(const QString& conceptId) const;
     void pushToCanvas();
     void applySelection();
 

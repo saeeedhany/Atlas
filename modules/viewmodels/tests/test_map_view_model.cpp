@@ -218,3 +218,58 @@ TEST_CASE("one new concept gives one scene change and never flies in from the or
         CHECK(node.y == placed->y);
     }
 }
+
+TEST_CASE("the topic scope is stored in canonical form") {
+    Fixture f;
+    auto os = f.topic("OS");
+    f.map.setTopicId(idString(os).toUpper());
+    CHECK(f.map.topicId() == idString(os));
+}
+
+TEST_CASE("a selection outside the new scope is cleared") {
+    Fixture f;
+    auto os = f.topic("OS");
+    auto databases = f.topic("Databases");
+    auto paging = f.addConcept("Paging", os);
+    f.addConcept("Indexing", databases);
+    f.settle();
+    f.map.setSelectedId(idString(paging));
+    REQUIRE(f.map.selectedId() == idString(paging));
+
+    f.map.setTopicId(idString(databases));
+    CHECK(f.map.selectedId().isEmpty());
+
+    f.map.setSelectedId(idString(paging));
+    CHECK(f.map.selectedId().isEmpty());
+    f.map.setSelectedId("garbage");
+    CHECK(f.map.selectedId().isEmpty());
+}
+
+TEST_CASE("deleting the scoped topic resets the scope") {
+    Fixture f;
+    auto os = f.topic("OS");
+    f.map.setTopicId(idString(os));
+    int scopeChanges = 0;
+    QObject::connect(&f.map, &MapViewModel::topicIdChanged, [&] { ++scopeChanges; });
+
+    REQUIRE(f.workspace.removeTopic(os).hasValue());
+    CHECK(f.map.topicId().isEmpty());
+    CHECK(scopeChanges == 1);
+    CHECK_FALSE(f.map.createConcept("Recursion").isEmpty());
+    CHECK(f.errors == 0);
+}
+
+TEST_CASE("attaching a new canvas disconnects the old one") {
+    Fixture f;
+    auto tree = f.addConcept("Tree", uncategorizedTopicId());
+    f.settle();
+    atlas::render::GraphCanvasItem oldCanvas;
+    atlas::render::GraphCanvasItem newCanvas;
+    f.map.attach(&oldCanvas);
+    f.map.attach(&newCanvas);
+
+    emit oldCanvas.nodeClicked(idString(tree));
+    CHECK(f.map.selectedId().isEmpty());
+    emit newCanvas.nodeClicked(idString(tree));
+    CHECK(f.map.selectedId() == idString(tree));
+}
