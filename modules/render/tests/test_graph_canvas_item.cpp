@@ -176,3 +176,12 @@ TEST_CASE("linkAt finds the link under the cursor") {
     CHECK(canvas.linkAt(middle.x(), middle.y() + 3) == "link");
     CHECK(canvas.linkAt(middle.x(), middle.y() + 40).isEmpty());
 }
+
+TEST_CASE("resizing the canvas reports a view change so culled geometry is rebuilt") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(200, 150));
+    int changes = 0;
+    QObject::connect(&canvas, &GraphCanvasItem::viewChanged, [&changes] { ++changes; });
+    canvas.setSize(QSizeF(1600, 1200));
+    CHECK(changes > 0);
+}

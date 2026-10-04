@@ -1,7 +1,5 @@
 #include "atlas/render/graph_canvas_item.hpp"
 
-#include "atlas/render/canvas_view.hpp"
-
 #include <QFont>
 #include <QHoverEvent>
 #include <QMatrix4x4>
@@ -20,6 +18,8 @@
 #include <iterator>
 #include <map>
 #include <utility>
+
+#include "atlas/render/canvas_view.hpp"
 
 namespace atlas::render {
 
@@ -757,9 +757,7 @@ void GraphCanvasItem::wheelEvent(QWheelEvent* event) {
 
 void GraphCanvasItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
-    backgroundDirty_ = true;
-    labelsDirty_ = true;
-    update();
+    viewMoved();
     fitOnce();
 }
 
