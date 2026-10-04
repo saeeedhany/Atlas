@@ -36,9 +36,14 @@ TEST_CASE("a simulated learner keeps retention near the target over 90 days") {
     StateMap states;
     int reviewed = 0;
     int recalled = 0;
+    int max_daily_focuses = 0;
+    int late_period_reviewed = 0;
     for (int d = 0; d < 90; ++d) {
         TimePoint now = day(d + 0.375);
-        for (const auto& focus : planner.plan(states, now, 0, SessionLimits{}).focuses) {
+        auto session = planner.plan(states, now, 0, SessionLimits{});
+        CHECK(session.focuses.size() <= static_cast<size_t>(SessionLimits{}.maxFocus));
+        max_daily_focuses = std::max(max_daily_focuses, static_cast<int>(session.focuses.size()));
+        for (const auto& focus : session.focuses) {
             for (const auto& item : focus.items) {
                 auto it = states.find(item);
                 bool first = it == states.end() || it->second.phase == Phase::New;
@@ -48,6 +53,7 @@ TEST_CASE("a simulated learner keeps retention near the target over 90 days") {
                     grade = remembered ? Grade::Good : Grade::Again;
                     if (d >= 60) {
                         ++reviewed;
+                        ++late_period_reviewed;
                         if (remembered) ++recalled;
                     }
                 }
@@ -65,4 +71,10 @@ TEST_CASE("a simulated learner keeps retention near the target over 90 days") {
     double retention = static_cast<double>(recalled) / reviewed;
     CHECK(retention >= 0.80);
     CHECK(retention <= 0.98);
+
+    int total_items = graph.nodeCount() + graph.edgeCount();
+    double late_period_days = 30.0;
+    double avg_daily_reviewed = static_cast<double>(late_period_reviewed) / late_period_days;
+    double max_allowed_avg = static_cast<double>(total_items) / 3.0;
+    CHECK(avg_daily_reviewed <= max_allowed_avg);
 }
