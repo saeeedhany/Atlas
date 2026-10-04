@@ -1,6 +1,7 @@
 add_executable(atlas_qml_tests
     qml_fixture.cpp
     test_components.cpp
+    test_concept_panel.cpp
     test_foundation.cpp
     test_main.cpp
     test_map.cpp

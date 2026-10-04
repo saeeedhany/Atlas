@@ -27,6 +27,17 @@ Item {
         Qt.callLater(settle)
     }
 
+    function openConcept(id: string) {
+        if (id === Concept.conceptId)
+            return
+        if (Concept.dirty && !Concept.save()) {
+            MapView.selectedId = Concept.conceptId
+            return
+        }
+        Concept.conceptId = id
+        ConceptLinks.conceptId = id
+    }
+
     function settle() {
         if (!canvas)
             return
@@ -59,6 +70,7 @@ Item {
             Qt.callLater(overlay.settle)
         }
         function onSceneChanged() { Qt.callLater(overlay.settle) }
+        function onSelectedIdChanged() { overlay.openConcept(MapView.selectedId) }
     }
 
     Connections {
@@ -91,6 +103,23 @@ Item {
         anchors.margins: Theme.gap * 2
         onFocusRequested: id => overlay.focusConcept(id)
         onFitRequested: if (overlay.canvas) overlay.canvas.fitToContent()
+    }
+
+    ConceptPanel {
+        id: panel
+        objectName: "conceptPanel"
+        anchors.top: topicBar.bottom
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.topMargin: Theme.gap
+        anchors.bottomMargin: Theme.gap * 2
+        anchors.rightMargin: panel.shown || Motion.reduced ? Theme.gap * 2 : Theme.gap * 2 - 24
+        onFocusRequested: id => overlay.focusConcept(id)
+
+        Behavior on anchors.rightMargin {
+            enabled: !Motion.reduced
+            NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve }
+        }
     }
 
     Shortcut {

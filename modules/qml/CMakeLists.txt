@@ -12,6 +12,7 @@ qt_add_qml_module(atlas_qml
         AppButton.qml
         AppTextArea.qml
         AppTextField.qml
+        ConceptPanel.qml
         HoverCard.qml
         ListEditor.qml
         Main.qml
