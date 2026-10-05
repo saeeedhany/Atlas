@@ -37,7 +37,7 @@ Item {
         if (width <= 0 || height <= 0)
             return
         for (const p of panels) {
-            if (p.mode !== "floating")
+            if (p.mode !== "floating" && !(p.mode === "expanded" && p.returnMode === "floating"))
                 continue
             p.floatWidth = Math.min(p.floatWidth, width)
             p.floatHeight = Math.min(p.floatHeight, height)
@@ -85,6 +85,8 @@ Item {
             })
         }
         restoreAll()
+        for (const p of panels)
+            p.layoutReady = true
     }
 
     Rectangle {

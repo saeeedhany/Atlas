@@ -18,6 +18,7 @@ Item {
     property rect slot: Qt.rect(0, 0, 320, dockedHeight)
     property rect expandedRect: Qt.rect(0, 0, 640, 480)
     property bool dragging: false
+    property bool layoutReady: false
     readonly property int titleHeight: 40
     readonly property rect target: mode === "expanded" ? expandedRect
                                  : mode === "floating" ? Qt.rect(floatX, floatY, floatWidth, floatHeight)
@@ -62,8 +63,8 @@ Item {
             floatHeight = Math.max(height, 160)
             mode = "floating"
         }
-        floatX = px
-        floatY = py
+        floatX = clampTo(px, (parent ? parent.width : px) - floatWidth)
+        floatY = clampTo(py, (parent ? parent.height : py) - floatHeight)
         layoutChanged()
     }
 
@@ -74,9 +75,14 @@ Item {
         layoutChanged()
     }
 
+    function clampTo(value: real, limit: real): real {
+        return Math.max(0, Math.min(value, limit))
+    }
+
     function resizeTo(w: real, h: real) {
-        floatWidth = Math.max(220, w)
-        floatHeight = Math.max(120, h)
+        let room = parent ? Qt.size(parent.width - floatX, parent.height - floatY) : Qt.size(w, h)
+        floatWidth = Math.max(220, Math.min(w, room.width))
+        floatHeight = Math.max(120, Math.min(h, room.height))
         layoutChanged()
     }
 
@@ -92,21 +98,25 @@ Item {
     visible: mode !== "hidden"
     z: mode === "expanded" ? 30 : mode === "floating" ? 20 : 10
 
-    Behavior on x { enabled: !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
-    Behavior on y { enabled: !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
-    Behavior on width { enabled: !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
-    Behavior on height { enabled: !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
+    Behavior on x { enabled: panel.layoutReady && !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
+    Behavior on y { enabled: panel.layoutReady && !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
+    Behavior on width { enabled: panel.layoutReady && !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
+    Behavior on height { enabled: panel.layoutReady && !Motion.reduced && !panel.dragging; NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve } }
 
-    Rectangle {
-        anchors.fill: frame
-        anchors.topMargin: 12
-        anchors.leftMargin: 6
-        anchors.rightMargin: -6
-        anchors.bottomMargin: -12
-        radius: Theme.radiusPanel
-        color: "#000000"
-        opacity: panel.mode === "floating" || panel.dragging ? (AppSettings.darkTheme ? 0.22 : 0.07) : 0
-        visible: opacity > 0
+    Repeater {
+        model: 4
+
+        Rectangle {
+            required property int index
+            x: frame.x + 2 - (index + 1) * 3
+            y: frame.y + 6 - (index + 1) * 3 + index * 2
+            width: frame.width + (index + 1) * 6
+            height: frame.height + (index + 1) * 6
+            radius: Theme.radiusPanel + (index + 1) * 3
+            color: "#000000"
+            opacity: panel.mode === "floating" || panel.dragging ? (AppSettings.darkTheme ? 0.055 : 0.0175) : 0
+            visible: opacity > 0
+        }
     }
 
     Rectangle {
@@ -144,7 +154,7 @@ Item {
                     let now = mapToItem(panel.parent, mouse.x, mouse.y)
                     let dx = now.x - pressAt.x
                     let dy = now.y - pressAt.y
-                    if (!panel.dragging && Math.abs(dx) + Math.abs(dy) < 4)
+                    if (!panel.dragging && Math.hypot(dx, dy) <= 4)
                         return
                     if (panel.mode === "expanded")
                         return

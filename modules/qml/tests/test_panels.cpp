@@ -77,3 +77,25 @@ TEST_CASE("layouts survive a restart and come back inside the window") {
     CHECK(placed.right() <= 1200.0);
     CHECK(placed.bottom() <= 800.0);
 }
+
+TEST_CASE("dragging a panel far outside keeps it inside the layer") {
+    QmlFixture f;
+    f.context().settings().setReducedMotion(true);
+    auto layer = f.createFromData(kBoard);
+    auto* brain = QmlFixture::child(layer.get(), "brain");
+    REQUIRE(QMetaObject::invokeMethod(brain, "floatAt", Q_ARG(double, 9000.0), Q_ARG(double, -400.0)));
+    QRectF placed = targetOf(brain);
+    CHECK(placed.right() <= 1200.0);
+    CHECK(placed.top() >= 0.0);
+    REQUIRE(QMetaObject::invokeMethod(brain, "resizeTo", Q_ARG(double, 5000.0), Q_ARG(double, 5000.0)));
+    CHECK(targetOf(brain).right() <= 1200.0);
+    CHECK(targetOf(brain).bottom() <= 800.0);
+}
+
+TEST_CASE("panels start at their slot without animating in") {
+    QmlFixture f;
+    auto layer = f.createFromData(kBoard);
+    auto* today = QmlFixture::child(layer.get(), "today");
+    CHECK(today->property("x").toDouble() == doctest::Approx(targetOf(today).x()));
+    CHECK(today->property("y").toDouble() == doctest::Approx(targetOf(today).y()));
+}
