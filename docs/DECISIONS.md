@@ -715,7 +715,10 @@ Organized by module, roughly in the order each decision arose.
 - A focus is recorded when its explain step is graded. Rebuild grades wait in memory until then, so quitting drops only the unfinished focus.
 - When a focus has no concept item, the explain step uses its weakest link, so that link gets a rebuild event and an explain event in one transaction; the second has 0 elapsed days.
 - Concept prompts alternate between "What is A?" and "What problem does A solve?" by review count.
-- A session shows all topics and restores the previous topic when it ends.
+- A session shows all topics and restores the previous topic and selection when it ends. Clicking a topic bubble during a session does nothing.
+- Starting a session saves an unsaved concept draft first; if that save fails, the session does not start and the toast says why.
+- The explain prediction is fixed once the answer is revealed. The rebuild prediction must be picked before a hint and is fixed after the first one.
+- If the written answer cannot be saved, the focus stays on the explain step with the text kept, so it can be retried.
 - Clicking a node during a rebuild names it. The selection stays on the focus, and neighbors are never highlighted while a session runs.
 - Rebuild suggestions match the start of a title, ignoring case, after three characters.
 - Missed links turn rose; the one-time pulse from the spec is not drawn yet.
@@ -725,3 +728,8 @@ Organized by module, roughly in the order each decision arose.
 - The Widgets app is gone. `atlas` keeps the application name `atlas_app`, so existing data stays where it was.
 - A rebuild hides every introduced link of the focus, in either direction, but grades only its due links; this follows the spec over the earlier plan 2 contract.
 - The learning roadmap moved into the concept panel ("Learn first") and project suggestions into the topic bar ("Ideas").
+- The summary counts items, not events: "N of M items recalled". An item counts as recalled when its first event in the session was not Again.
+- Ideas rank on measured memory, not the retired Confidence field: concepts in the topic with a mini project whose concept item is not solid. Readiness is the share of solid DependsOn prerequisites (1 with none), leverage is the number of transitive dependents, and ideas are ordered by readiness * (1 + leverage), ties by id.
+- "Learn first" orders only the concept's own transitive DependsOn prerequisites, ties by id. A loop is reported only when it lies among them, and the path refreshes when the concept loads or the graph changes.
+- Recorded review times are floored to whole milliseconds and each batch is applied in replay order, so live memory states equal replayed ones.
+- The device id is read once per run and kept in memory.
