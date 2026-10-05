@@ -50,7 +50,7 @@ TEST_CASE("notes are created, edited, moved, resized, and recolored") {
     auto note = f.notes.note(id);
     CHECK(note.value("body").toString() == "Why half full?");
     CHECK(note.value("x").toDouble() == doctest::Approx(300.0));
-    CHECK(note.value("width").toDouble() == doctest::Approx(96.0));
+    CHECK(note.value("width").toDouble() == doctest::Approx(NotesModel::kMinSize));
     CHECK(note.value("color").toString() == "olive");
 
     NotesModel reloaded(f.db, f.workspace, systemClock());

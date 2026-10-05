@@ -37,6 +37,7 @@ Rectangle {
         objectName: "iconTip"
         visible: area.containsMouse && button.tip !== ""
         delay: 500
+        closePolicy: Popup.NoAutoClose
         text: button.tip
         padding: 6
         leftPadding: 8

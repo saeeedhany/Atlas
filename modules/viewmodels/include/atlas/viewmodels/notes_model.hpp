@@ -20,18 +20,20 @@ class NotesModel : public QAbstractListModel, public ProvidedSingleton<NotesMode
     QML_NAMED_ELEMENT(Notes)
     QML_SINGLETON
     Q_PROPERTY(int count READ count NOTIFY countChanged)
+    Q_PROPERTY(double minSize READ minSize CONSTANT)
 
 public:
     enum Role { IdRole = Qt::UserRole + 1, BodyRole, ColorRole, XRole, YRole, WidthRole, HeightRole, LinksRole };
     static constexpr double kDefaultWidth = 150.0;
     static constexpr double kDefaultHeight = 100.0;
-    static constexpr double kMinSize = 96.0;
+    static constexpr double kMinSize = 64.0;
 
     NotesModel(atlas::persistence::Database& database, WorkspaceController& workspace, Clock clock,
                QObject* parent = nullptr);
 
     Result<void, ControllerFailure> load();
     int count() const { return static_cast<int>(notes_.size()); }
+    double minSize() const { return kMinSize; }
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;

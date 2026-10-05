@@ -26,7 +26,7 @@ Rectangle {
     readonly property int textSize: Math.round(Math.max(9, Math.min(20, Theme.fontBody * zoom)))
     readonly property real uiScale: textSize / Theme.fontBody
     readonly property bool chromeShown: notesLayer.interactive && zoom >= 0.6
-    readonly property real minSide: 96 * zoom
+    readonly property real minSide: Notes.minSize * zoom
     readonly property var linkTitles: links.map(link => link.kind === "concept"
                                                 ? (MapView.conceptInfo(link.targetId).title || "")
                                                 : Topics.nameOf(link.targetId))
@@ -240,12 +240,12 @@ Rectangle {
     }
 
     Rectangle {
-        width: 10
-        height: 10
-        radius: 5
+        width: Math.round(10 * note.uiScale)
+        height: width
+        radius: width / 2
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
-        anchors.rightMargin: -5
+        anchors.rightMargin: -width / 2
         color: note.notesLayer.inks[note.colorName]
         visible: note.notesLayer.interactive
 
@@ -262,19 +262,19 @@ Rectangle {
 
     Item {
         objectName: "noteResizeGrip"
-        width: 14
-        height: 14
+        width: Math.round(14 * note.uiScale)
+        height: width
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         visible: note.chromeShown
 
         Rectangle {
-            width: 6
-            height: 6
+            width: Math.round(6 * note.uiScale)
+            height: width
             radius: 2
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.margins: 4
+            anchors.margins: Math.round(4 * note.uiScale)
             color: note.notesLayer.inks[note.colorName]
             opacity: 0.55
         }
