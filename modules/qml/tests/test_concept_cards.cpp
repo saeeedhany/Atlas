@@ -113,3 +113,16 @@ TEST_CASE("pinned summaries never overlap") {
     for (QObject* s : summaries)
         CHECK_FALSE(rectOf(s).intersects(rectOf(p.card)));
 }
+
+TEST_CASE("a card at the same node position lands below the first") {
+    CardFixture p;
+    QVariant first;
+    QVariant second;
+    QVariant point = QVariant::fromValue(QPointF(300, 300));
+    REQUIRE(QMetaObject::invokeMethod(p.overlay, "placeClear", Q_RETURN_ARG(QVariant, first), Q_ARG(QVariant, point),
+                                      Q_ARG(QVariant, 240), Q_ARG(QVariant, 200), Q_ARG(QVariant, QVariantList{})));
+    REQUIRE(QMetaObject::invokeMethod(p.overlay, "placeClear", Q_RETURN_ARG(QVariant, second), Q_ARG(QVariant, point),
+                                      Q_ARG(QVariant, 240), Q_ARG(QVariant, 200),
+                                      Q_ARG(QVariant, QVariantList{first})));
+    CHECK_FALSE(first.toRectF().intersects(second.toRectF()));
+}

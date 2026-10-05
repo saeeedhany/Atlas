@@ -10,6 +10,10 @@ Item {
     property bool fitPending: false
     property bool focusWaited: false
     property var pinnedIds: []
+    onPinnedIdsChanged: scheduleLayout()
+    onPinnedItemsChanged: scheduleLayout()
+    onWidthChanged: scheduleLayout()
+    onHeightChanged: scheduleLayout()
     property var pinnedItems: []
 
     function focusConcept(id: string) {
@@ -74,19 +78,14 @@ Item {
         return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
     }
 
-    function obstaclesBefore(order) {
-        let rects = conceptCard.visible ? [Qt.rect(conceptCard.x, conceptCard.y, conceptCard.width, conceptCard.height)] : []
-        for (let i = 0; i < order && i < pinnedItems.length; ++i)
-            rects.push(pinnedItems[i].bounds)
-        return rects
-    }
-
     function placeClear(point, cardWidth, cardHeight, obstacles) {
         const gap = 8
         const edge = 16
         const base = besideRect(point, cardWidth, cardHeight, width, height)
         const otherX = base.x > point.x ? point.x - 28 - cardWidth : point.x + 28
-        const columns = [base.x, Math.max(edge, Math.min(otherX, width - cardWidth - edge))]
+        let columns = [base.x, Math.max(edge, Math.min(otherX, width - cardWidth - edge))]
+        for (let columnX = edge; columnX + cardWidth <= width - edge; columnX += cardWidth + gap)
+            columns.push(columnX)
         for (const columnX of columns) {
             let y = base.y
             for (let pass = 0; pass <= obstacles.length; ++pass) {
@@ -100,6 +99,26 @@ Item {
             }
         }
         return base
+    }
+
+    function scheduleLayout() {
+        Qt.callLater(layoutPinned)
+    }
+
+    function layoutPinned() {
+        let taken = conceptCard.visible ? [Qt.rect(conceptCard.x, conceptCard.y, conceptCard.width, conceptCard.height)] : []
+        for (const id of pinnedIds) {
+            const item = pinnedItems.find(candidate => candidate.conceptId === id)
+            if (!item)
+                continue
+            const point = canvas ? canvas.screenPositionOf(id) : undefined
+            const rect = point !== undefined
+                ? placeClear(point, item.width, item.height, taken)
+                : Qt.rect(16, 16, item.width, item.height)
+            item.x = rect.x
+            item.y = rect.y
+            taken.push(rect)
+        }
     }
 
     function pinCurrent(): bool {
@@ -132,6 +151,7 @@ Item {
         }
         function onSceneChanged() {
             overlay.dropMissingPins()
+            overlay.scheduleLayout()
             Qt.callLater(overlay.settle)
         }
         function onSelectedIdChanged() {
@@ -144,7 +164,10 @@ Item {
         target: overlay.canvas
         function onNodeHovered(id) { hoverCard.showConcept(id) }
         function onLinkHovered(id) { hoverCard.showLink(id) }
-        function onViewChanged() { hoverCard.place() }
+        function onViewChanged() {
+            hoverCard.place()
+            overlay.scheduleLayout()
+        }
     }
 
     Text {
@@ -168,6 +191,20 @@ Item {
         area: overlay
         onFocusRequested: id => overlay.focusConcept(id)
         onPinRequested: overlay.pinCurrent()
+    }
+
+    Connections {
+        target: Concept
+        function onLoaded() { overlay.scheduleLayout() }
+    }
+
+    Connections {
+        target: conceptCard
+        function onXChanged() { overlay.scheduleLayout() }
+        function onYChanged() { overlay.scheduleLayout() }
+        function onWidthChanged() { overlay.scheduleLayout() }
+        function onHeightChanged() { overlay.scheduleLayout() }
+        function onVisibleChanged() { overlay.scheduleLayout() }
     }
 
     Instantiator {

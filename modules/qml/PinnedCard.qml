@@ -9,17 +9,7 @@ Rectangle {
     required property string conceptId
     property Item canvas
     property Item area
-    property int viewTick: 0
     property var info: MapView.conceptInfo(conceptId)
-    readonly property var nodePoint: {
-        viewTick
-        return canvas ? canvas.screenPositionOf(conceptId) : undefined
-    }
-    readonly property int order: area ? area.pinnedItems.indexOf(pinned) : -1
-    readonly property rect place: area && nodePoint !== undefined
-        ? area.placeClear(nodePoint, 240, height, area.obstaclesBefore(order))
-        : Qt.rect(16, 16, 240, height)
-    readonly property rect bounds: Qt.rect(x, y, width, height)
 
     signal unpinRequested(string id)
 
@@ -27,8 +17,6 @@ Rectangle {
         MapView.selectedId = conceptId
     }
 
-    x: place.x
-    y: place.y
     width: 240
     height: column.implicitHeight + 28
     radius: Theme.radiusPanel
@@ -36,15 +24,13 @@ Rectangle {
     border.color: Theme.outline
     z: 14
 
-    Connections {
-        target: pinned.canvas
-        function onViewChanged() { pinned.viewTick++ }
-    }
+    onHeightChanged: if (area) area.scheduleLayout()
+    Component.onCompleted: if (area) area.scheduleLayout()
+
     Connections {
         target: MapView
         function onSceneChanged() {
             pinned.info = MapView.conceptInfo(pinned.conceptId)
-            pinned.viewTick++
         }
     }
 
