@@ -34,4 +34,4 @@ public:
         const atlas::graph::GraphEngine& graph, LayoutConfig config = {}, const LayoutHints& hints = {});
 };
 
-}  // namespace atlas::render
+}

@@ -61,11 +61,7 @@ std::vector<KnowledgeObjectId> GraphEngine::search(std::string_view query) const
     }
 
     std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
-        if (a.first != b.first) return a.first > b.first;  // higher score first
-        // Deterministic tie-break: nodeIndexById_ is a hash map, so
-        // without this, two identical searches could return ties in a
-        // different order just because of iteration order - making
-        // results look like they're "jumping around" for no reason.
+        if (a.first != b.first) return a.first > b.first;
         return a.second.toString() < b.second.toString();
     });
 
@@ -102,9 +98,6 @@ void GraphEngine::indexEdge(size_t edgeIndex) {
     outgoingEdgeIndices_[sourceIdx].push_back(edgeIndex);
     incomingEdgeIndices_[targetIdx].push_back(edgeIndex);
 
-    // A symmetric edge is one fact, stored once, but it must be
-    // findable as a neighbor from either endpoint regardless of which
-    // one happens to be `source` in storage.
     if (isSymmetric(rel.type())) {
         outgoingEdgeIndices_[targetIdx].push_back(edgeIndex);
         incomingEdgeIndices_[sourceIdx].push_back(edgeIndex);
@@ -162,9 +155,6 @@ bool GraphEngine::removeNode(const KnowledgeObjectId& id) {
     if (it == nodeIndexById_.end()) return false;
     size_t nodeIndex = it->second;
 
-    // Cascade to every edge touching this node, mirroring the
-    // database's ON DELETE CASCADE. Copy first: unindexEdge mutates
-    // the very vectors we'd otherwise be iterating.
     std::vector<size_t> touching = outgoingEdgeIndices_[nodeIndex];
     touching.insert(touching.end(), incomingEdgeIndices_[nodeIndex].begin(),
                      incomingEdgeIndices_[nodeIndex].end());
@@ -208,10 +198,6 @@ std::vector<KnowledgeObjectId> GraphEngine::neighbors(const KnowledgeObjectId& i
     if (it == nodeIndexById_.end()) return result;
     size_t nodeIndex = it->second;
 
-    // Symmetric edges are indexed into both outgoing and incoming for
-    // both endpoints, so Direction::Both must dedupe edge indices
-    // before resolving neighbors, or a symmetric edge would be
-    // reported twice.
     std::vector<size_t> candidateEdges;
     if (direction == Direction::Outgoing || direction == Direction::Both) {
         const auto& outgoing = outgoingEdgeIndices_[nodeIndex];
@@ -245,10 +231,6 @@ std::vector<KnowledgeObjectId> GraphEngine::usedBy(const KnowledgeObjectId& id) 
 
 namespace {
 
-// Shared BFS core for transitiveDependencies/transitiveDependents -
-// they differ only in which direction they walk (dependsOn vs.
-// usedBy), so the traversal itself is factored out once rather than
-// duplicated.
 template <typename NeighborFn>
 std::vector<KnowledgeObjectId> transitiveClosure(const KnowledgeObjectId& id,
                                                     NeighborFn neighborsOf) {
@@ -271,7 +253,7 @@ std::vector<KnowledgeObjectId> transitiveClosure(const KnowledgeObjectId& id,
     return result;
 }
 
-}  // namespace
+}
 
 std::vector<KnowledgeObjectId> GraphEngine::transitiveDependencies(
     const KnowledgeObjectId& id) const {
@@ -295,8 +277,6 @@ Result<std::vector<KnowledgeObjectId>, GraphError> GraphEngine::topologicalOrder
         inDegree[id] = 0;
     }
     for (const auto& [id, index] : nodeIndexById_) {
-        // "id depends on dep" means dep must be ordered before id -
-        // i.e. id's in-degree is the number of dependencies it has.
         inDegree[id] = static_cast<int>(dependsOn(id).size());
     }
 
@@ -396,14 +376,10 @@ std::vector<GraphEngine::ProjectSuggestion> GraphEngine::suggestProjects(
                   double scoreA = a.readiness * (1.0 + a.leverage);
                   double scoreB = b.readiness * (1.0 + b.leverage);
                   if (scoreA != scoreB) return scoreA > scoreB;
-                  // Deterministic tie-break - same reasoning as
-                  // search()'s tie-break: nodeIndexById_ is a hash map,
-                  // so without this, identical inputs could produce a
-                  // different order across runs.
                   return a.conceptId.toString() < b.conceptId.toString();
               });
 
     return suggestions;
 }
 
-}  // namespace atlas::graph
+}

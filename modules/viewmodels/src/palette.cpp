@@ -12,7 +12,7 @@ size_t noteIndex(const QString& color) {
     return 0;
 }
 
-}  // namespace
+}
 
 Palette::Palette(AppSettings& settings, QObject* parent) : QObject(parent), settings_(&settings) {
     connect(settings_, &AppSettings::darkThemeChanged, this, &Palette::changed);
@@ -32,4 +32,4 @@ QColor Palette::regionTint(int hue) const {
 QColor Palette::noteFill(const QString& color) const { return theme().noteFills[noteIndex(color)]; }
 QColor Palette::noteText(const QString& color) const { return theme().noteTexts[noteIndex(color)]; }
 
-}  // namespace atlas::viewmodels
+}

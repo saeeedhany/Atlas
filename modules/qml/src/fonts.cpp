@@ -13,4 +13,4 @@ QStringList loadBundledFonts() {
     return families;
 }
 
-}  // namespace atlas::ui
+}

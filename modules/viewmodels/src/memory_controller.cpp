@@ -27,7 +27,7 @@ ControllerFailure persistenceFailure(const atlas::persistence::PersistenceError&
     return ControllerFailure{ControllerErrorCode::PersistenceFailed, error.detail};
 }
 
-}  // namespace
+}
 
 MemoryController::MemoryController(atlas::persistence::Database& database, WorkspaceController& workspace,
                                    Clock clock, QObject* parent)
@@ -132,4 +132,4 @@ atlas::learning::SessionPlan MemoryController::todayPlan(const atlas::learning::
                          atlas::learning::medianRebuildResponse(events_));
 }
 
-}  // namespace atlas::viewmodels
+}

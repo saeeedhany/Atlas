@@ -10,4 +10,4 @@ using Clock = std::function<atlas::core::TimePoint()>;
 
 Clock systemClock();
 
-}  // namespace atlas::viewmodels
+}

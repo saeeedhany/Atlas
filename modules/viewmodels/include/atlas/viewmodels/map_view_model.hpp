@@ -104,4 +104,4 @@ private:
     bool refreshPending_ = false;
 };
 
-}  // namespace atlas::viewmodels
+}

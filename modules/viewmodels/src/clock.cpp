@@ -6,4 +6,4 @@ Clock systemClock() {
     return [] { return std::chrono::system_clock::now(); };
 }
 
-}  // namespace atlas::viewmodels
+}

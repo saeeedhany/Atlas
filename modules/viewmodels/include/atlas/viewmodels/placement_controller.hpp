@@ -50,4 +50,4 @@ private:
 
 atlas::render::Point2D startingOffsetFor(const KnowledgeObjectId& id);
 
-}  // namespace atlas::viewmodels
+}

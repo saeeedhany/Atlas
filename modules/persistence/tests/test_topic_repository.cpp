@@ -15,7 +15,7 @@ Database openTestDatabase() {
     return std::move(result).value();
 }
 
-}  // namespace
+}
 
 TEST_CASE("Migration 2 seeds a fixed Uncategorized topic on a fresh database") {
     auto db = openTestDatabase();
@@ -64,7 +64,7 @@ TEST_CASE("findAll includes the seeded Uncategorized topic plus any created ones
 
     auto all = repo.findAll();
     REQUIRE(all.hasValue());
-    CHECK(all.value().size() == 2);  // Uncategorized + Databases
+    CHECK(all.value().size() == 2);
 }
 
 TEST_CASE("save on an existing id updates in place rather than duplicating") {
@@ -86,7 +86,7 @@ TEST_CASE("save on an existing id updates in place rather than duplicating") {
 
     auto all = repo.findAll();
     REQUIRE(all.hasValue());
-    CHECK(all.value().size() == 2);  // Uncategorized + this one topic, not two
+    CHECK(all.value().size() == 2);
 }
 
 TEST_CASE("remove deletes an empty topic") {
@@ -112,13 +112,6 @@ TEST_CASE("remove on a nonexistent id is not an error") {
 }
 
 TEST_CASE("remove fails at the database level when a KnowledgeObject still references the topic") {
-    // No ON DELETE clause on knowledge_objects.topic_id (see migration
-    // 2) means SQLite's default foreign-key behavior blocks this
-    // delete rather than orphaning or cascading - see
-    // TopicRepository::remove()'s doc comment for why that's
-    // deliberate. The application layer (WorkspaceController) is
-    // expected to check membership and prompt first; this test proves
-    // the database backstops that even if it forgets to.
     auto db = openTestDatabase();
     TopicRepository topics(db);
     KnowledgeObjectRepository objects(db);

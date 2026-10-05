@@ -29,7 +29,7 @@ struct World {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("a first session introduces frontier concepts up to the daily limit") {
     World w;

@@ -18,7 +18,7 @@ RenderNode makeNode(const char* id, double x, double y, const char* group, doubl
     return node;
 }
 
-}  // namespace
+}
 
 TEST_CASE("long labels are shortened with an ellipsis") {
     CHECK(elideLabel("Tree") == "Tree");

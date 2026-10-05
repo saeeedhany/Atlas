@@ -56,4 +56,4 @@ private:
     SessionController session_;
 };
 
-}  // namespace atlas::viewmodels
+}

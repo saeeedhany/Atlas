@@ -227,7 +227,7 @@ Result<std::vector<Row>, PersistenceError> readAll(sqlite3* db, const char* sql,
     return Out::ok(std::move(rows));
 }
 
-}  // namespace
+}
 
 LearningRepository::LearningRepository(Database& database) : database_(&database) {}
 
@@ -291,4 +291,4 @@ Result<bool, PersistenceError> LearningRepository::isCacheFresh(int replayVersio
     return Result<bool, PersistenceError>::ok(fresh);
 }
 
-}  // namespace atlas::persistence
+}

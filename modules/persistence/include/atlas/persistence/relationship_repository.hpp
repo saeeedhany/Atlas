@@ -16,12 +16,8 @@ using atlas::core::Result;
 
 class RelationshipRepository {
 public:
-    // `database` must outlive this repository.
     explicit RelationshipRepository(Database& database);
 
-    // Upserts by id. A duplicate (source, target, type) triple - even
-    // with a different id - is rejected by the database's UNIQUE
-    // constraint and surfaces as PersistenceErrorCode::ConstraintViolation.
     Result<void, PersistenceError> save(const Relationship& relationship);
     Result<void, PersistenceError> updateNote(const RelationshipId& id,
                                              const std::optional<std::string>& note);
@@ -36,4 +32,4 @@ private:
     Database* database_;
 };
 
-}  // namespace atlas::persistence
+}

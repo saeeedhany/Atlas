@@ -16,11 +16,6 @@ enum class ValidationError {
     EmptyTitle,
 };
 
-// A single concept in the knowledge graph. Holds only intrinsic
-// content - relationships to other KnowledgeObjects live in the graph
-// engine (M2), never as fields here. Storing "Depends On" / "Used By"
-// here too would duplicate the same fact in two places with no single
-// source of truth (see M0 design notes).
 class KnowledgeObject {
 public:
     static Result<KnowledgeObject, ValidationError> create(
@@ -28,9 +23,6 @@ public:
         std::string whyItExists = "", Difficulty difficulty = Difficulty::Beginner,
         ConfidenceLevel confidence = ConfidenceLevel::Unknown);
 
-    // Plain data-transfer struct describing the complete state of a
-    // KnowledgeObject as stored. Used only at the persistence boundary
-    // - see reconstruct() below.
     struct StorageRecord {
         KnowledgeObjectId id;
         std::string title;
@@ -46,37 +38,11 @@ public:
         std::chrono::system_clock::time_point createdAt;
         std::chrono::system_clock::time_point updatedAt;
 
-        // Trailing and defaulted deliberately: this field was added
-        // after StorageRecord already had many positional-brace-init
-        // call sites across every module's tests (see
-        // docs/DECISIONS.md's "enums are stored as text" entry for the
-        // general spirit - small, deliberate storage-shape decisions
-        // documented in one place). A default member initializer lets
-        // every existing `StorageRecord{a, b, c, ...}` call keep
-        // compiling unchanged; only call sites that need to set a
-        // topic actually mention this field. std::optional, not a bare
-        // TopicId, because "not yet assigned to a topic" is a real
-        // state a KnowledgeObject can be in transiently (see
-        // assignToTopic()) even though every object reachable through
-        // WorkspaceController ends up with one.
         std::optional<TopicId> topicId = std::nullopt;
     };
 
-    // Rebuilds a KnowledgeObject from a previously-saved StorageRecord
-    // (an existing id and historical timestamps, not freshly generated
-    // ones). Still validates the title: a corrupted database row should
-    // fail loudly here rather than produce an invalid in-memory object.
-    // This is deliberately separate from create() - create() expresses
-    // "a new concept was authored," reconstruct() expresses "a concept
-    // is being loaded back." Conflating them either makes create() take
-    // an id/timestamps it shouldn't, or makes reconstruct() go through
-    // mutators that stamp updatedAt to "now" on every load - both wrong.
     static Result<KnowledgeObject, ValidationError> reconstruct(StorageRecord record);
 
-    // Title is the only field with a real invariant (must be
-    // non-empty), so it's the only mutator that can fail. Everything
-    // else is a plain setter - a concept can legitimately have a blank
-    // definition while it's still being authored.
     Result<void, ValidationError> renameTo(std::string newTitle);
     void redefineAs(std::string newDefinition);
     void describeProblemAs(std::string problemSolved);
@@ -85,13 +51,6 @@ public:
     void addMiniProject(MiniProject project);
     void addReference(Reference reference);
 
-    // Whole-list replacement, not incremental add/remove - mirrors how
-    // atlas-persistence already treats these three fields (delete
-    // every child row for this object, then reinsert the current list;
-    // see KnowledgeObjectRepository's design notes). An editing UI
-    // collects a full edited list and hands it here in one call,
-    // consistent with how every other field in KnowledgeObjectEdits is
-    // an optional full replacement, not an incremental patch.
     void setExamples(std::vector<Example> examples);
     void setMiniProjects(std::vector<MiniProject> projects);
     void setReferences(std::vector<Reference> references);
@@ -99,13 +58,6 @@ public:
     void setDifficulty(Difficulty difficulty);
     void setConfidence(ConfidenceLevel confidence);
 
-    // No validation possible to fail here (unlike renameTo) - every
-    // TopicId is equally valid as far as this class can tell; whether
-    // it refers to a Topic that actually exists is a WorkspaceController/
-    // repository-layer concern, the same division of responsibility as
-    // Relationship's self-loop check (intrinsic, lives on the class)
-    // vs. its duplicate-edge check (needs the whole graph, lives on
-    // the controller).
     void assignToTopic(TopicId topicId);
 
     const KnowledgeObjectId& id() const { return id_; }
@@ -144,4 +96,4 @@ private:
     std::optional<TopicId> topicId_;
 };
 
-}  // namespace atlas::core
+}

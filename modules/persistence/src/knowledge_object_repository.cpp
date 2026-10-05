@@ -72,11 +72,6 @@ Result<void, PersistenceError> upsertMainRow(sqlite3* db, const KnowledgeObject&
     return Result<void, PersistenceError>::ok();
 }
 
-// Child collections (examples, mini-projects, references) are small -
-// a handful of items per object, nothing like the 10k+-node scale the
-// graph itself needs to handle - so "delete everything for this
-// parent, then re-insert the current list" is simple, always correct,
-// and fast enough. No diffing logic to get wrong.
 Result<void, PersistenceError> replaceChildRows(sqlite3* db, const KnowledgeObject& object) {
     const std::string id = object.id().toString();
 
@@ -196,9 +191,6 @@ Result<std::vector<Reference>, PersistenceError> loadReferences(sqlite3* db,
     return Result<std::vector<Reference>, PersistenceError>::ok(std::move(references));
 }
 
-// Builds the full KnowledgeObject for the row the statement currently
-// points at (i.e. call this right after a successful step() that
-// returned true), including its child collections.
 Result<KnowledgeObject, PersistenceError> rowToObject(sqlite3* db, detail::Statement& statement) {
     std::string id = statement.columnText(0);
 
@@ -264,7 +256,7 @@ constexpr const char* kSelectColumns =
     "id, title, definition, problem_solved, why_it_exists, notes, difficulty, confidence, "
     "created_at, updated_at, topic_id";
 
-}  // namespace
+}
 
 KnowledgeObjectRepository::KnowledgeObjectRepository(Database& database) : database_(&database) {}
 
@@ -361,4 +353,4 @@ Result<void, PersistenceError> KnowledgeObjectRepository::remove(const Knowledge
     return Result<void, PersistenceError>::ok();
 }
 
-}  // namespace atlas::persistence
+}

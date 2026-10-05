@@ -115,4 +115,4 @@ private:
     Draft draft_;
 };
 
-}  // namespace atlas::viewmodels
+}

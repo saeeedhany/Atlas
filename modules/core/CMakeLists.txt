@@ -1,7 +1,3 @@
-# atlas-core: the domain model. Zero dependencies on Qt, SQLite, or
-# OpenGL by design - see M0 requirements (FR5). Every other module
-# depends inward on this one; this one depends on nothing in Atlas.
-
 add_library(atlas_core STATIC
     src/uuid.cpp
     src/enums.cpp

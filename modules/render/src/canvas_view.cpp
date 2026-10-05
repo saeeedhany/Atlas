@@ -28,4 +28,4 @@ double distanceToSegment(QPointF point, QPointF from, QPointF to) {
     return std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
 }
 
-}  // namespace atlas::render
+}

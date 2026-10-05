@@ -28,7 +28,7 @@ struct Fixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("the frontier starts with concepts that have no prerequisites, highest leverage first") {
     Fixture f;

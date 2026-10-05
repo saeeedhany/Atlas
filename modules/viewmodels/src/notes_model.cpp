@@ -18,7 +18,7 @@ bool validColor(const QString& color) {
 
 bool validKind(const QString& kind) { return kind == QLatin1String("concept") || kind == QLatin1String("topic"); }
 
-}  // namespace
+}
 
 NotesModel::NotesModel(atlas::persistence::Database& database, WorkspaceController& workspace, Clock clock,
                        QObject* parent)
@@ -209,4 +209,4 @@ QVariantMap NotesModel::note(const QString& id) const {
     return row < 0 ? QVariantMap() : toMap(notes_[static_cast<size_t>(row)]);
 }
 
-}  // namespace atlas::viewmodels
+}

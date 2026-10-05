@@ -50,4 +50,4 @@ std::optional<Certainty> certaintyFromInt(int64_t value) {
     return static_cast<Certainty>(value);
 }
 
-}  // namespace atlas::core
+}

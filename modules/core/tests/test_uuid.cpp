@@ -20,7 +20,7 @@ TEST_CASE("Uuid round-trips through toString/parse") {
 TEST_CASE("Uuid::parse rejects malformed input") {
     CHECK(!Uuid::parse("not-a-uuid").has_value());
     CHECK(!Uuid::parse("").has_value());
-    CHECK(!Uuid::parse("123e4567e89b12d3a456426614174000").has_value());  // missing dashes
+    CHECK(!Uuid::parse("123e4567e89b12d3a456426614174000").has_value());
 }
 
 TEST_CASE("Uuid::toString produces canonical 8-4-4-4-12 format") {

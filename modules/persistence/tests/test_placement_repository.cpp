@@ -20,7 +20,7 @@ KnowledgeObjectId saveConcept(KnowledgeObjectRepository& objects, const char* ti
     return object.id();
 }
 
-}  // namespace
+}
 
 TEST_CASE("placements round-trip and saving again updates them") {
     auto db = openTestDatabase();

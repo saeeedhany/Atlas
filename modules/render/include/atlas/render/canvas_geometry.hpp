@@ -21,4 +21,4 @@ std::vector<LineSegment> dashedLine(Vec2 from, Vec2 to, float dash, float gap);
 Vec2 trimmedEnd(Vec2 from, Vec2 to, float radius);
 std::array<Vec2, 3> arrowHead(Vec2 from, Vec2 to, float targetRadius, float length, float halfWidth);
 
-}  // namespace atlas::render
+}

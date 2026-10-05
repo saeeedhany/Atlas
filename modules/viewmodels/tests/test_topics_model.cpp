@@ -64,7 +64,7 @@ struct Fixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("the seeded Uncategorized topic is listed and marked") {
     Fixture f;

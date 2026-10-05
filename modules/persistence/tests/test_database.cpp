@@ -12,8 +12,6 @@ TEST_CASE("Database::open on :memory: succeeds and the schema is ready immediate
     REQUIRE(dbResult.hasValue());
     auto db = std::move(dbResult).value();
 
-    // The only externally-observable proof the schema exists: a query
-    // against it succeeds instead of failing with "no such table."
     KnowledgeObjectRepository repo(db);
     auto allResult = repo.findAll();
     REQUIRE(allResult.hasValue());
@@ -40,11 +38,11 @@ TEST_CASE("Reopening the same file twice is idempotent and preserves data") {
         REQUIRE(objectResult.hasValue());
         auto saveResult = repo.save(objectResult.value());
         REQUIRE(saveResult.hasValue());
-    }  // Database destructor closes the connection here.
+    }
 
     {
         auto dbResult = Database::open(path);
-        REQUIRE(dbResult.hasValue());  // migrations must not fail or re-run destructively
+        REQUIRE(dbResult.hasValue());
         auto db = std::move(dbResult).value();
         KnowledgeObjectRepository repo(db);
 

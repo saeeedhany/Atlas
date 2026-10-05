@@ -44,7 +44,7 @@ void saveAt(Database& db, const KnowledgeObjectId& id, double x, double y) {
     REQUIRE(PlacementRepository(db).saveAll({Placement{id, x, y, false}}).hasValue());
 }
 
-}  // namespace
+}
 
 TEST_CASE("load places every concept and saves the positions") {
     Fixture f;

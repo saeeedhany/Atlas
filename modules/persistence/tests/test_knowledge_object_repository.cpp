@@ -14,7 +14,7 @@ Database openTestDatabase() {
     return std::move(result).value();
 }
 
-}  // namespace
+}
 
 TEST_CASE("save then findById round-trips a minimal object") {
     auto db = openTestDatabase();
@@ -111,7 +111,7 @@ TEST_CASE("saving the same object twice updates the row in place rather than dup
 
     auto all = repo.findAll();
     REQUIRE(all.hasValue());
-    REQUIRE(all.value().size() == 1);  // updated in place, not duplicated
+    REQUIRE(all.value().size() == 1);
     CHECK(all.value().front().title() == "Tail Call Optimization");
     CHECK(all.value().front().examples().size() == 1);
 }
@@ -195,7 +195,7 @@ TEST_CASE("Reassigning an object to a new topic and re-saving updates topic_id, 
     REQUIRE(repo.save(object).hasValue());
 
     object.assignToTopic(secondTopic.value().id());
-    REQUIRE(repo.save(object).hasValue());  // same id -> update, not a second row
+    REQUIRE(repo.save(object).hasValue());
 
     auto all = repo.findAll();
     REQUIRE(all.hasValue());

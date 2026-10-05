@@ -46,7 +46,7 @@ MemoryState makeState(const ItemRef& item) {
     return state;
 }
 
-}  // namespace
+}
 
 TEST_CASE("events and states round-trip with every field") {
     auto db = openTestDatabase();

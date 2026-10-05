@@ -6,7 +6,7 @@ namespace atlas::viewmodels {
 
 namespace {
 constexpr long long kSecondsPerMinute = 60;
-}  // namespace
+}
 
 TodayViewModel::TodayViewModel(WorkspaceController& workspace, MemoryController& memory, AppSettings& settings,
                                QObject* parent)
@@ -41,4 +41,4 @@ void TodayViewModel::refresh() {
     emit changed();
 }
 
-}  // namespace atlas::viewmodels
+}

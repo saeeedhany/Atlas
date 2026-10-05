@@ -26,7 +26,7 @@ void appendBand(std::vector<Vec2>& out, Vec2 center, float inner, float outer, d
 
 float lengthOf(Vec2 vector) { return std::sqrt(vector.x * vector.x + vector.y * vector.y); }
 
-}  // namespace
+}
 
 std::vector<Vec2> ringArc(Vec2 center, float radius, float thickness, double fraction) {
     std::vector<Vec2> out;
@@ -88,4 +88,4 @@ std::array<Vec2, 3> arrowHead(Vec2 from, Vec2 to, float targetRadius, float leng
             Vec2{base.x - normal.x * halfWidth, base.y - normal.y * halfWidth}};
 }
 
-}  // namespace atlas::render
+}

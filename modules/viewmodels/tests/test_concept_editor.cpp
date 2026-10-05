@@ -40,7 +40,7 @@ struct Fixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("loading a concept fills the fields") {
     Fixture f;

@@ -24,7 +24,7 @@ std::unique_ptr<QObject> finish(QQmlComponent& component, const QVariantMap& pro
     return object;
 }
 
-}  // namespace
+}
 
 QmlFixture::QmlFixture()
     : store_(dir_.filePath("settings.ini"), QSettings::IniFormat),

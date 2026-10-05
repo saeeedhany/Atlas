@@ -37,4 +37,4 @@ StateMap MemoryLedger::replay(std::vector<ReviewEvent> events, TimePoint now, co
     return states;
 }
 
-}  // namespace atlas::learning
+}

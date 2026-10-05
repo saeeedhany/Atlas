@@ -73,4 +73,4 @@ std::vector<Forecast> collectForecasts(const MemoryLedger& ledger, std::vector<R
     return forecasts;
 }
 
-}  // namespace atlas::learning
+}

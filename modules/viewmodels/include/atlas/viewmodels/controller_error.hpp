@@ -16,4 +16,4 @@ struct ControllerFailure {
     std::string detail;
 };
 
-}  // namespace atlas::viewmodels
+}

@@ -88,7 +88,7 @@ TEST_CASE("setReferences replaces the whole list, not appends to it") {
     auto object = std::move(result).value();
 
     object.addReference({"Old reference", std::nullopt});
-    object.setReferences({});  // clearing entirely is a valid replacement
+    object.setReferences({});
 
     CHECK(object.references().empty());
 }
@@ -135,8 +135,6 @@ TEST_CASE("KnowledgeObject::reconstruct preserves the original id and timestamps
     REQUIRE(result.hasValue());
     const auto& object = result.value();
 
-    // The point of reconstruct() vs create(): identity and history are
-    // preserved exactly, not regenerated.
     CHECK(object.id() == id);
     CHECK(object.createdAt() == createdAt);
     CHECK(object.updatedAt() == updatedAt);

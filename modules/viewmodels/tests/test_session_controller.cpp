@@ -91,7 +91,7 @@ struct Fixture {
     QVariantMap feedbackAt(int index) const { return session.feedback()[index].toMap(); }
 };
 
-}  // namespace
+}
 
 TEST_CASE("nothing to recall means no session") {
     Fixture f;

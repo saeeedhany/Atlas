@@ -53,4 +53,4 @@ inline ReviewEvent event(const ItemRef& item, TimePoint at, Grade grade,
     return result;
 }
 
-}  // namespace atlas::learning::testing
+}

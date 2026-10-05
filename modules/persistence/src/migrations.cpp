@@ -17,10 +17,7 @@ struct Migration {
     const char* sql;
 };
 
-// Each entry here is permanent history once shipped: never edit a
-// migration that's already been released, only append new ones. The
-// schema_migrations table is what lets us tell, for any given .db file
-// on a person's disk, exactly which of these has already been applied.
+// Shipped migrations are history: never edit one, append a new one.
 constexpr std::array<Migration, 4> kMigrations{{
     {1, "Initial schema: knowledge objects, relationships, and child content tables", R"sql(
         CREATE TABLE knowledge_objects (
@@ -84,11 +81,6 @@ constexpr std::array<Migration, 4> kMigrations{{
             updated_at INTEGER NOT NULL
         );
 
-        -- Fixed id (the nil UUID - see atlas::core::uncategorizedTopicId()),
-        -- not a generated one: every pre-existing KnowledgeObject gets
-        -- backfilled into this one topic below, and the app needs to
-        -- be able to name that same topic from C++ without a round
-        -- trip through storage first.
         INSERT INTO topics (id, name, description, created_at, updated_at)
         VALUES ('00000000-0000-0000-0000-000000000000', 'Uncategorized', '',
                 CAST(strftime('%s','now') AS INTEGER) * 1000,
@@ -96,12 +88,6 @@ constexpr std::array<Migration, 4> kMigrations{{
 
         ALTER TABLE knowledge_objects ADD COLUMN topic_id TEXT REFERENCES topics(id);
 
-        -- Nullable at the schema level (SQLite can't cheaply add a
-        -- NOT NULL column with no default to an existing table without
-        -- a full table rebuild) - "every object has a topic" is
-        -- enforced in code, at the WorkspaceController boundary, the
-        -- same way KnowledgeObject's own invariants are enforced in
-        -- code rather than by the schema.
         UPDATE knowledge_objects SET topic_id = '00000000-0000-0000-0000-000000000000'
             WHERE topic_id IS NULL;
 
@@ -249,7 +235,7 @@ Result<void, PersistenceError> applyMigration(sqlite3* db, const Migration& migr
     return execute(db, "COMMIT;");
 }
 
-}  // namespace
+}
 
 Result<void, PersistenceError> runMigrations(sqlite3* db) {
     auto versionResult = currentSchemaVersion(db);
@@ -270,4 +256,4 @@ Result<void, PersistenceError> runMigrations(sqlite3* db) {
     return Result<void, PersistenceError>::ok();
 }
 
-}  // namespace atlas::persistence::detail
+}

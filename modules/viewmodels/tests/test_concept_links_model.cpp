@@ -37,7 +37,7 @@ struct Fixture {
     QVariant at(int row, ConceptLinksModel::Role role) const { return links.data(links.index(row), role); }
 };
 
-}  // namespace
+}
 
 TEST_CASE("type names are readable and in enum order") {
     Fixture f;

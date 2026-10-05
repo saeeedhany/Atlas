@@ -66,4 +66,4 @@ private:
     std::vector<atlas::persistence::BoardNote> notes_;
 };
 
-}  // namespace atlas::viewmodels
+}

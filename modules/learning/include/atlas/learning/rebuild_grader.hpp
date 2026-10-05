@@ -56,4 +56,4 @@ private:
     const GraphEngine* graph_;
 };
 
-}  // namespace atlas::learning
+}

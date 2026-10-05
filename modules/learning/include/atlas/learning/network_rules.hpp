@@ -48,4 +48,4 @@ private:
     NetworkConfig config_;
 };
 
-}  // namespace atlas::learning
+}

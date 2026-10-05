@@ -16,7 +16,7 @@ bool byIdText(const KnowledgeObjectId& a, const KnowledgeObjectId& b) {
     return a.toString() < b.toString();
 }
 
-}  // namespace
+}
 
 std::vector<KnowledgeObjectId> contrastPartners(const GraphEngine& graph,
                                                 const KnowledgeObjectId& conceptId) {
@@ -163,4 +163,4 @@ int NetworkRules::leverage(const KnowledgeObjectId& conceptId) const {
     return static_cast<int>(graph_->transitiveDependents(conceptId).size());
 }
 
-}  // namespace atlas::learning
+}

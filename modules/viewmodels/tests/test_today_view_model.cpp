@@ -47,7 +47,7 @@ struct Fixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("a new database is empty, not caught up") {
     Fixture f;

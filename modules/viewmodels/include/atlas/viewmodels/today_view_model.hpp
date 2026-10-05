@@ -53,4 +53,4 @@ private:
     int conceptCount_ = 0;
 };
 
-}  // namespace atlas::viewmodels
+}

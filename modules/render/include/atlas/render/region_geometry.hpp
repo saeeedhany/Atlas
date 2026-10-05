@@ -12,4 +12,4 @@ QRectF regionBounds(const std::vector<QPointF>& points, double padding);
 int regionHue(const QString& key);
 std::vector<QPointF> roundedRectOutline(const QRectF& rect, double radius, int cornerSegments);
 
-}  // namespace atlas::render
+}

@@ -40,7 +40,7 @@ struct CardFixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("cards open beside their node and flip near the right edge") {
     CardFixture p;

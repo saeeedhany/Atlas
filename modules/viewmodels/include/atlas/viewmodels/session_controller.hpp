@@ -140,4 +140,4 @@ private:
     SessionTip tip_;
 };
 
-}  // namespace atlas::viewmodels
+}

@@ -24,4 +24,4 @@ std::optional<Id> parseId(const QString& text) {
     return Id(*uuid);
 }
 
-}  // namespace atlas::viewmodels
+}

@@ -57,4 +57,4 @@ Result<std::vector<Placement>, PersistenceError> PlacementRepository::findAll() 
     return Out::ok(std::move(placements));
 }
 
-}  // namespace atlas::persistence
+}

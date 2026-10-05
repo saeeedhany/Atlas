@@ -17,7 +17,7 @@ double distance(const Point2D& a, const Point2D& b) {
     return std::sqrt(dx * dx + dy * dy);
 }
 
-}  // namespace
+}
 
 TEST_CASE("compute on an empty graph returns an empty map") {
     GraphEngine graph;
@@ -53,10 +53,6 @@ TEST_CASE("positions are finite - no NaN/inf from a degenerate single-node graph
 }
 
 TEST_CASE("the same graph and config produce identical positions across calls") {
-    // Determinism matters: a layout that shuffles every time you open
-    // the app (or every time you add an unrelated node) would make the
-    // graph feel unstable to navigate, even if nothing the user cares
-    // about changed.
     GraphEngine graph;
     auto a = makeNode("A");
     auto b = makeNode("B");
@@ -74,10 +70,6 @@ TEST_CASE("the same graph and config produce identical positions across calls") 
 }
 
 TEST_CASE("connected nodes end up closer together than an unrelated distant pair, on average") {
-    // Not a precise geometric claim (force-directed layout has no
-    // single "correct" answer) - just the qualitative property the
-    // algorithm exists to provide: a tight cluster connected by edges,
-    // and a lone unconnected node, should not end up equidistant.
     GraphEngine graph;
     auto a = makeNode("A");
     auto b = makeNode("B");
@@ -100,7 +92,7 @@ TEST_CASE("connected nodes end up closer together than an unrelated distant pair
                 .hasValue());
 
     LayoutConfig config;
-    config.iterations = 200;  // let it fully settle for this assertion
+    config.iterations = 200;
     auto positions = ForceDirectedLayout::compute(graph, config);
 
     double withinCluster = distance(positions[aId], positions[bId]);
@@ -109,10 +101,6 @@ TEST_CASE("connected nodes end up closer together than an unrelated distant pair
 }
 
 TEST_CASE("layout is reasonably stable when one unrelated node is added") {
-    // A weaker, more honest claim than "identical positions": adding
-    // an unrelated fourth node shouldn't make the original triangle
-    // collapse or fly apart - the existing cluster's *shape* should
-    // survive roughly intact even though exact coordinates shift.
     GraphEngine graph;
     auto a = makeNode("A");
     auto b = makeNode("B");
@@ -135,8 +123,6 @@ TEST_CASE("layout is reasonably stable when one unrelated node is added") {
     auto after = ForceDirectedLayout::compute(graph, config);
     double afterDistance = distance(after[aId], after[bId]);
 
-    // Same order of magnitude - not asserting exact equality, since
-    // the whole point of recomputing is that it's allowed to change.
     CHECK(afterDistance < beforeDistance * 3.0);
 }
 

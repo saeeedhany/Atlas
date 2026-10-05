@@ -48,7 +48,7 @@ struct Fixture {
     KnowledgeObjectId addConcept(const char* title) { return workspace.createKnowledgeObject(title).value(); }
 };
 
-}  // namespace
+}
 
 TEST_CASE("load rebuilds a stale cache from the log and marks it fresh") {
     Fixture f;

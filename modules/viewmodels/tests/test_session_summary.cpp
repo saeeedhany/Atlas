@@ -15,7 +15,7 @@ ReviewEvent event(Certainty predicted, Grade grade, Exercise exercise = Exercise
     return result;
 }
 
-}  // namespace
+}
 
 TEST_CASE("link prompts read naturally for every type") {
     CHECK(linkPrompt(RelationshipType::DependsOn, "B-Tree", "Tree") == "Why does B-Tree depend on Tree?");

@@ -25,7 +25,7 @@ double secondsToPlan(const SessionPlanner& planner, const StateMap& states, Time
     return taken.count();
 }
 
-}  // namespace
+}
 
 TEST_CASE("plan stays fast at 10,000 concepts and ~30,000 links" * doctest::test_suite("scale")) {
     GraphEngine graph;

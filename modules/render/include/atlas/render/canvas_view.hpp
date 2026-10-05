@@ -10,4 +10,4 @@ QRectF cullRectFor(const QRectF& viewport);
 bool segmentMayCross(const QRectF& rect, QPointF from, QPointF to);
 double distanceToSegment(QPointF point, QPointF from, QPointF to);
 
-}  // namespace atlas::render
+}

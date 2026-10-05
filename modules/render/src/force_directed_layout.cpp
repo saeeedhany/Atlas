@@ -81,7 +81,7 @@ std::vector<Point2D> startingPositions(const std::vector<KnowledgeObjectId>& ids
     return positions;
 }
 
-}  // namespace
+}
 
 std::unordered_map<KnowledgeObjectId, Point2D> ForceDirectedLayout::compute(
     const atlas::graph::GraphEngine& graph, LayoutConfig config, const LayoutHints& hints) {
@@ -163,4 +163,4 @@ std::unordered_map<KnowledgeObjectId, Point2D> ForceDirectedLayout::compute(
     return result;
 }
 
-}  // namespace atlas::render
+}

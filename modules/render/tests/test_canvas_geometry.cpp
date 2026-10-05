@@ -7,7 +7,7 @@ using namespace atlas::render;
 
 namespace {
 float distanceTo(Vec2 point, Vec2 center) { return std::hypot(point.x - center.x, point.y - center.y); }
-}  // namespace
+}
 
 TEST_CASE("ring arcs grow with the fraction and ignore invalid input") {
     Vec2 center{0.0f, 0.0f};

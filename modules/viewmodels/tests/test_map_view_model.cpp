@@ -56,7 +56,7 @@ struct Fixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("ids round trip and reject garbage") {
     auto id = KnowledgeObjectId::generate();

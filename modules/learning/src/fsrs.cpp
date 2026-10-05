@@ -22,7 +22,7 @@ std::chrono::system_clock::duration toDuration(double days) {
         std::chrono::duration<double, std::ratio<86400>>(days));
 }
 
-}  // namespace
+}
 
 double elapsedDays(TimePoint from, TimePoint to) {
     std::chrono::duration<double, std::ratio<86400>> days = to - from;
@@ -125,4 +125,4 @@ MemoryState Fsrs::review(const MemoryState& state, Grade grade, TimePoint at,
     return next;
 }
 
-}  // namespace atlas::learning
+}

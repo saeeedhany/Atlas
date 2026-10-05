@@ -12,7 +12,7 @@ Result<Topic, TopicValidationError> Topic::create(std::string name, std::string 
     }
     auto now = std::chrono::system_clock::now();
     StorageRecord record{TopicId::generate(), std::move(name), std::move(description),
-                          /*createdAt=*/now, /*updatedAt=*/now};
+                          now, now};
     return Result<Topic, TopicValidationError>::ok(Topic(std::move(record)));
 }
 
@@ -47,11 +47,7 @@ void Topic::redescribeAs(std::string description) {
 }
 
 TopicId uncategorizedTopicId() {
-    // Parse of a fixed, valid literal - never fails in practice, but
-    // routed through the same fallible Uuid::parse() every other UUID
-    // in this codebase goes through rather than a separate hand-rolled
-    // "all zero bytes" constructor.
     return TopicId(*Uuid::parse("00000000-0000-0000-0000-000000000000"));
 }
 
-}  // namespace atlas::core
+}

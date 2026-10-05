@@ -6,10 +6,6 @@
 
 namespace atlas::core {
 
-// Minimal Result<T, E> for fallible operations where exceptions are
-// undesirable (e.g. across a future plugin/ABI boundary - see M0
-// design notes). Deliberately small: only what M0 actually needs.
-// No monadic map/and_then yet; add only when a real use case appears.
 template <typename T, typename E>
 class Result {
 public:
@@ -19,15 +15,8 @@ public:
     bool hasValue() const { return storage_.index() == 0; }
     explicit operator bool() const { return hasValue(); }
 
-    // All three ref-qualified overloads exist deliberately, mirroring
-    // std::optional/std::variant - not just the const& and && pair.
-    // Without the plain `&` overload, calling .value() on a named
-    // non-const Result has no matching non-const candidate, so it
-    // silently falls back to the const& overload. That's not just a
-    // style issue: it means `std::move(namedResult.value())` doesn't
-    // actually move anything (you can't move out of a const
-    // reference), silently downgrading to a copy.
     const T& value() const& { return std::get<0>(storage_); }
+    // Without this overload, value() on a named Result binds to const& and std::move copies.
     T& value() & { return std::get<0>(storage_); }
     T&& value() && { return std::get<0>(std::move(storage_)); }
 
@@ -42,8 +31,6 @@ private:
     std::variant<T, E> storage_;
 };
 
-// Specialization for operations that can fail but produce no value on
-// success (e.g. KnowledgeObject::renameTo).
 template <typename E>
 class Result<void, E> {
 public:
@@ -62,4 +49,4 @@ private:
     std::optional<E> error_;
 };
 
-}  // namespace atlas::core
+}

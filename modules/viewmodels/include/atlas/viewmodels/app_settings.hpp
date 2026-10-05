@@ -44,4 +44,4 @@ private:
     mutable QString deviceId_;
 };
 
-}  // namespace atlas::viewmodels
+}

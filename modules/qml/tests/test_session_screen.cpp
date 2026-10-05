@@ -23,7 +23,7 @@ void introduce(QmlFixture& f, const QString& id) {
     REQUIRE(f.context().memory().record({event}).hasValue());
 }
 
-}  // namespace
+}
 
 TEST_CASE("Today starts a session and the explain step finishes it") {
     QmlFixture f;

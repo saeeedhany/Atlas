@@ -149,4 +149,4 @@ QVariantList TopicsModel::suggestProjects(const QString& topicId) const {
     return ideas;
 }
 
-}  // namespace atlas::viewmodels
+}

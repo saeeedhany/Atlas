@@ -80,7 +80,7 @@ std::optional<Phase> phaseFromString(std::string_view text);
 std::optional<Grade> gradeFromInt(int64_t value);
 std::optional<Certainty> certaintyFromInt(int64_t value);
 
-}  // namespace atlas::core
+}
 
 namespace std {
 template <>
@@ -89,4 +89,4 @@ struct hash<atlas::core::ItemRef> {
         return std::hash<atlas::core::Uuid>{}(item.id) ^ static_cast<size_t>(item.kind);
     }
 };
-}  // namespace std
+}

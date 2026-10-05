@@ -10,14 +10,12 @@ namespace {
 
 KnowledgeObject makeNode(const char* title) { return KnowledgeObject::create(title).value(); }
 
-}  // namespace
+}
 
 TEST_CASE("addNode rejects a duplicate id") {
     GraphEngine graph;
     auto node = makeNode("Recursion");
     auto id = node.id();
-    // Re-derive an object with the same id via reconstruct, since
-    // create() always generates a fresh one.
     KnowledgeObject::StorageRecord record{id, "Recursion", "", "", "", {}, {}, {}, "",
                                             Difficulty::Beginner, ConfidenceLevel::Unknown,
                                             node.createdAt(), node.updatedAt()};
@@ -69,7 +67,6 @@ TEST_CASE("addEdge rejects a symmetric edge stored in the reverse order as a dup
 
     REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::RelatedTo).value())
                 .hasValue());
-    // B RelatedTo A is the same fact as A RelatedTo B for a symmetric type.
     auto result =
         graph.addEdge(Relationship::create(bId, aId, RelationshipType::RelatedTo).value());
     CHECK(!result.hasValue());
@@ -87,7 +84,6 @@ TEST_CASE("a directional type in reverse order is NOT a duplicate") {
 
     REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value())
                 .hasValue());
-    // B DependsOn A is a different fact from A DependsOn B.
     auto result =
         graph.addEdge(Relationship::create(bId, aId, RelationshipType::DependsOn).value());
     CHECK(result.hasValue());
@@ -161,7 +157,7 @@ TEST_CASE("removeNode cascades to every edge touching it, including symmetric on
     REQUIRE(graph.addNode(std::move(c)).hasValue());
 
     auto edge1 = Relationship::create(aId, bId, RelationshipType::DependsOn).value();
-    auto edge2 = Relationship::create(aId, cId, RelationshipType::RelatedTo).value();  // symmetric
+    auto edge2 = Relationship::create(aId, cId, RelationshipType::RelatedTo).value();
     auto edge1Id = edge1.id();
     auto edge2Id = edge2.id();
     REQUIRE(graph.addEdge(std::move(edge1)).hasValue());
@@ -174,7 +170,6 @@ TEST_CASE("removeNode cascades to every edge touching it, including symmetric on
     CHECK(graph.findEdge(edge1Id) == nullptr);
     CHECK(graph.findEdge(edge2Id) == nullptr);
     CHECK(graph.edgeCount() == 0);
-    // b and c survive; only their edges to a are gone.
     CHECK(graph.findNode(bId) != nullptr);
     CHECK(graph.findNode(cId) != nullptr);
     CHECK(graph.neighbors(bId).empty());
@@ -187,14 +182,6 @@ TEST_CASE("removeNode on an unknown id returns false") {
 }
 
 TEST_CASE("a pointer from findNode survives many subsequent insertions") {
-    // Regression test: the original implementation stored nodes in a
-    // std::vector, whose reallocation on growth invalidates pointers
-    // to existing elements. This pattern - hold a pointer, then insert
-    // more nodes - is exactly what a UI naturally does (e.g. a cached
-    // "selected node" pointer while the user keeps adding concepts),
-    // so it isn't a contrived case. Backing storage is std::deque now,
-    // specifically because appending to a deque never invalidates
-    // references to elements already in it.
     GraphEngine graph;
     auto first = makeNode("First");
     auto firstId = first.id();
@@ -203,8 +190,6 @@ TEST_CASE("a pointer from findNode survives many subsequent insertions") {
     const KnowledgeObject* ptr = graph.findNode(firstId);
     REQUIRE(ptr != nullptr);
 
-    // Enough insertions to force several reallocations were this still
-    // backed by a vector.
     for (int i = 0; i < 500; ++i) {
         REQUIRE(graph.addNode(makeNode("Filler")).hasValue());
     }
@@ -323,9 +308,6 @@ TEST_CASE("search excludes nodes that don't match and never includes removed nod
 }
 
 TEST_CASE("hasDuplicateEdge lets a caller pre-flight-check before writing anything") {
-    // This is what WorkspaceController relies on: check before any
-    // database write, rather than discovering a graph-level rejection
-    // only after persistence has already accepted it.
     GraphEngine graph;
     auto a = makeNode("A");
     auto b = makeNode("B");
@@ -340,9 +322,7 @@ TEST_CASE("hasDuplicateEdge lets a caller pre-flight-check before writing anythi
                 .hasValue());
 
     CHECK(graph.hasDuplicateEdge(aId, bId, RelationshipType::RelatedTo));
-    // Symmetric type: the reverse pair is the same fact.
     CHECK(graph.hasDuplicateEdge(bId, aId, RelationshipType::RelatedTo));
-    // Different type between the same pair is not a duplicate.
     CHECK(!graph.hasDuplicateEdge(aId, bId, RelationshipType::DependsOn));
 }
 
@@ -361,7 +341,6 @@ TEST_CASE("transitiveDependencies follows a chain and a diamond without duplicat
     REQUIRE(graph.addNode(std::move(c)).hasValue());
     REQUIRE(graph.addNode(std::move(d)).hasValue());
 
-    // Diamond: A depends on B and C; both B and C depend on D.
     REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value())
                 .hasValue());
     REQUIRE(graph.addEdge(Relationship::create(aId, cId, RelationshipType::DependsOn).value())
@@ -372,7 +351,7 @@ TEST_CASE("transitiveDependencies follows a chain and a diamond without duplicat
                 .hasValue());
 
     auto deps = graph.transitiveDependencies(aId);
-    CHECK(deps.size() == 3);  // B, C, D - D reached via both paths but counted once
+    CHECK(deps.size() == 3);
 }
 
 TEST_CASE("topologicalOrder places every dependency before its dependents") {
@@ -387,7 +366,6 @@ TEST_CASE("topologicalOrder places every dependency before its dependents") {
     REQUIRE(graph.addNode(std::move(b)).hasValue());
     REQUIRE(graph.addNode(std::move(c)).hasValue());
 
-    // A depends on B, B depends on C. Valid order: C, B, A (in some form).
     REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value())
                 .hasValue());
     REQUIRE(graph.addEdge(Relationship::create(bId, cId, RelationshipType::DependsOn).value())
@@ -445,10 +423,10 @@ TEST_CASE("learningRoadmapFor a node with no dependencies is just that node") {
 
 TEST_CASE("learningRoadmapFor orders prerequisites before the target, and excludes unrelated nodes") {
     GraphEngine graph;
-    auto a = makeNode("A");  // target: depends on B
-    auto b = makeNode("B");  // depends on C
-    auto c = makeNode("C");  // no dependencies
-    auto unrelated = makeNode("Unrelated");  // not connected to A at all
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    auto c = makeNode("C");
+    auto unrelated = makeNode("Unrelated");
     auto aId = a.id();
     auto bId = b.id();
     auto cId = c.id();
@@ -467,7 +445,7 @@ TEST_CASE("learningRoadmapFor orders prerequisites before the target, and exclud
     REQUIRE(result.hasValue());
     const auto& roadmap = result.value();
 
-    REQUIRE(roadmap.size() == 3);  // A, B, C - not the unrelated node
+    REQUIRE(roadmap.size() == 3);
     CHECK(std::find(roadmap.begin(), roadmap.end(), unrelatedId) == roadmap.end());
 
     auto position = [&](const KnowledgeObjectId& id) {
@@ -475,15 +453,14 @@ TEST_CASE("learningRoadmapFor orders prerequisites before the target, and exclud
     };
     CHECK(position(cId) < position(bId));
     CHECK(position(bId) < position(aId));
-    // The roadmap's whole point: the target itself is always last.
     CHECK(roadmap.back() == aId);
 }
 
 TEST_CASE("learningRoadmapFor a diamond dependency includes the shared prerequisite once") {
     GraphEngine graph;
-    auto a = makeNode("A");  // depends on B and C
-    auto b = makeNode("B");  // depends on D
-    auto c = makeNode("C");  // depends on D
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    auto c = makeNode("C");
     auto d = makeNode("D");
     auto aId = a.id();
     auto bId = b.id();
@@ -505,7 +482,7 @@ TEST_CASE("learningRoadmapFor a diamond dependency includes the shared prerequis
 
     auto result = graph.learningRoadmapFor(aId);
     REQUIRE(result.hasValue());
-    CHECK(result.value().size() == 4);  // A, B, C, D - D counted once despite two paths
+    CHECK(result.value().size() == 4);
 }
 
 TEST_CASE("learningRoadmapFor ignores a cycle outside the target's dependency chain") {

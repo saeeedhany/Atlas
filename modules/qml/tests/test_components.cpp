@@ -18,7 +18,7 @@ QVariantList call(QObject* object, const char* method, auto... arguments) {
     return result.toList();
 }
 
-}  // namespace
+}
 
 TEST_CASE("the list editor returns new lists and leaves its items alone") {
     QmlFixture f;

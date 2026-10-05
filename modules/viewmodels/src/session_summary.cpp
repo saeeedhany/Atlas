@@ -81,4 +81,4 @@ SessionTip chooseTip(const std::vector<ReviewEvent>& events) {
     return {"Recalling beats rereading. A short session on most days works best.", "Roediger & Karpicke 2006"};
 }
 
-}  // namespace atlas::viewmodels
+}

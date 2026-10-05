@@ -12,10 +12,10 @@ std::byte hexNibble(char c) {
     if (c >= '0' && c <= '9') return static_cast<std::byte>(c - '0');
     if (c >= 'a' && c <= 'f') return static_cast<std::byte>(c - 'a' + 10);
     if (c >= 'A' && c <= 'F') return static_cast<std::byte>(c - 'A' + 10);
-    return std::byte{0xFF};  // sentinel for "invalid"
+    return std::byte{0xFF};
 }
 
-}  // namespace
+}
 
 Uuid Uuid::generate() {
     static thread_local std::mt19937_64 engine{std::random_device{}()};
@@ -27,8 +27,6 @@ Uuid Uuid::generate() {
     std::memcpy(id.bytes_.data(), &high, 8);
     std::memcpy(id.bytes_.data() + 8, &low, 8);
 
-    // RFC 4122 version 4 / variant bits, so a parsed-back string is
-    // indistinguishable from a UUID produced by any other v4 generator.
     id.bytes_[6] = static_cast<std::byte>((static_cast<uint8_t>(id.bytes_[6]) & 0x0F) | 0x40);
     id.bytes_[8] = static_cast<std::byte>((static_cast<uint8_t>(id.bytes_[8]) & 0x3F) | 0x80);
 
@@ -76,11 +74,9 @@ std::string Uuid::toString() const {
     return out;
 }
 
-}  // namespace atlas::core
+}
 
 size_t std::hash<atlas::core::Uuid>::operator()(const atlas::core::Uuid& id) const noexcept {
-    // FNV-1a over the 16 raw bytes - simple, fast, good enough for an
-    // in-memory hash map key. Not used for any security purpose.
     constexpr uint64_t kPrime = 1099511628211ull;
     uint64_t hash = 14695981039346656037ull;
     for (std::byte b : id.bytes()) {

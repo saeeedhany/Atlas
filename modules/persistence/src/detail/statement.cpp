@@ -12,7 +12,7 @@ PersistenceError errorFrom(sqlite3* db, PersistenceErrorCode code) {
     return PersistenceError{code, db ? sqlite3_errmsg(db) : "unknown sqlite error"};
 }
 
-}  // namespace
+}
 
 Result<void, PersistenceError> execute(sqlite3* db, std::string_view sql) {
     char* errorMessage = nullptr;
@@ -59,9 +59,6 @@ Statement& Statement::operator=(Statement&& other) noexcept {
 }
 
 void Statement::bindText(int index, std::string_view value) {
-    // SQLITE_TRANSIENT tells SQLite to copy the bytes immediately,
-    // since `value` may not outlive this call (e.g. a temporary built
-    // from a std::string that's about to be destroyed).
     sqlite3_bind_text(stmt_, index, value.data(), static_cast<int>(value.size()),
                        SQLITE_TRANSIENT);
 }
@@ -115,4 +112,4 @@ std::optional<int64_t> Statement::columnOptionalInt64(int index) const {
     return columnInt64(index);
 }
 
-}  // namespace atlas::persistence::detail
+}

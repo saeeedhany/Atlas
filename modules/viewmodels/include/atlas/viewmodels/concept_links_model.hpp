@@ -82,4 +82,4 @@ private:
     std::unordered_map<std::string, std::string> topicNames_;
 };
 
-}  // namespace atlas::viewmodels
+}

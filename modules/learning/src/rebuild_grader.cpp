@@ -39,7 +39,7 @@ Grade gradeMatch(const RebuildAnswer& answer, const Relationship& link, const Re
     return answer.predicted == Certainty::Certain && fast ? Grade::Easy : Grade::Good;
 }
 
-}  // namespace
+}
 
 std::optional<std::chrono::milliseconds> medianRebuildResponse(const std::vector<ReviewEvent>& events) {
     std::vector<std::chrono::milliseconds> times;
@@ -119,4 +119,4 @@ void RebuildGrader::attachWrongTarget(std::vector<GradedLink>& graded,
     if (byNeighbor != nullptr) byNeighbor->wrongTarget = wrong;
 }
 
-}  // namespace atlas::learning
+}

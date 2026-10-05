@@ -16,14 +16,14 @@ Result<KnowledgeObject, ValidationError> KnowledgeObject::create(
                           std::move(definition),
                           std::move(problemSolved),
                           std::move(whyItExists),
-                          /*examples=*/{},
-                          /*miniProjects=*/{},
-                          /*references=*/{},
-                          /*notes=*/"",
+                          {},
+                          {},
+                          {},
+                          "",
                           difficulty,
                           confidence,
-                          /*createdAt=*/now,
-                          /*updatedAt=*/now};
+                          now,
+                          now};
     return Result<KnowledgeObject, ValidationError>::ok(KnowledgeObject(std::move(record)));
 }
 
@@ -126,4 +126,4 @@ void KnowledgeObject::assignToTopic(TopicId topicId) {
     touch();
 }
 
-}  // namespace atlas::core
+}

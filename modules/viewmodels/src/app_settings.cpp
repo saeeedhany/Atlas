@@ -11,7 +11,7 @@ constexpr auto kDarkThemeKey = "appearance/darkTheme";
 constexpr auto kReducedMotionKey = "appearance/reducedMotion";
 constexpr auto kNewPerDayKey = "learning/newPerDay";
 constexpr auto kDeviceIdKey = "device/id";
-}  // namespace
+}
 
 AppSettings::AppSettings(QSettings& store, QObject* parent) : QObject(parent), store_(&store) {}
 
@@ -65,4 +65,4 @@ void AppSettings::setPanelLayout(const QString& id, const QVariantMap& layout) {
     for (auto it = layout.begin(); it != layout.end(); ++it) store_->setValue(prefix + it.key(), it.value());
 }
 
-}  // namespace atlas::viewmodels
+}

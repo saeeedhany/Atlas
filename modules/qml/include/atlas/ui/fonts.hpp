@@ -6,4 +6,4 @@ namespace atlas::ui {
 
 QStringList loadBundledFonts();
 
-}  // namespace atlas::ui
+}

@@ -34,7 +34,7 @@ struct Fixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("every link recalled correctly without hints is good") {
     Fixture f;

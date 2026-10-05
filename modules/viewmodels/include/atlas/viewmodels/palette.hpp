@@ -74,4 +74,4 @@ private:
     AppSettings* settings_;
 };
 
-}  // namespace atlas::viewmodels
+}

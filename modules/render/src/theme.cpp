@@ -84,7 +84,7 @@ Theme makeLight() {
     return theme;
 }
 
-}  // namespace
+}
 
 const Theme& themeFor(ThemeMode mode) {
     static const Theme dark = makeDark();
@@ -109,4 +109,4 @@ QColor ringColor(const Theme& theme, double recall) {
     return theme.ringNew;
 }
 
-}  // namespace atlas::render
+}

@@ -17,7 +17,7 @@ bool isSymmetric(RelationshipType type) {
         case RelationshipType::Causes:
             return false;
     }
-    return false;  // unreachable; silences -Wreturn-type on some compilers
+    return false;
 }
 
 std::string_view toDisplayString(Difficulty value) {
@@ -27,7 +27,7 @@ std::string_view toDisplayString(Difficulty value) {
         case Difficulty::Advanced: return "Advanced";
         case Difficulty::Expert: return "Expert";
     }
-    return "Beginner";  // unreachable
+    return "Beginner";
 }
 
 std::optional<Difficulty> difficultyFromString(std::string_view text) {
@@ -46,7 +46,7 @@ std::string_view toDisplayString(ConfidenceLevel value) {
         case ConfidenceLevel::Confident: return "Confident";
         case ConfidenceLevel::Mastered: return "Mastered";
     }
-    return "Unknown";  // unreachable
+    return "Unknown";
 }
 
 std::optional<ConfidenceLevel> confidenceLevelFromString(std::string_view text) {
@@ -71,7 +71,7 @@ std::string_view toDisplayString(RelationshipType value) {
         case RelationshipType::OppositeOf: return "OppositeOf";
         case RelationshipType::Causes: return "Causes";
     }
-    return "RelatedTo";  // unreachable
+    return "RelatedTo";
 }
 
 std::optional<RelationshipType> relationshipTypeFromString(std::string_view text) {
@@ -88,4 +88,4 @@ std::optional<RelationshipType> relationshipTypeFromString(std::string_view text
     return std::nullopt;
 }
 
-}  // namespace atlas::core
+}

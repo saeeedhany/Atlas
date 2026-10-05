@@ -32,7 +32,7 @@ QString outcomeName(EdgeMark mark) {
     return mark == EdgeMark::Partial ? QStringLiteral("partial") : QStringLiteral("recalled");
 }
 
-}  // namespace
+}
 
 SessionController::SessionController(WorkspaceController& workspace, MemoryController& memory, MapViewModel& map,
                                      AppSettings& settings, QObject* parent)
@@ -403,4 +403,4 @@ void SessionController::finish() {
     emit changed();
 }
 
-}  // namespace atlas::viewmodels
+}

@@ -4,10 +4,6 @@
 
 namespace atlas::core {
 
-// Wraps a Uuid with a phantom Tag type so IDs belonging to different
-// entities (KnowledgeObjectId vs RelationshipId) are distinct types at
-// compile time, even though they share an identical representation.
-// One implementation, no per-entity boilerplate duplication.
 template <typename Tag>
 class StrongId {
 public:
@@ -32,7 +28,7 @@ using KnowledgeObjectId = StrongId<KnowledgeObjectTag>;
 using RelationshipId = StrongId<RelationshipTag>;
 using TopicId = StrongId<TopicTag>;
 
-}  // namespace atlas::core
+}
 
 namespace std {
 template <typename Tag>
@@ -41,4 +37,4 @@ struct hash<atlas::core::StrongId<Tag>> {
         return std::hash<atlas::core::Uuid>{}(id.value());
     }
 };
-}  // namespace std
+}

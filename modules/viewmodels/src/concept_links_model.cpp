@@ -17,7 +17,7 @@ using atlas::core::RelationshipType;
 
 namespace {
 constexpr int kTypeCount = static_cast<int>(RelationshipType::Causes) + 1;
-}  // namespace
+}
 
 QString relationshipLabel(RelationshipType type) {
     switch (type) {
@@ -158,4 +158,4 @@ QVariantList ConceptLinksModel::candidates(const QString& query) {
     return results;
 }
 
-}  // namespace atlas::viewmodels
+}

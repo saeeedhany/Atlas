@@ -19,17 +19,12 @@ Result<Database, PersistenceError> Database::open(const std::string& path) {
             PersistenceError{PersistenceErrorCode::ConnectionFailed, std::move(detail)});
     }
 
-    // SQLite enforces foreign keys per-connection and defaults to OFF;
-    // we rely on ON DELETE CASCADE for referential integrity, so this
-    // must be set before anything else touches the connection.
     auto fkResult = detail::execute(raw, "PRAGMA foreign_keys = ON;");
     if (!fkResult.hasValue()) {
         sqlite3_close(raw);
         return Result<Database, PersistenceError>::err(std::move(fkResult).error());
     }
 
-    // WAL improves concurrent read/write behavior for a desktop app
-    // with no real downside for our access pattern.
     auto walResult = detail::execute(raw, "PRAGMA journal_mode = WAL;");
     if (!walResult.hasValue()) {
         sqlite3_close(raw);
@@ -64,4 +59,4 @@ Database& Database::operator=(Database&& other) noexcept {
     return *this;
 }
 
-}  // namespace atlas::persistence
+}

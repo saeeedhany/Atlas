@@ -43,7 +43,7 @@ Result<Topic, PersistenceError> rowToTopic(detail::Statement& statement) {
     return Result<Topic, PersistenceError>::ok(std::move(reconstructed).value());
 }
 
-}  // namespace
+}
 
 TopicRepository::TopicRepository(Database& database) : database_(&database) {}
 
@@ -137,4 +137,4 @@ Result<void, PersistenceError> TopicRepository::remove(const TopicId& id) {
     return Result<void, PersistenceError>::ok();
 }
 
-}  // namespace atlas::persistence
+}

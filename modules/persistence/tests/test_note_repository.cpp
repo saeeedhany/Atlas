@@ -31,7 +31,7 @@ BoardNote makeNote(const char* body) {
     return note;
 }
 
-}  // namespace
+}
 
 TEST_CASE("notes round trip with their links") {
     auto db = openTestDatabase();

@@ -63,7 +63,7 @@ Result<Relationship, PersistenceError> rowToRelationship(detail::Statement& stat
     return Result<Relationship, PersistenceError>::ok(std::move(reconstructed).value());
 }
 
-}  // namespace
+}
 
 RelationshipRepository::RelationshipRepository(Database& database) : database_(&database) {}
 
@@ -172,4 +172,4 @@ Result<void, PersistenceError> RelationshipRepository::remove(const Relationship
     return Result<void, PersistenceError>::ok();
 }
 
-}  // namespace atlas::persistence
+}

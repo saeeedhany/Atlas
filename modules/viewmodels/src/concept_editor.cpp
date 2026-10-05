@@ -42,7 +42,7 @@ std::vector<ListItem> readList(const QVariantList& list) {
     return items;
 }
 
-}  // namespace
+}
 
 ConceptEditor::ConceptEditor(WorkspaceController& workspace, MemoryController& memory,
                              PlacementController& placements, QObject* parent)
@@ -192,4 +192,4 @@ QVariantList ConceptEditor::roadmap() {
     return steps;
 }
 
-}  // namespace atlas::viewmodels
+}

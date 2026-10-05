@@ -30,7 +30,7 @@ Result<void, PersistenceError> run(sqlite3* db, const char* sql, const std::vect
     return Result<void, PersistenceError>::ok();
 }
 
-}  // namespace
+}
 
 NoteRepository::NoteRepository(Database& database) : database_(&database) {}
 
@@ -116,4 +116,4 @@ Result<std::vector<BoardNote>, PersistenceError> NoteRepository::findAll() {
     return Out::ok(std::move(notes));
 }
 
-}  // namespace atlas::persistence
+}

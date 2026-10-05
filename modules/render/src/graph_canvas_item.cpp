@@ -190,7 +190,7 @@ QFont labelFont() {
     return font;
 }
 
-}  // namespace
+}
 
 QString elideLabel(const QString& text, int maxChars) {
     if (text.size() <= maxChars) return text;
@@ -889,4 +889,4 @@ void GraphCanvasItem::geometryChange(const QRectF& newGeometry, const QRectF& ol
 
 void registerGraphCanvasQmlType() { qmlRegisterType<GraphCanvasItem>("Atlas.Render", 1, 0, "GraphCanvas"); }
 
-}  // namespace atlas::render
+}

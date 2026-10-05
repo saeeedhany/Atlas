@@ -26,4 +26,4 @@ private:
     QString failure_;
 };
 
-}  // namespace atlas::viewmodels
+}

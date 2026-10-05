@@ -22,4 +22,4 @@ int itemsRecalled(const std::vector<atlas::core::ReviewEvent>& events);
 QStringList calibrationLines(const std::vector<atlas::core::ReviewEvent>& events);
 SessionTip chooseTip(const std::vector<atlas::core::ReviewEvent>& events);
 
-}  // namespace atlas::viewmodels
+}

@@ -33,4 +33,4 @@ Relationship::Relationship(StorageRecord record)
       note_(std::move(record.note)),
       createdAt_(record.createdAt) {}
 
-}  // namespace atlas::core
+}

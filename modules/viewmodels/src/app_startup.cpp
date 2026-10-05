@@ -20,4 +20,4 @@ AppStartup::AppStartup(const QString& databasePath, QSettings& store, Clock cloc
     context_->provideSingletons();
 }
 
-}  // namespace atlas::viewmodels
+}

@@ -206,4 +206,4 @@ private:
 
 void registerGraphCanvasQmlType();
 
-}  // namespace atlas::render
+}

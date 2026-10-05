@@ -48,4 +48,4 @@ private:
     double factor_;
 };
 
-}  // namespace atlas::learning
+}

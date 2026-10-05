@@ -31,7 +31,7 @@ int tableCount(const std::string& path, const char* table) {
     return count;
 }
 
-}  // namespace
+}
 
 TEST_CASE("migration 3 upgrades a version 2 database and keeps its data") {
     auto path = (std::filesystem::temp_directory_path() / ("atlas_v2_" + Uuid::generate().toString() + ".db")).string();

@@ -26,7 +26,7 @@ struct PanelFixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("selecting a concept opens the panel on it") {
     PanelFixture p;

@@ -49,4 +49,4 @@ std::vector<QPointF> roundedRectOutline(const QRectF& rect, double radius, int c
     return outline;
 }
 
-}  // namespace atlas::render
+}

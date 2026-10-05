@@ -20,7 +20,7 @@ bool regionOrder(const QString& nameA, const QString& idA, const QString& nameB,
     return nameA != nameB ? nameA < nameB : idA < idB;
 }
 
-}  // namespace
+}
 
 using atlas::core::ItemRef;
 using atlas::core::KnowledgeObjectId;
@@ -355,4 +355,4 @@ bool MapViewModel::moveTopic(const QString& topicId, double dx, double dy) {
     return true;
 }
 
-}  // namespace atlas::viewmodels
+}

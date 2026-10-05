@@ -19,12 +19,10 @@ KnowledgeObject makeNode(const char* title, TopicId topic, ConfidenceLevel confi
     return object;
 }
 
-}  // namespace
+}
 
 TEST_CASE("transitiveDependents is the mirror of transitiveDependencies") {
     GraphEngine graph;
-    // A depends on B, B depends on C - so C's dependents (transitively)
-    // are B and A; A has no dependents.
     auto a = KnowledgeObject::create("A").value();
     auto b = KnowledgeObject::create("B").value();
     auto c = KnowledgeObject::create("C").value();
@@ -117,7 +115,7 @@ TEST_CASE("suggestProjects computes readiness from prerequisite confidence") {
 
     auto suggestions = graph.suggestProjects(topic);
     REQUIRE(suggestions.size() == 1);
-    CHECK(suggestions.front().readiness == doctest::Approx(0.5));  // 1 of 2 prereqs ready
+    CHECK(suggestions.front().readiness == doctest::Approx(0.5));
 }
 
 TEST_CASE("suggestProjects gives a concept with no prerequisites full readiness") {
@@ -136,9 +134,6 @@ TEST_CASE("suggestProjects gives a concept with no prerequisites full readiness"
 TEST_CASE("suggestProjects ranks higher leverage above lower leverage at equal readiness") {
     GraphEngine graph;
     auto topic = TopicId::generate();
-    // highLeverage has two things depending on it; lowLeverage has none.
-    // Both have no prerequisites of their own (full readiness), so
-    // leverage is the only thing that should differentiate their rank.
     auto highLeverage = makeNode("High Leverage", topic, ConfidenceLevel::Learning, true);
     auto lowLeverage = makeNode("Low Leverage", topic, ConfidenceLevel::Learning, true);
     auto dependent1 = makeNode("Dependent 1", topic, ConfidenceLevel::Learning, false);
@@ -159,8 +154,6 @@ TEST_CASE("suggestProjects ranks higher leverage above lower leverage at equal r
             .hasValue());
 
     auto suggestions = graph.suggestProjects(topic);
-    // highLeverage and lowLeverage both have MiniProjects; dependent1/2
-    // don't, so only those two should be ranked.
     REQUIRE(suggestions.size() == 2);
     CHECK(suggestions.front().conceptId == highId);
     CHECK(suggestions.back().conceptId == lowId);

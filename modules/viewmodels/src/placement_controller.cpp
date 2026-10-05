@@ -29,7 +29,7 @@ struct Centroid {
     atlas::render::Point2D center() const { return {sumX / count, sumY / count}; }
 };
 
-}  // namespace
+}
 
 atlas::render::Point2D startingOffsetFor(const KnowledgeObjectId& id) {
     constexpr double kTwoPi = 6.283185307179586;
@@ -175,4 +175,4 @@ bool PlacementController::isPinned(const KnowledgeObjectId& id) const {
     return found != placements_.end() && found->second.pinned;
 }
 
-}  // namespace atlas::viewmodels
+}

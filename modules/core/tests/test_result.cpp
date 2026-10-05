@@ -21,11 +21,6 @@ TEST_CASE("Result<T,E>::err constructs a failed result") {
 }
 
 TEST_CASE("value() on a non-const lvalue Result returns a mutable reference, not a copy") {
-    // This is the overload that was missing. Without it, this would
-    // have silently bound to the const& overload instead, and the
-    // mutation below would have failed to compile (can't assign
-    // through a const reference) rather than working as a real
-    // in-place mutation.
     auto result = Result<std::string, int>::ok("original");
     result.value() += " mutated";
     CHECK(result.value() == "original mutated");
@@ -38,14 +33,10 @@ TEST_CASE("std::move(namedResult).value() actually moves, not copies") {
 }
 
 TEST_CASE("value() on a non-const lvalue enables a genuine move out via std::move(ref)") {
-    // The specific bug this overload fixes: code that does
-    // `for (auto& x : namedResult.value()) { use(std::move(x)); }`
-    // needs namedResult.value() itself to return non-const here, or
-    // `x` becomes const and std::move(x) is a no-op copy in disguise.
     auto result = Result<std::string, int>::ok(std::string(500, 'y'));
     std::string moved = std::move(result.value());
     CHECK(moved.size() == 500);
-    CHECK(result.value().empty());  // really moved-from, not copied
+    CHECK(result.value().empty());
 }
 
 TEST_CASE("error() on a non-const lvalue Result returns a mutable reference") {

@@ -50,4 +50,4 @@ private:
     atlas::learning::StateMap states_;
 };
 
-}  // namespace atlas::viewmodels
+}

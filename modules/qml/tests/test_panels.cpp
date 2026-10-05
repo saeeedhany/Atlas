@@ -16,7 +16,7 @@ const QByteArray kBoard = "import QtQuick\nimport Atlas.Ui\n"
 
 QRectF targetOf(QObject* panel) { return panel->property("target").toRectF(); }
 
-}  // namespace
+}
 
 TEST_CASE("docked panels stack at the top right and fold") {
     QmlFixture f;

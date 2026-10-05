@@ -55,7 +55,7 @@ struct NoteFixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("double clicking empty board creates a note there") {
     NoteFixture n;

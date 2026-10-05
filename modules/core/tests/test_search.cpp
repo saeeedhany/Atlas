@@ -15,7 +15,7 @@ KnowledgeObject makeObject(const char* title, const char* definition = "",
     return object;
 }
 
-}  // namespace
+}
 
 TEST_CASE("matchScore returns nullopt for an empty query") {
     auto object = makeObject("Recursion");

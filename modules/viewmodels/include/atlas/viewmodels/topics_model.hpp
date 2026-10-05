@@ -57,4 +57,4 @@ private:
     std::vector<Row> rows_;
 };
 
-}  // namespace atlas::viewmodels
+}

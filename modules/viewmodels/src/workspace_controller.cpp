@@ -143,7 +143,7 @@ Result<void, ControllerFailure> WorkspaceController::removeKnowledgeObject(
             {ControllerErrorCode::PersistenceFailed, removeResult.error().detail});
     }
 
-    graph_.removeNode(id);  // database is the source of truth; already removed there
+    graph_.removeNode(id);
     emit graphChanged();
     return Result<void, ControllerFailure>::ok();
 }
@@ -200,7 +200,7 @@ Result<void, ControllerFailure> WorkspaceController::removeRelationship(
             {ControllerErrorCode::PersistenceFailed, removeResult.error().detail});
     }
 
-    graph_.removeEdge(id);  // database is the source of truth; already removed there
+    graph_.removeEdge(id);
     emit graphChanged();
     return Result<void, ControllerFailure>::ok();
 }
@@ -296,7 +296,7 @@ std::vector<WorkspaceController::ProjectSuggestion> WorkspaceController::suggest
     std::vector<ProjectSuggestion> suggestions;
     for (const auto& raw : graph_.suggestProjects(topicId)) {
         const KnowledgeObject* object = graph_.findNode(raw.conceptId);
-        if (object == nullptr) continue;  // shouldn't happen: id just came from this same graph
+        if (object == nullptr) continue;
         suggestions.push_back(ProjectSuggestion{*object, raw.readiness, raw.leverage});
     }
     return suggestions;
@@ -412,4 +412,4 @@ std::vector<KnowledgeObject> WorkspaceController::knowledgeObjectsInTopic(
     return objects;
 }
 
-}  // namespace atlas::viewmodels
+}

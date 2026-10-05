@@ -34,7 +34,7 @@ QPointF centerInScene(QObject* object) {
     return item->mapToScene(QPointF(item->width() / 2, item->height() / 2));
 }
 
-}  // namespace
+}
 
 TEST_CASE("first run with an empty map says so") {
     QmlFixture f;

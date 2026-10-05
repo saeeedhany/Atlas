@@ -19,7 +19,7 @@ Database openTestDatabase() {
     return std::move(result).value();
 }
 
-}  // namespace
+}
 
 TEST_CASE("createKnowledgeObject persists and adds to the graph") {
     auto db = openTestDatabase();
@@ -179,7 +179,7 @@ TEST_CASE("search with an empty query behaves like allKnowledgeObjects()") {
 
     auto results = controller.search("");
     REQUIRE(results.size() == 2);
-    CHECK(results[0].title() == "Apple");  // alphabetical, same as allKnowledgeObjects()
+    CHECK(results[0].title() == "Apple");
     CHECK(results[1].title() == "Zebra");
 }
 
@@ -263,7 +263,7 @@ TEST_CASE("createRelationship rejects a duplicate before writing to the database
     RelationshipRepository repo(db);
     auto all = repo.findAll();
     REQUIRE(all.hasValue());
-    CHECK(all.value().size() == 1);  // the rejected attempt never reached the database
+    CHECK(all.value().size() == 1);
 }
 
 TEST_CASE("removeRelationship removes from both the graph and the database") {
@@ -369,7 +369,7 @@ TEST_CASE("createTopic persists and allTopics includes it alongside the seeded U
     REQUIRE(result.hasValue());
 
     auto topics = controller.allTopics();
-    CHECK(topics.size() == 2);  // Uncategorized + Operating Systems
+    CHECK(topics.size() == 2);
 
     bool found = false;
     for (const auto& topic : topics) {
@@ -511,7 +511,7 @@ TEST_CASE("removeTopic succeeds once the topic is empty") {
 
     auto topicId = controller.createTopic("Temporary").value();
     REQUIRE(controller.removeTopic(topicId).hasValue());
-    CHECK(controller.allTopics().size() == 1);  // just Uncategorized left
+    CHECK(controller.allTopics().size() == 1);
 }
 
 TEST_CASE("updateKnowledgeObject can move an object to a different topic") {
@@ -607,7 +607,7 @@ TEST_CASE("suggestProjects resolves ids to full KnowledgeObjects with readiness/
     REQUIRE(suggestions.size() == 1);
     CHECK(suggestions.front().knowledgeObject.id() == objectId);
     CHECK(suggestions.front().knowledgeObject.title() == "Dynamic Programming");
-    CHECK(suggestions.front().readiness == doctest::Approx(1.0));  // no prerequisites
+    CHECK(suggestions.front().readiness == doctest::Approx(1.0));
     CHECK(suggestions.front().leverage == 0);
 }
 

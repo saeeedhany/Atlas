@@ -12,14 +12,6 @@ TEST_CASE("StrongId::generate produces distinct ids") {
 }
 
 TEST_CASE("KnowledgeObjectId and RelationshipId are distinct types") {
-    // This test documents a compile-time guarantee: the following would
-    // fail to compile if uncommented, because KnowledgeObjectId and
-    // RelationshipId are different instantiations of StrongId<Tag> with
-    // no operator== between them.
-    //
-    //   auto a = KnowledgeObjectId::generate();
-    //   auto b = RelationshipId::generate();
-    //   CHECK(a == b);  // <-- compile error by design
     CHECK(true);
 }
 

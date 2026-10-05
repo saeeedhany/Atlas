@@ -49,7 +49,7 @@ QtObject {
     readonly property int radiusRegion: 28
     readonly property int panelWidth: 380
 
-    // A binding written as onSurface: or onPrimary: is read as a handler for surface or primary.
+    // Bound here because "onSurface:" or "onPrimary:" in a declaration would be read as a signal handler.
     Component.onCompleted: {
         theme.onSurface = Qt.binding(() => Palette.text)
         theme.onPrimary = Qt.binding(() => Palette.onPrimary)

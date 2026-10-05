@@ -6,7 +6,6 @@ class QQmlEngine;
 
 namespace atlas::viewmodels {
 
-// QML calls create() only when T is not default-constructible.
 template <typename T>
 class ProvidedSingleton {
 public:
@@ -22,4 +21,4 @@ private:
     static inline T* instance_ = nullptr;
 };
 
-}  // namespace atlas::viewmodels
+}

@@ -49,4 +49,4 @@ void AppContext::provideSingletons() {
     SessionController::provide(&session_);
 }
 
-}  // namespace atlas::viewmodels
+}

@@ -47,4 +47,4 @@ ModelCalibration modelCalibration(const std::vector<Forecast>& forecasts);
 std::vector<Forecast> collectForecasts(const MemoryLedger& ledger, std::vector<ReviewEvent> events,
                                        TimePoint now, const BoostFn& boost = {});
 
-}  // namespace atlas::learning
+}

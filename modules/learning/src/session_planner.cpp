@@ -16,7 +16,6 @@ struct DueGroup {
     double lowestRecall = 1.0;
 };
 
-// Counts transitive dependents like NetworkRules::leverage over an index built once per plan.
 class DependentCounter {
 public:
     explicit DependentCounter(const GraphEngine& graph) {
@@ -57,7 +56,7 @@ bool isDue(const MemoryState& state, TimePoint now) {
     return state.phase != Phase::New && state.dueAt.has_value() && *state.dueAt <= now;
 }
 
-}  // namespace
+}
 
 SessionPlanner::SessionPlanner(const GraphEngine& graph, const NetworkRules& rules, Fsrs fsrs)
     : graph_(&graph), rules_(&rules), fsrs_(std::move(fsrs)) {}
@@ -190,4 +189,4 @@ SessionPlan SessionPlanner::plan(const StateMap& states, TimePoint now, int intr
     return plan;
 }
 
-}  // namespace atlas::learning
+}

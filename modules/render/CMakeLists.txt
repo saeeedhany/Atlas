@@ -1,7 +1,3 @@
-# atlas-render: layout math (Qt-free, depends on atlas-core +
-# atlas-graph only) plus the Qt Quick canvas (added once the layout
-# algorithm's performance at 10k nodes is actually verified).
-
 add_library(atlas_render STATIC
     src/force_directed_layout.cpp
     src/canvas_geometry.cpp

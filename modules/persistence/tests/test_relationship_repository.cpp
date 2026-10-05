@@ -23,7 +23,7 @@ KnowledgeObjectId saveStubObject(KnowledgeObjectRepository& repo, const char* ti
     return id;
 }
 
-}  // namespace
+}
 
 TEST_CASE("save then findById round-trips a relationship") {
     auto db = openTestDatabase();
@@ -115,7 +115,7 @@ TEST_CASE("removing a KnowledgeObject cascades and removes relationships touchin
 
     auto found = relationships.findById(relationship.id());
     REQUIRE(found.hasValue());
-    CHECK(!found.value().has_value());  // gone via ON DELETE CASCADE, not orphaned
+    CHECK(!found.value().has_value());
 }
 
 TEST_CASE("updating a note keeps the row and its learning history") {

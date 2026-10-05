@@ -56,4 +56,4 @@ inline constexpr double kMediumRecall = 0.50;
 RingBand ringBand(double recall);
 QColor ringColor(const Theme& theme, double recall);
 
-}  // namespace atlas::render
+}

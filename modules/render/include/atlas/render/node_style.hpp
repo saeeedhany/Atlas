@@ -24,4 +24,4 @@ constexpr float dotRadius(int degree) {
 
 constexpr float linkTrim() { return kSelectRingRadius + kSelectRingThickness / 2 + kLinkGap; }
 
-}  // namespace atlas::render
+}

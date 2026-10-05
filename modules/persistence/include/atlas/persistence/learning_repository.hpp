@@ -27,4 +27,4 @@ private:
     Database* database_;
 };
 
-}  // namespace atlas::persistence
+}

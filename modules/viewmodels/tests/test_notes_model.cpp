@@ -35,7 +35,7 @@ struct Fixture {
     }
 };
 
-}  // namespace
+}
 
 TEST_CASE("notes are created, edited, moved, resized, and recolored") {
     Fixture f;
