@@ -15,9 +15,11 @@ Rectangle {
         viewTick
         return canvas ? canvas.screenPositionOf(conceptId) : undefined
     }
+    readonly property int order: area ? area.pinnedItems.indexOf(pinned) : -1
     readonly property rect place: area && nodePoint !== undefined
-        ? area.besideRect(nodePoint, 240, height, area.width, area.height)
+        ? area.placeClear(nodePoint, 240, height, area.obstaclesBefore(order))
         : Qt.rect(16, 16, 240, height)
+    readonly property rect bounds: Qt.rect(x, y, width, height)
 
     signal unpinRequested(string id)
 
@@ -44,6 +46,13 @@ Rectangle {
             pinned.info = MapView.conceptInfo(pinned.conceptId)
             pinned.viewTick++
         }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.AllButtons
+        onWheel: wheel => wheel.accepted = true
     }
 
     ColumnLayout {

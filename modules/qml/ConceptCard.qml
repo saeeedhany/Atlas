@@ -25,9 +25,17 @@ Item {
     signal focusRequested(string id)
     signal pinRequested()
 
+    function keptX(px: real): real {
+        return area ? Math.max(0, Math.min(px, area.width - width)) : px
+    }
+
+    function keptY(py: real): real {
+        return area ? Math.max(0, Math.min(py, area.height - height)) : py
+    }
+
     function detachTo(px: real, py: real) {
-        detachedX = px
-        detachedY = py
+        detachedX = keptX(px)
+        detachedY = keptY(py)
         detached = true
     }
 
@@ -43,8 +51,8 @@ Item {
         expanded = false
     }
 
-    x: expanded ? 48 : detached ? detachedX : besideRect.x
-    y: expanded ? 24 : detached ? detachedY : besideRect.y
+    x: expanded ? 48 : detached ? keptX(detachedX) : besideRect.x
+    y: expanded ? 24 : detached ? keptY(detachedY) : besideRect.y
     width: expanded && area ? area.width - 96 : cardWidth
     height: expanded && area ? area.height - 48 : cardHeight
     visible: editor.shown
@@ -63,9 +71,10 @@ Item {
     Connections {
         target: Concept
         function onLoaded() {
-            card.viewTick++
-            if (Concept.conceptId === card.shownId)
+            if (Concept.conceptId === card.shownId) {
+                card.viewTick++
                 return
+            }
             card.shownId = Concept.conceptId
             card.detached = false
             card.expanded = false
@@ -84,7 +93,9 @@ Item {
 
         MouseArea {
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.OpenHandCursor
+            onWheel: wheel => wheel.accepted = true
             property point pressAt
             property point cardAt
             onPressed: mouse => {

@@ -82,3 +82,34 @@ TEST_CASE("up to three concepts stay pinned as summaries") {
     QmlFixture::settle();
     CHECK(p.f.context().map().selectedId() == summaries[0]->property("conceptId").toString());
 }
+
+TEST_CASE("a detached card stays inside the board") {
+    CardFixture p;
+    p.select(p.a);
+    REQUIRE(QMetaObject::invokeMethod(p.card, "detachTo", Q_ARG(double, -500.0), Q_ARG(double, 99999.0)));
+    CHECK(p.card->property("x").toDouble() >= 0.0);
+    CHECK(p.card->property("y").toDouble() >= 0.0);
+    CHECK(p.card->property("x").toDouble() + p.card->property("width").toDouble() <= p.overlay->property("width").toDouble() + 1e-6);
+    CHECK(p.card->property("y").toDouble() + p.card->property("height").toDouble() <= p.overlay->property("height").toDouble() + 1e-6);
+}
+
+TEST_CASE("pinned summaries never overlap") {
+    CardFixture p;
+    for (const QString& id : {p.a, p.b, p.c}) {
+        p.select(id);
+        bool pinned = false;
+        REQUIRE(QMetaObject::invokeMethod(p.overlay, "pinCurrent", Q_RETURN_ARG(bool, pinned)));
+    }
+    p.select(p.e);
+    auto summaries = p.window->findChildren<QObject*>("pinnedCard");
+    REQUIRE(summaries.size() == 3);
+    auto rectOf = [](QObject* o) {
+        return QRectF(o->property("x").toDouble(), o->property("y").toDouble(), o->property("width").toDouble(),
+                      o->property("height").toDouble());
+    };
+    for (int i = 0; i < summaries.size(); ++i)
+        for (int j = i + 1; j < summaries.size(); ++j)
+            CHECK_FALSE(rectOf(summaries[i]).intersects(rectOf(summaries[j])));
+    for (QObject* s : summaries)
+        CHECK_FALSE(rectOf(s).intersects(rectOf(p.card)));
+}

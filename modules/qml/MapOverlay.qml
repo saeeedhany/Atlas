@@ -10,6 +10,7 @@ Item {
     property bool fitPending: false
     property bool focusWaited: false
     property var pinnedIds: []
+    property var pinnedItems: []
 
     function focusConcept(id: string) {
         if (Object.keys(MapView.conceptInfo(id)).length === 0)
@@ -67,6 +68,38 @@ Item {
         x = Math.max(edge, Math.min(x, areaWidth - cardWidth - edge))
         let y = Math.max(edge, Math.min(point.y - 80, areaHeight - cardHeight - edge))
         return Qt.rect(x, y, cardWidth, cardHeight)
+    }
+
+    function overlaps(a, b) {
+        return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+    }
+
+    function obstaclesBefore(order) {
+        let rects = conceptCard.visible ? [Qt.rect(conceptCard.x, conceptCard.y, conceptCard.width, conceptCard.height)] : []
+        for (let i = 0; i < order && i < pinnedItems.length; ++i)
+            rects.push(pinnedItems[i].bounds)
+        return rects
+    }
+
+    function placeClear(point, cardWidth, cardHeight, obstacles) {
+        const gap = 8
+        const edge = 16
+        const base = besideRect(point, cardWidth, cardHeight, width, height)
+        const otherX = base.x > point.x ? point.x - 28 - cardWidth : point.x + 28
+        const columns = [base.x, Math.max(edge, Math.min(otherX, width - cardWidth - edge))]
+        for (const columnX of columns) {
+            let y = base.y
+            for (let pass = 0; pass <= obstacles.length; ++pass) {
+                const rect = Qt.rect(columnX, y, cardWidth, cardHeight)
+                const hit = obstacles.find(obstacle => overlaps(rect, obstacle))
+                if (!hit)
+                    return rect
+                y = hit.y + hit.height + gap
+                if (y + cardHeight > height - edge)
+                    break
+            }
+        }
+        return base
     }
 
     function pinCurrent(): bool {
@@ -148,6 +181,8 @@ Item {
             area: overlay
             onUnpinRequested: id => overlay.unpin(id)
         }
+        onObjectAdded: (index, object) => overlay.pinnedItems = overlay.pinnedItems.concat([object])
+        onObjectRemoved: (index, object) => overlay.pinnedItems = overlay.pinnedItems.filter(item => item !== object)
     }
 
     Shortcut {
