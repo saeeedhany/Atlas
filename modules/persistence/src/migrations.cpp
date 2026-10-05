@@ -21,7 +21,7 @@ struct Migration {
 // migration that's already been released, only append new ones. The
 // schema_migrations table is what lets us tell, for any given .db file
 // on a person's disk, exactly which of these has already been applied.
-constexpr std::array<Migration, 3> kMigrations{{
+constexpr std::array<Migration, 4> kMigrations{{
     {1, "Initial schema: knowledge objects, relationships, and child content tables", R"sql(
         CREATE TABLE knowledge_objects (
             id TEXT PRIMARY KEY,
@@ -162,6 +162,37 @@ constexpr std::array<Migration, 3> kMigrations{{
         BEGIN
             DELETE FROM review_events WHERE item_kind = 'link' AND item_id = OLD.id;
             DELETE FROM memory_states WHERE item_kind = 'link' AND item_id = OLD.id;
+        END;
+    )sql"},
+    {4, "Board notes and their links", R"sql(
+        CREATE TABLE board_notes (
+            id TEXT PRIMARY KEY,
+            body TEXT NOT NULL DEFAULT '',
+            color TEXT NOT NULL,
+            x REAL NOT NULL,
+            y REAL NOT NULL,
+            width REAL NOT NULL,
+            height REAL NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE note_links (
+            note_id TEXT NOT NULL REFERENCES board_notes(id) ON DELETE CASCADE,
+            target_kind TEXT NOT NULL,
+            target_id TEXT NOT NULL,
+            PRIMARY KEY (note_id, target_kind, target_id)
+        );
+        CREATE INDEX idx_note_links_target ON note_links(target_kind, target_id);
+
+        CREATE TRIGGER trg_knowledge_objects_forget_note_links AFTER DELETE ON knowledge_objects
+        BEGIN
+            DELETE FROM note_links WHERE target_kind = 'concept' AND target_id = OLD.id;
+        END;
+
+        CREATE TRIGGER trg_topics_forget_note_links AFTER DELETE ON topics
+        BEGIN
+            DELETE FROM note_links WHERE target_kind = 'topic' AND target_id = OLD.id;
         END;
     )sql"},
 }};

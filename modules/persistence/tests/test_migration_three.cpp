@@ -5,6 +5,7 @@
 
 #include "atlas/persistence/database.hpp"
 #include "atlas/persistence/knowledge_object_repository.hpp"
+#include "atlas/persistence/note_repository.hpp"
 #include "doctest.h"
 
 using namespace atlas::core;
@@ -43,11 +44,14 @@ TEST_CASE("migration 3 upgrades a version 2 database and keeps its data") {
         sqlite3* raw = nullptr;
         REQUIRE(sqlite3_open(path.c_str(), &raw) == SQLITE_OK);
         REQUIRE(sqlite3_exec(raw,
+                             "DROP TRIGGER trg_knowledge_objects_forget_note_links;"
+                             "DROP TRIGGER trg_topics_forget_note_links;"
+                             "DROP TABLE note_links; DROP TABLE board_notes;"
                              "DROP TRIGGER trg_knowledge_objects_forget_learning;"
                              "DROP TRIGGER trg_relationships_forget_learning;"
                              "DROP TABLE review_events; DROP TABLE memory_states;"
                              "DROP TABLE memory_meta; DROP TABLE node_placements;"
-                             "DELETE FROM schema_migrations WHERE version = 3;",
+                             "DELETE FROM schema_migrations WHERE version >= 3;",
                              nullptr, nullptr, nullptr) == SQLITE_OK);
         sqlite3_close(raw);
     }
@@ -62,6 +66,40 @@ TEST_CASE("migration 3 upgrades a version 2 database and keeps its data") {
     }
     for (const char* table : {"review_events", "memory_states", "memory_meta", "node_placements",
                               "trg_knowledge_objects_forget_learning", "trg_relationships_forget_learning"}) {
+        CHECK(tableCount(path, table) == 1);
+    }
+    removeDatabaseFiles(path);
+}
+
+TEST_CASE("migration 4 upgrades a version 3 database and keeps its data") {
+    auto path = (std::filesystem::temp_directory_path() / ("atlas_v3_" + Uuid::generate().toString() + ".db")).string();
+    {
+        auto db = Database::open(path).value();
+        KnowledgeObjectRepository objects(db);
+        REQUIRE(objects.save(KnowledgeObject::create("Kept").value()).hasValue());
+    }
+    {
+        sqlite3* raw = nullptr;
+        REQUIRE(sqlite3_open(path.c_str(), &raw) == SQLITE_OK);
+        REQUIRE(sqlite3_exec(raw,
+                             "DROP TRIGGER trg_knowledge_objects_forget_note_links;"
+                             "DROP TRIGGER trg_topics_forget_note_links;"
+                             "DROP TABLE note_links; DROP TABLE board_notes;"
+                             "DELETE FROM schema_migrations WHERE version = 4;",
+                             nullptr, nullptr, nullptr) == SQLITE_OK);
+        sqlite3_close(raw);
+    }
+    REQUIRE(tableCount(path, "board_notes") == 0);
+
+    {
+        auto reopened = Database::open(path);
+        REQUIRE(reopened.hasValue());
+        auto db = std::move(reopened).value();
+        CHECK(KnowledgeObjectRepository(db).findAll().value().size() == 1);
+        CHECK(NoteRepository(db).findAll().value().empty());
+    }
+    for (const char* table : {"board_notes", "note_links", "idx_note_links_target",
+                              "trg_knowledge_objects_forget_note_links", "trg_topics_forget_note_links"}) {
         CHECK(tableCount(path, table) == 1);
     }
     removeDatabaseFiles(path);

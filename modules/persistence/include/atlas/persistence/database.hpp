@@ -40,6 +40,7 @@ private:
     friend class TopicRepository;
     friend class LearningRepository;
     friend class PlacementRepository;
+    friend class NoteRepository;
 
     explicit Database(sqlite3* handle);
     sqlite3* handle() const { return handle_; }
