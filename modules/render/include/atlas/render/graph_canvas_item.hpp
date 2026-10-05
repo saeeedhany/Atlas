@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QColor>
 #include <QPointF>
 #include <QQuickItem>
 #include <QString>
@@ -25,7 +24,6 @@ struct RenderNode {
     QString id;
     double x = 0.0;
     double y = 0.0;
-    QColor color;
     QString label;
     double recall = -1.0;
     bool ghost = false;

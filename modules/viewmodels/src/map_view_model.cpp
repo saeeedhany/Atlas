@@ -128,7 +128,6 @@ void MapViewModel::refresh() {
         node.label = toQString(object.title());
         node.x = point->x;
         node.y = point->y;
-        node.color = palette_->nodeFill();
         node.recall = memory_->recallChance(ItemRef::forConcept(object.id())).value_or(-1.0);
         node.ghost = !member;
         node.hinted = marks_.hinted.contains(node.id);
