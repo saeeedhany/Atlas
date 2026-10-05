@@ -88,3 +88,24 @@ TEST_CASE("a failed write leaves the board unchanged") {
     CHECK(f.errors == 1);
     CHECK(f.notes.note(id).value("x").toDouble() == doctest::Approx(5.0));
 }
+
+TEST_CASE("removing a linked target refreshes links without resetting the board") {
+    Fixture f;
+    auto concept_ = f.workspace.createKnowledgeObject("Paging").value();
+    QString id = f.notes.create(0, 0, "Typing");
+    REQUIRE(f.notes.link(id, "concept", idString(concept_)));
+
+    int resets = 0;
+    int linkUpdates = 0;
+    QObject::connect(&f.notes, &QAbstractItemModel::modelReset, [&] { ++resets; });
+    QObject::connect(&f.notes, &QAbstractItemModel::dataChanged,
+                     [&](const QModelIndex&, const QModelIndex&, const QList<int>& roles) {
+                         if (roles.contains(NotesModel::LinksRole)) ++linkUpdates;
+                     });
+    REQUIRE(f.workspace.removeKnowledgeObject(concept_).hasValue());
+    QCoreApplication::processEvents();
+    CHECK(resets == 0);
+    CHECK(linkUpdates >= 1);
+    CHECK(f.notes.note(id).value("links").toList().isEmpty());
+    CHECK(f.notes.count() == 1);
+}

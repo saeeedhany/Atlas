@@ -40,7 +40,19 @@ Result<void, ControllerFailure> NotesModel::load() {
 }
 
 void NotesModel::reload() {
-    if (auto loaded = load(); !loaded.hasValue()) emit errorOccurred(toQString(loaded.error().detail));
+    auto all = repository_.findAll();
+    if (!all.hasValue()) {
+        emit errorOccurred(toQString(all.error().detail));
+        return;
+    }
+    for (const auto& fresh : all.value()) {
+        int row = indexOf(toQString(fresh.id.toString()));
+        if (row < 0) continue;
+        auto& links = notes_[static_cast<size_t>(row)].links;
+        if (links == fresh.links) continue;
+        links = fresh.links;
+        emit dataChanged(index(row), index(row), {LinksRole});
+    }
 }
 
 int NotesModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : count(); }
