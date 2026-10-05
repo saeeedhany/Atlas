@@ -5,7 +5,7 @@
 
 TEST_CASE("settings controls write and follow the app settings") {
     QmlFixture f;
-    auto screen = f.create("SettingsScreen", {{"shown", true}});
+    auto screen = f.create("SettingsScreen");
 
     auto* dark = QmlFixture::child(screen.get(), "darkThemeSwitch");
     CHECK(dark->property("checked").toBool());
@@ -29,7 +29,7 @@ TEST_CASE("settings controls write and follow the app settings") {
 
 TEST_CASE("settings switches and the spin box share the right edge") {
     QmlFixture f;
-    auto screen = f.create("SettingsScreen", {{"shown", true}, {"width", 900}, {"height", 700}});
+    auto screen = f.create("SettingsScreen", {{"width", 900}, {"height", 700}});
     QmlFixture::settle();
 
     auto rightEdge = [&](const char* name) {

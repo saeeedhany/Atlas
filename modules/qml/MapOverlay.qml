@@ -10,10 +10,6 @@ Item {
     property bool fitPending: false
     property bool focusWaited: false
 
-    function focusNewConcept() {
-        topicBar.focusNewConcept()
-    }
-
     function focusConcept(id: string) {
         if (Object.keys(MapView.conceptInfo(id)).length === 0)
             return
@@ -89,7 +85,7 @@ Item {
     Text {
         anchors.centerIn: parent
         visible: MapView.conceptCount === 0
-        text: "Type a concept name above and press Enter."
+        text: "Type a concept name in the bar above and press Enter."
         color: Theme.textMuted
         font.pixelSize: Theme.fontBody
     }
@@ -100,29 +96,18 @@ Item {
         canvas: overlay.canvas
     }
 
-    TopicBar {
-        id: topicBar
-        objectName: "topicBar"
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: Theme.gap * 2
-        onFocusRequested: id => overlay.focusConcept(id)
-        onFitRequested: if (overlay.canvas) overlay.canvas.fitToContent()
-    }
-
     ConceptPanel {
         id: panel
         objectName: "conceptPanel"
-        anchors.top: topicBar.bottom
+        anchors.top: parent.top
         anchors.bottom: parent.bottom
-        anchors.right: parent.right
-        anchors.topMargin: Theme.gap
+        anchors.left: parent.left
+        anchors.topMargin: Theme.gap * 2
         anchors.bottomMargin: Theme.gap * 2
-        anchors.rightMargin: panel.shown || Motion.reduced ? Theme.gap * 2 : Theme.gap * 2 - 24
+        anchors.leftMargin: panel.shown || Motion.reduced ? Theme.gap * 2 : Theme.gap * 2 - 24
         onFocusRequested: id => overlay.focusConcept(id)
 
-        Behavior on anchors.rightMargin {
+        Behavior on anchors.leftMargin {
             enabled: !Motion.reduced
             NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve }
         }

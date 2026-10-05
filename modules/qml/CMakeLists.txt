@@ -20,9 +20,9 @@ qt_add_qml_module(atlas_qml
         ListEditor.qml
         Main.qml
         MapOverlay.qml
-        NavRail.qml
         Panel.qml
         PanelLayer.qml
+        RegionLabels.qml
         Motion.qml
         CertaintyPicker.qml
         Ring.qml
@@ -31,8 +31,9 @@ qt_add_qml_module(atlas_qml
         SettingsScreen.qml
         StartupError.qml
         Theme.qml
-        TodayOverlay.qml
+        TodayPanel.qml
         Toast.qml
+        TopBar.qml
         TopicBar.qml
     RESOURCES
         fonts/Inter.ttf

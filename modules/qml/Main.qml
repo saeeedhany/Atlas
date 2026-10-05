@@ -5,38 +5,42 @@ import Atlas.ViewModels
 
 ApplicationWindow {
     id: window
-    font.family: Theme.sans
 
-    property string page: "today"
+    readonly property string mode: Session.stage === "idle" ? "board" : "session"
 
-    function show(name: string) {
-        page = name
-        if (name === "today")
-            Today.refresh()
+    function startSession(): bool {
+        if (Concept.dirty && !Concept.save())
+            return false
+        return Session.start()
+    }
+
+    function openSettings() {
+        settingsPanel.expand()
     }
 
     width: 1280
     height: 820
-    minimumWidth: 900
-    minimumHeight: 600
+    minimumWidth: 960
+    minimumHeight: 620
     visible: true
     title: "Atlas"
     color: Theme.background
+    font.family: Theme.sans
 
-    palette.window: Theme.surfaceRaised
-    palette.windowText: Theme.text
+    palette.window: Theme.surfaceHigh
+    palette.windowText: Theme.onSurface
     palette.base: Theme.surface
-    palette.alternateBase: Theme.surfaceRaised
-    palette.text: Theme.text
+    palette.alternateBase: Theme.surfaceHigh
+    palette.text: Theme.onSurface
     palette.button: Theme.surface
-    palette.buttonText: Theme.text
-    palette.highlight: Theme.accent
-    palette.highlightedText: Theme.background
-    palette.light: Theme.surfaceRaised
-    palette.midlight: Theme.surfaceRaised
-    palette.mid: Theme.border
-    palette.dark: Theme.border
-    palette.placeholderText: Theme.textMuted
+    palette.buttonText: Theme.onSurface
+    palette.highlight: Theme.primary
+    palette.highlightedText: Theme.onPrimary
+    palette.light: Theme.surfaceHigh
+    palette.midlight: Theme.surfaceHigh
+    palette.mid: Theme.outline
+    palette.dark: Theme.outline
+    palette.placeholderText: Theme.onSurfaceFaint
 
     onActiveChanged: {
         if (active) {
@@ -50,24 +54,25 @@ ApplicationWindow {
             close.accepted = false
     }
 
-    NavRail {
-        id: rail
-        objectName: "navRail"
+    TopBar {
+        id: topBar
+        objectName: "topBar"
         anchors.left: parent.left
+        anchors.right: parent.right
         anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: Theme.railWidth
-        current: window.page
-        enabled: Session.stage === "idle"
-        opacity: enabled ? 1 : 0.5
-        onSelected: name => window.show(name)
+        z: 5
+        enabled: window.mode === "board"
+        onRecallRequested: window.startSession()
+        onSettingsRequested: window.openSettings()
+        onFocusRequested: id => mapOverlay.focusConcept(id)
+        onFitRequested: canvas.fitToContent()
     }
 
     Item {
-        id: stage
-        anchors.left: rail.right
+        id: board
+        anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.top: topBar.bottom
         anchors.bottom: parent.bottom
         clip: true
 
@@ -79,44 +84,62 @@ ApplicationWindow {
             Component.onCompleted: MapView.attach(canvas)
         }
 
+        RegionLabels {
+            objectName: "regionLabels"
+            anchors.fill: parent
+            canvas: canvas
+            interactive: window.mode === "board"
+        }
+
         MapOverlay {
             id: mapOverlay
             objectName: "mapOverlay"
             anchors.fill: parent
             canvas: canvas
-            active: window.page === "map"
-        }
-
-        TodayOverlay {
-            objectName: "todayOverlay"
-            anchors.fill: parent
-            shown: window.page === "today"
-            onActionTriggered: action => {
-                if (action === "session") {
-                    if (Concept.dirty && !Concept.save())
-                        return
-                    if (Session.start())
-                        window.show("session")
-                    return
-                }
-                window.show("map")
-                if (action === "add")
-                    mapOverlay.focusNewConcept()
-            }
+            active: window.mode === "board"
         }
 
         SessionScreen {
             objectName: "sessionScreen"
             anchors.fill: parent
             canvas: canvas
-            shown: window.page === "session"
-            onDone: window.show("map")
+            shown: window.mode === "session"
         }
 
-        SettingsScreen {
-            objectName: "settingsScreen"
+        PanelLayer {
+            id: panelLayer
+            objectName: "panelLayer"
             anchors.fill: parent
-            shown: window.page === "settings"
+
+            Panel {
+                panelId: "today"
+                title: "Today"
+                dockedHeight: 230
+
+                TodayPanel {
+                    objectName: "todayPanel"
+                    anchors.fill: parent
+                    onActionTriggered: action => {
+                        if (action === "session")
+                            window.startSession()
+                        else if (action === "add")
+                            topBar.focusNewConcept()
+                    }
+                }
+            }
+
+            Panel {
+                id: settingsPanel
+                objectName: "settingsPanel"
+                panelId: "settings"
+                title: "Settings"
+                onDemand: true
+
+                SettingsScreen {
+                    objectName: "settingsScreen"
+                    anchors.fill: parent
+                }
+            }
         }
 
         Toast {
@@ -125,6 +148,7 @@ ApplicationWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 24
+            z: 40
         }
     }
 

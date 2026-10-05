@@ -6,6 +6,7 @@ import Atlas.ViewModels
 Rectangle {
     id: bar
 
+    property bool embedded: false
     property var results: []
     property var ideas: []
     readonly property bool canEditTopic: {
@@ -81,8 +82,9 @@ Rectangle {
 
     implicitHeight: row.implicitHeight + 16
     radius: Theme.radius + 2
-    color: Theme.surface
+    color: embedded ? "transparent" : Theme.surface
     border.color: Theme.border
+    border.width: embedded ? 0 : 1
 
     Connections {
         target: MapView
@@ -154,11 +156,13 @@ Rectangle {
         Item { Layout.fillWidth: true }
 
         AppButton {
+            visible: !bar.embedded
             text: "Fit"
             onClicked: bar.fitRequested()
         }
 
         AppButton {
+            visible: !bar.embedded
             text: "Tidy"
             onClicked: MapView.tidy()
         }

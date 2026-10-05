@@ -30,13 +30,13 @@ TEST_CASE("Today starts a session and the explain step finishes it") {
     f.context().map().createConcept("Tree");
     auto window = f.create("Main");
     QmlFixture::settle();
-    auto* today = QmlFixture::child(window.get(), "todayOverlay");
+    auto* today = QmlFixture::child(window.get(), "todayPanel");
     CHECK(today->property("actionText").toString() == "Start session");
 
     REQUIRE(QMetaObject::invokeMethod(today, "act"));
-    CHECK(window->property("page").toString() == "session");
+    CHECK(window->property("mode").toString() == "session");
     CHECK(f.context().session().stage() == "explain");
-    CHECK_FALSE(QmlFixture::child(window.get(), "navRail")->property("enabled").toBool());
+    CHECK_FALSE(QmlFixture::child(window.get(), "topBar")->property("enabled").toBool());
 
     auto* screen = QmlFixture::child(window.get(), "sessionScreen");
     REQUIRE(QMetaObject::invokeMethod(screen, "chooseCertainty", Q_ARG(int, 3)));
@@ -47,7 +47,7 @@ TEST_CASE("Today starts a session and the explain step finishes it") {
 
     REQUIRE(QMetaObject::invokeMethod(screen, "finish"));
     CHECK(f.context().session().stage() == "idle");
-    CHECK(window->property("page").toString() == "map");
+    CHECK(window->property("mode").toString() == "board");
 }
 
 TEST_CASE("the rebuild card names concepts and checks them") {
@@ -63,7 +63,7 @@ TEST_CASE("the rebuild card names concepts and checks them") {
         .value();
     auto window = f.create("Main");
     QmlFixture::settle();
-    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayOverlay"), "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     CHECK(f.context().session().stage() == "rebuild");
 
     auto* screen = QmlFixture::child(window.get(), "sessionScreen");
@@ -86,7 +86,7 @@ TEST_CASE("starting a session saves a valid draft and selects the focus") {
     f.context().conceptEditor().setNotes("draft");
     REQUIRE(f.context().conceptEditor().dirty());
 
-    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayOverlay"), "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     QmlFixture::settle();
     CHECK_FALSE(f.context().conceptEditor().dirty());
     CHECK(f.context().workspace().findKnowledgeObject(*parseId<KnowledgeObjectId>(alpha))->notes() == "draft");
@@ -105,10 +105,10 @@ TEST_CASE("an invalid draft keeps the session from starting") {
     f.context().conceptEditor().setTitle("");
     REQUIRE(f.context().conceptEditor().dirty());
 
-    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayOverlay"), "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     QmlFixture::settle();
     CHECK(f.context().session().stage() == "idle");
-    CHECK(window->property("page").toString() == "today");
+    CHECK(window->property("mode").toString() == "board");
     CHECK(QmlFixture::child(window.get(), "toast")->property("shown").toBool());
 }
 
@@ -117,13 +117,13 @@ TEST_CASE("ending a session before any focus is done returns to the map") {
     f.context().map().createConcept("Tree");
     auto window = f.create("Main");
     QmlFixture::settle();
-    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayOverlay"), "act"));
-    REQUIRE(window->property("page").toString() == "session");
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
+    REQUIRE(window->property("mode").toString() == "session");
 
     f.context().session().quit();
     QmlFixture::settle();
     CHECK(f.context().session().stage() == "idle");
-    CHECK(window->property("page").toString() == "map");
+    CHECK(window->property("mode").toString() == "board");
 }
 
 TEST_CASE("the explain prediction is fixed once the answer is revealed") {
@@ -131,7 +131,7 @@ TEST_CASE("the explain prediction is fixed once the answer is revealed") {
     f.context().map().createConcept("Tree");
     auto window = f.create("Main");
     QmlFixture::settle();
-    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayOverlay"), "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     REQUIRE(f.context().session().stage() == "explain");
 
     auto* screen = QmlFixture::child(window.get(), "sessionScreen");
@@ -157,7 +157,7 @@ TEST_CASE("the rebuild prediction is fixed once a hint is taken") {
         .value();
     auto window = f.create("Main");
     QmlFixture::settle();
-    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayOverlay"), "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     REQUIRE(f.context().session().stage() == "rebuild");
 
     auto* screen = QmlFixture::child(window.get(), "sessionScreen");
@@ -177,9 +177,8 @@ TEST_CASE("a new session starts with a clean screen") {
     f.context().map().createConcept("Tree");
     auto window = f.create("Main");
     QmlFixture::settle();
-    auto* today = QmlFixture::child(window.get(), "todayOverlay");
     auto* screen = QmlFixture::child(window.get(), "sessionScreen");
-    REQUIRE(QMetaObject::invokeMethod(today, "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     REQUIRE(QMetaObject::invokeMethod(screen, "chooseCertainty", Q_ARG(int, 3)));
     REQUIRE(QMetaObject::invokeMethod(screen, "reveal"));
     f.context().session().quit();
@@ -187,7 +186,7 @@ TEST_CASE("a new session starts with a clean screen") {
 
     f.context().map().createConcept("Graph");
     QmlFixture::settle();
-    REQUIRE(QMetaObject::invokeMethod(today, "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     CHECK(f.context().session().stage() != "idle");
     CHECK(screen->property("certainty").toInt() == 0);
     CHECK_FALSE(screen->property("revealed").toBool());
@@ -203,7 +202,7 @@ TEST_CASE("a session started from one topic centers its first focus") {
     f.context().map().createConcept("Scheduling");
     auto window = f.create("Main");
     QmlFixture::settle();
-    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayOverlay"), "act"));
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
     QmlFixture::settle();
     REQUIRE(f.context().session().stage() != "idle");
 

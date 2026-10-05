@@ -3,35 +3,18 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Atlas.ViewModels
 
-Rectangle {
+Item {
     id: screen
 
-    property bool shown: false
-
-    color: Theme.background
-    opacity: shown ? 1 : 0
-    visible: opacity > 0
-
-    Behavior on opacity { NumberAnimation { duration: Motion.appear } }
-
-    MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.AllButtons
-        onWheel: wheel => wheel.accepted = true
-    }
+    implicitWidth: column.implicitWidth
+    implicitHeight: column.implicitHeight
 
     ColumnLayout {
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: 64
-        width: Math.min(560, screen.width - 64)
+        id: column
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         spacing: 18
-
-        Text {
-            text: "Settings"
-            color: Theme.text
-            font.pixelSize: Theme.fontHero
-        }
 
         SectionLabel { text: "Appearance" }
 
