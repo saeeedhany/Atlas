@@ -754,3 +754,17 @@ Organized by module, roughly in the order each decision arose.
 - Pinned cards are laid out in one imperative pass so they never overlap and never form binding loops.
 - NotesModel's factory method is createNote, because a method named create hides the singleton factory, as with createTopic.
 - During a session the panel layer fades out and is disabled; starting a session closes an expanded panel.
+- Escape has one handler in the window: it restores an expanded panel first, then an expanded concept card, and otherwise clears the selection. Two enabled shortcuts for the same key make Qt treat the key as ambiguous and do nothing.
+- An expanded concept card lifts the whole map overlay above the corner stack and dims the board behind it; cards beside a node keep clear of docked and floating panels.
+- Clickable controls that can sit under another surface use MouseArea, not TapHandler, because a TapHandler below an accepting MouseArea still receives the tap.
+- Note text saves 400 ms after typing stops, and any pending text is saved before the window closes and before a session starts.
+- Notes are 150 by 100 board units by default; their text and controls scale with zoom between 9 and 20 px, so the box keeps its board size while the text stays readable. A note blocks the board under it even when its text is hidden at low zoom.
+- Notes resize from a corner grip and list their links in a small popup where each link can be removed. Deleting a note asks once: the first tap turns the control into "Delete" for three seconds.
+- During a session notes fade to a quarter opacity and draw no link lines; the note link canvas only repaints while a link or a link drag exists.
+- A saved panel layout with a non-finite or empty geometry falls back to docked.
+- Pinning shows a filled pin button, and a fourth pin is refused with a toast instead of failing silently.
+- Theme sets onSurface and onPrimary when it completes, because a binding written as onSurface: beside a surface property is read as a handler and silently left unset.
+- ComboBox and SpinBox go through AppComboBox and AppSpinBox so every control shares the surface, outline, radius, and Inter type.
+- Icon glyphs come only from the bundled fonts, and the menu and combo box chevron is drawn as a shape, so text never falls back to a system font.
+- Topic regions stay padded rounded rectangles for now instead of a rounded hull; keeping a topic's concepts together in the layout is the follow-up that reduces region overlap.
+- Cards growing out of their node and a live preview while dragging a region stay deferred.
