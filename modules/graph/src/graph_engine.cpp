@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <queue>
+#include <set>
 #include <unordered_set>
 #include <utility>
 
@@ -326,28 +327,35 @@ Result<std::vector<KnowledgeObjectId>, GraphError> GraphEngine::topologicalOrder
 
 Result<std::vector<KnowledgeObjectId>, GraphError> GraphEngine::learningRoadmapFor(
     const KnowledgeObjectId& id) const {
-    if (!nodeIndexById_.contains(id)) {
-        return Result<std::vector<KnowledgeObjectId>, GraphError>::err(GraphError::UnknownNode);
-    }
+    using Out = Result<std::vector<KnowledgeObjectId>, GraphError>;
+    if (!nodeIndexById_.contains(id)) return Out::err(GraphError::UnknownNode);
 
-    auto fullOrderResult = topologicalOrder();
-    if (!fullOrderResult.hasValue()) {
-        return Result<std::vector<KnowledgeObjectId>, GraphError>::err(fullOrderResult.error());
-    }
+    auto scope = transitiveDependencies(id);
+    scope.push_back(id);
+    std::unordered_set<KnowledgeObjectId> inScope(scope.begin(), scope.end());
+    std::unordered_map<KnowledgeObjectId, int> waitingOn;
+    for (const auto& nodeId : scope) waitingOn[nodeId] = static_cast<int>(dependsOn(nodeId).size());
 
-    // The scope: id itself plus everything it transitively depends on.
-    // A std::unordered_set membership check keeps the filter below
-    // O(1) per entry rather than O(scope size) per entry.
-    auto deps = transitiveDependencies(id);
-    std::unordered_set<KnowledgeObjectId> scope(deps.begin(), deps.end());
-    scope.insert(id);
+    auto byIdText = [](const KnowledgeObjectId& left, const KnowledgeObjectId& right) {
+        return left.toString() < right.toString();
+    };
+    std::set<KnowledgeObjectId, decltype(byIdText)> ready(byIdText);
+    for (const auto& [nodeId, count] : waitingOn) {
+        if (count == 0) ready.insert(nodeId);
+    }
 
     std::vector<KnowledgeObjectId> roadmap;
     roadmap.reserve(scope.size());
-    for (const auto& nodeId : fullOrderResult.value()) {
-        if (scope.contains(nodeId)) roadmap.push_back(nodeId);
+    while (!ready.empty()) {
+        auto current = *ready.begin();
+        ready.erase(ready.begin());
+        roadmap.push_back(current);
+        for (const auto& dependent : usedBy(current)) {
+            if (inScope.contains(dependent) && --waitingOn[dependent] == 0) ready.insert(dependent);
+        }
     }
-    return Result<std::vector<KnowledgeObjectId>, GraphError>::ok(std::move(roadmap));
+    if (roadmap.size() != scope.size()) return Out::err(GraphError::CycleDetected);
+    return Out::ok(std::move(roadmap));
 }
 
 std::vector<GraphEngine::ProjectSuggestion> GraphEngine::suggestProjects(

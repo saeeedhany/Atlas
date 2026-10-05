@@ -26,9 +26,7 @@ public:
     // silently falls back to the const& overload. That's not just a
     // style issue: it means `std::move(namedResult.value())` doesn't
     // actually move anything (you can't move out of a const
-    // reference), silently downgrading to a copy. Found via
-    // -Wredundant-move on a real call site in atlas-ui's load(), which
-    // was copying every loaded object instead of moving it.
+    // reference), silently downgrading to a copy.
     const T& value() const& { return std::get<0>(storage_); }
     T& value() & { return std::get<0>(storage_); }
     T&& value() && { return std::get<0>(std::move(storage_)); }

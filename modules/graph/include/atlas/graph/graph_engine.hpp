@@ -56,10 +56,10 @@ public:
     // GraphError::UnknownNode if the id isn't present - this never
     // creates a node, only updates one that's already there.
     //
-    // Exists specifically so callers (e.g. atlas-ui's controller) can
-    // do "copy current state, mutate the copy, write the copy to the
-    // database, and only then call updateNode" - meaning the graph is
-    // never touched until the database write has already succeeded. No
+    // Exists specifically so callers can do "copy current state,
+    // mutate the copy, write the copy to the database, and only then
+    // call updateNode" - meaning the graph is never touched until the
+    // database write has already succeeded. No
     // rollback-on-persistence-failure logic is needed anywhere if every
     // write path follows that order.
     //
@@ -159,15 +159,7 @@ public:
     // GraphError::CycleDetected if DependsOn isn't a DAG.
     Result<std::vector<KnowledgeObjectId>, GraphError> topologicalOrder() const;
 
-    // The actual "what should I learn, in what order" primitive: the
-    // full graph's topological order, restricted to just `id` and its
-    // transitive dependency closure - not the whole graph. Without
-    // this restriction, asking for a roadmap "to learn X" would
-    // surface every unrelated concept in the workspace that happens to
-    // have no dependencies, which isn't what "roadmap for X" means.
-    // The result is ordered so the last entry is always `id` itself
-    // (assuming no cycle) and every entry before it is a prerequisite,
-    // each one appearing only after all of *its* prerequisites have.
+    // `id` last, after its transitive prerequisites in dependency order (ties by id); CycleDetected only inside them.
     Result<std::vector<KnowledgeObjectId>, GraphError> learningRoadmapFor(
         const KnowledgeObjectId& id) const;
 

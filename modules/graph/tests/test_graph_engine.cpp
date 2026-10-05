@@ -508,6 +508,54 @@ TEST_CASE("learningRoadmapFor a diamond dependency includes the shared prerequis
     CHECK(result.value().size() == 4);  // A, B, C, D - D counted once despite two paths
 }
 
+TEST_CASE("learningRoadmapFor ignores a cycle outside the target's dependency chain") {
+    GraphEngine graph;
+    auto a = makeNode("A");
+    auto b = makeNode("B");
+    auto x = makeNode("X");
+    auto y = makeNode("Y");
+    auto aId = a.id();
+    auto bId = b.id();
+    auto xId = x.id();
+    auto yId = y.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    REQUIRE(graph.addNode(std::move(b)).hasValue());
+    REQUIRE(graph.addNode(std::move(x)).hasValue());
+    REQUIRE(graph.addNode(std::move(y)).hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(aId, bId, RelationshipType::DependsOn).value())
+                .hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(xId, yId, RelationshipType::DependsOn).value())
+                .hasValue());
+    REQUIRE(graph.addEdge(Relationship::create(yId, xId, RelationshipType::DependsOn).value())
+                .hasValue());
+
+    auto result = graph.learningRoadmapFor(aId);
+    REQUIRE(result.hasValue());
+    CHECK(result.value() == std::vector<KnowledgeObjectId>{bId, aId});
+}
+
+TEST_CASE("learningRoadmapFor breaks ties between independent prerequisites by id") {
+    GraphEngine graph;
+    auto a = makeNode("A");
+    auto aId = a.id();
+    REQUIRE(graph.addNode(std::move(a)).hasValue());
+    std::vector<KnowledgeObjectId> prerequisites;
+    for (int i = 0; i < 6; ++i) {
+        auto node = makeNode("P");
+        prerequisites.push_back(node.id());
+        REQUIRE(graph.addNode(std::move(node)).hasValue());
+        REQUIRE(graph.addEdge(Relationship::create(aId, prerequisites.back(), RelationshipType::DependsOn).value())
+                    .hasValue());
+    }
+    std::sort(prerequisites.begin(), prerequisites.end(),
+              [](const auto& left, const auto& right) { return left.toString() < right.toString(); });
+    prerequisites.push_back(aId);
+
+    auto result = graph.learningRoadmapFor(aId);
+    REQUIRE(result.hasValue());
+    CHECK(result.value() == prerequisites);
+}
+
 TEST_CASE("learningRoadmapFor reports a cycle if the target's dependency chain has one") {
     GraphEngine graph;
     auto a = makeNode("A");
