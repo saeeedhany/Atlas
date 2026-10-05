@@ -9,7 +9,7 @@ const QByteArray kBoard = "import QtQuick\nimport Atlas.Ui\n"
                           "PanelLayer { width: 1200; height: 800\n"
                           "  Panel { objectName: \"today\"; panelId: \"today\"; title: \"Today\" }\n"
                           "  Panel { objectName: \"brain\"; panelId: \"brain\"; title: \"Brain\" }\n"
-                          "  Panel { objectName: \"settings\"; panelId: \"settings\"; title: \"Settings\"; transient: true }\n"
+                          "  Panel { objectName: \"settings\"; panelId: \"settings\"; title: \"Settings\"; onDemand: true }\n"
                           "}";
 
 QRectF targetOf(QObject* panel) { return panel->property("target").toRectF(); }
@@ -46,7 +46,7 @@ TEST_CASE("a panel floats, expands, restores, and docks back") {
     CHECK(brain->property("mode").toString() == "docked");
 }
 
-TEST_CASE("transient panels only show while expanded") {
+TEST_CASE("onDemand panels only show while expanded") {
     QmlFixture f;
     auto layer = f.createFromData(kBoard);
     auto* settings = QmlFixture::child(layer.get(), "settings");

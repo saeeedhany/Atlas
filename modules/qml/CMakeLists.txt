@@ -8,7 +8,6 @@ qt_add_library(atlas_qml STATIC src/fonts.cpp)
 qt_add_qml_module(atlas_qml
     URI Atlas.Ui
     VERSION 1.0
-    SOURCES include/atlas/ui/panel_base.hpp
     QML_FILES
         AppButton.qml
         AppSwitch.qml
@@ -42,8 +41,7 @@ qt_add_qml_module(atlas_qml
 )
 
 target_include_directories(atlas_qml PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(atlas_qml PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/atlas/ui)
-target_link_libraries(atlas_qml PUBLIC Qt6::Gui Qt6::Quick)
+target_link_libraries(atlas_qml PUBLIC Qt6::Gui)
 target_link_libraries(atlas_qml PRIVATE
     atlas_viewmodels atlas_viewmodelsplugin Qt6::Quick Qt6::QuickControls2 Qt6::QuickShapes
 )

@@ -55,7 +55,7 @@ Item {
         restoring = true
         for (const p of panels) {
             let saved = AppSettings.panelLayout(p.panelId)
-            if (saved.mode === undefined || p.transient)
+            if (saved.mode === undefined || p.onDemand)
                 continue
             p.floatX = Number(saved.x)
             p.floatY = Number(saved.y)

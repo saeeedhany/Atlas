@@ -2,13 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import Atlas.ViewModels
 
-PanelBase {
+Item {
     id: panel
 
     required property string panelId
     property string title
+    property bool onDemand: false
     property int dockedHeight: 240
-    property string mode: transient ? "hidden" : "docked"
+    property string mode: onDemand ? "hidden" : "docked"
     property string returnMode: "docked"
     property real floatX: 0
     property real floatY: 0
@@ -51,7 +52,7 @@ PanelBase {
     function restore() {
         if (mode !== "expanded")
             return
-        mode = transient ? "hidden" : returnMode
+        mode = onDemand ? "hidden" : returnMode
         layoutChanged()
     }
 
@@ -80,7 +81,7 @@ PanelBase {
     }
 
     function savedLayout() {
-        let kept = transient ? "hidden" : mode === "expanded" ? returnMode : mode
+        let kept = onDemand ? "hidden" : mode === "expanded" ? returnMode : mode
         return { mode: kept, x: floatX, y: floatY, width: floatWidth, height: floatHeight }
     }
 
