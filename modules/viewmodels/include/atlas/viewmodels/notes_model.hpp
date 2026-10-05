@@ -23,8 +23,8 @@ class NotesModel : public QAbstractListModel, public ProvidedSingleton<NotesMode
 
 public:
     enum Role { IdRole = Qt::UserRole + 1, BodyRole, ColorRole, XRole, YRole, WidthRole, HeightRole, LinksRole };
-    static constexpr double kDefaultWidth = 180.0;
-    static constexpr double kDefaultHeight = 120.0;
+    static constexpr double kDefaultWidth = 150.0;
+    static constexpr double kDefaultHeight = 100.0;
     static constexpr double kMinSize = 96.0;
 
     NotesModel(atlas::persistence::Database& database, WorkspaceController& workspace, Clock clock,

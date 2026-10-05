@@ -18,15 +18,73 @@ Rectangle {
     property bool dragging: false
     property real dragDX: 0
     property real dragDY: 0
+    property real resizeDW: 0
+    property real resizeDH: 0
+    property bool deleteArmed: false
+    property point moveFrom
+    readonly property real zoom: notesLayer.canvas ? notesLayer.canvas.zoom : 1
+    readonly property int textSize: Math.round(Math.max(9, Math.min(20, Theme.fontBody * zoom)))
+    readonly property real uiScale: textSize / Theme.fontBody
+    readonly property bool chromeShown: notesLayer.interactive && zoom >= 0.6
+    readonly property real minSide: 96 * zoom
+    readonly property var linkTitles: links.map(link => link.kind === "concept"
+                                                ? (MapView.conceptInfo(link.targetId).title || "")
+                                                : Topics.nameOf(link.targetId))
     readonly property rect screenRect: {
         notesLayer.viewTick
         return notesLayer.screenRectOf(worldX, worldY, worldWidth, worldHeight)
     }
 
+    function saveBody() {
+        saveTimer.stop()
+        if (bodyArea.text !== body)
+            Notes.setBody(noteId, bodyArea.text)
+    }
+
+    function focusBody() {
+        if (!bodyArea.visible)
+            return
+        bodyArea.forceActiveFocus()
+        bodyArea.cursorPosition = bodyArea.length
+    }
+
+    function requestDelete() {
+        if (deleteArmed) {
+            Notes.remove(noteId)
+            return
+        }
+        deleteArmed = true
+        disarmTimer.restart()
+    }
+
+    function removeLink(index: int) {
+        const link = links[index]
+        if (link !== undefined)
+            Notes.unlink(noteId, link.kind, link.targetId)
+    }
+
+    function beginMove(at: point) {
+        moveFrom = at
+        dragging = true
+    }
+
+    function updateMove(at: point) {
+        dragDX = at.x - moveFrom.x
+        dragDY = at.y - moveFrom.y
+    }
+
+    function endMove(commit: bool) {
+        if (commit && (dragDX !== 0 || dragDY !== 0))
+            notesLayer.moveNoteTo(noteId, screenRect.x + dragDX, screenRect.y + dragDY)
+        dragDX = 0
+        dragDY = 0
+        dragging = false
+    }
+
     x: screenRect.x + dragDX
     y: screenRect.y + dragDY
-    width: screenRect.width
-    height: screenRect.height
+    width: Math.max(minSide, screenRect.width + resizeDW)
+    height: Math.max(minSide, screenRect.height + resizeDH)
     radius: Theme.radius
     color: notesLayer.fills[colorName]
     border.color: Qt.darker(color, 1.15)
@@ -34,6 +92,21 @@ Rectangle {
 
     onDragDXChanged: notesLayer.repaintLinks()
     onDragDYChanged: notesLayer.repaintLinks()
+    onWidthChanged: notesLayer.repaintLinks()
+    onHeightChanged: notesLayer.repaintLinks()
+    onLinksChanged: if (links.length === 0) linksPopup.close()
+
+    Timer {
+        id: saveTimer
+        interval: 400
+        onTriggered: note.saveBody()
+    }
+
+    Timer {
+        id: disarmTimer
+        interval: 3000
+        onTriggered: note.deleteArmed = false
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -48,94 +121,122 @@ Rectangle {
         visible: opacity > 0
     }
 
+    MouseArea {
+        anchors.fill: parent
+        enabled: note.notesLayer.interactive
+        acceptedButtons: Qt.LeftButton
+        onPressed: mouse => note.beginMove(mapToItem(note.notesLayer, mouse.x, mouse.y))
+        onPositionChanged: mouse => note.updateMove(mapToItem(note.notesLayer, mouse.x, mouse.y))
+        onReleased: note.endMove(true)
+        onCanceled: note.endMove(false)
+        onDoubleClicked: note.focusBody()
+    }
+
     Item {
         id: header
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: 18
+        height: Math.round(18 * note.uiScale)
 
         MouseArea {
             anchors.fill: parent
             enabled: note.notesLayer.interactive
             cursorShape: Qt.OpenHandCursor
-            property point pressAt
-            onPressed: mouse => {
-                pressAt = mapToItem(note.notesLayer, mouse.x, mouse.y)
-                note.dragging = true
-            }
-            onPositionChanged: mouse => {
-                let now = mapToItem(note.notesLayer, mouse.x, mouse.y)
-                note.dragDX = now.x - pressAt.x
-                note.dragDY = now.y - pressAt.y
-            }
-            onReleased: {
-                note.notesLayer.moveNoteTo(note.noteId, note.screenRect.x + note.dragDX, note.screenRect.y + note.dragDY)
-                note.dragDX = 0
-                note.dragDY = 0
-                note.dragging = false
-            }
-            onCanceled: {
-                note.dragDX = 0
-                note.dragDY = 0
-                note.dragging = false
-            }
+            onPressed: mouse => note.beginMove(mapToItem(note.notesLayer, mouse.x, mouse.y))
+            onPositionChanged: mouse => note.updateMove(mapToItem(note.notesLayer, mouse.x, mouse.y))
+            onReleased: note.endMove(true)
+            onCanceled: note.endMove(false)
         }
 
         Row {
             anchors.left: parent.left
-            anchors.leftMargin: 8
+            anchors.leftMargin: 8 * note.uiScale
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 5
-            visible: note.height > 70 && note.notesLayer.interactive
+            spacing: 5 * note.uiScale
+            visible: note.chromeShown
 
             Repeater {
                 model: ["clay", "olive", "rose"]
 
                 delegate: Rectangle {
                     required property string modelData
-                    width: 8
-                    height: 8
-                    radius: 4
+                    width: 8 * note.uiScale
+                    height: width
+                    radius: width / 2
                     color: note.notesLayer.inks[modelData]
                     opacity: note.colorName === modelData ? 1 : 0.45
 
-                    TapHandler { onTapped: Notes.recolor(note.noteId, parent.modelData) }
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -2
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Notes.recolor(note.noteId, parent.modelData)
+                    }
                 }
             }
         }
 
-        Text {
+        Row {
             anchors.right: parent.right
-            anchors.rightMargin: 8
+            anchors.rightMargin: 8 * note.uiScale
             anchors.verticalCenter: parent.verticalCenter
-            text: "\u00d7"
-            color: note.notesLayer.inks[note.colorName]
-            font.pixelSize: 13
-            visible: note.height > 70 && note.notesLayer.interactive
+            spacing: 8 * note.uiScale
+            visible: note.chromeShown
 
-            TapHandler { onTapped: Notes.remove(note.noteId) }
+            Text {
+                objectName: "noteLinksButton"
+                visible: note.links.length > 0
+                text: "→ " + note.links.length
+                color: note.notesLayer.inks[note.colorName]
+                font.family: Theme.mono
+                font.pixelSize: Math.round(Theme.fontSmall * note.uiScale)
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: linksPopup.opened ? linksPopup.close() : linksPopup.open()
+                }
+            }
+            Text {
+                text: note.deleteArmed ? "Delete" : "×"
+                color: note.deleteArmed ? Theme.danger : note.notesLayer.inks[note.colorName]
+                font.family: Theme.sans
+                font.weight: note.deleteArmed ? Font.Medium : Font.Normal
+                font.pixelSize: Math.round((note.deleteArmed ? Theme.fontSmall : Theme.fontBody) * note.uiScale)
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: note.requestDelete()
+                }
+            }
         }
     }
 
     TextArea {
+        id: bodyArea
+        objectName: "noteBody"
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: header.bottom
         anchors.bottom: parent.bottom
-        leftPadding: 10
-        rightPadding: 10
-        topPadding: 2
-        bottomPadding: 10
-        visible: note.notesLayer.canvas.zoom >= 0.45
+        leftPadding: 10 * note.uiScale
+        rightPadding: 10 * note.uiScale
+        topPadding: 2 * note.uiScale
+        bottomPadding: 10 * note.uiScale
+        visible: note.zoom >= 0.45
         enabled: note.notesLayer.interactive
         text: note.body
         wrapMode: TextEdit.Wrap
         color: note.notesLayer.inks[note.colorName]
+        selectionColor: Theme.primary
+        selectedTextColor: Theme.onPrimary
         font.family: Theme.sans
-        font.pixelSize: 12
+        font.pixelSize: note.textSize
         background: null
-        onEditingFinished: if (text !== note.body) Notes.setBody(note.noteId, text)
+        onTextChanged: if (text !== note.body) saveTimer.restart()
+        onEditingFinished: note.saveBody()
     }
 
     Rectangle {
@@ -156,6 +257,105 @@ Rectangle {
             onPositionChanged: mouse => note.notesLayer.moveDraft(mapToItem(note.notesLayer, mouse.x, mouse.y))
             onReleased: mouse => note.notesLayer.endDraft(mapToItem(note.notesLayer, mouse.x, mouse.y))
             onCanceled: note.notesLayer.cancelDraft()
+        }
+    }
+
+    Item {
+        objectName: "noteResizeGrip"
+        width: 14
+        height: 14
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: note.chromeShown
+
+        Rectangle {
+            width: 6
+            height: 6
+            radius: 2
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 4
+            color: note.notesLayer.inks[note.colorName]
+            opacity: 0.55
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.SizeFDiagCursor
+            property point pressAt
+            onPressed: mouse => {
+                pressAt = mapToItem(note.notesLayer, mouse.x, mouse.y)
+                note.dragging = true
+            }
+            onPositionChanged: mouse => {
+                let now = mapToItem(note.notesLayer, mouse.x, mouse.y)
+                note.resizeDW = now.x - pressAt.x
+                note.resizeDH = now.y - pressAt.y
+            }
+            onReleased: {
+                note.notesLayer.resizeNoteTo(note.noteId, note.width, note.height)
+                note.resizeDW = 0
+                note.resizeDH = 0
+                note.dragging = false
+            }
+            onCanceled: {
+                note.resizeDW = 0
+                note.resizeDH = 0
+                note.dragging = false
+            }
+        }
+    }
+
+    Popup {
+        id: linksPopup
+        objectName: "noteLinksPopup"
+        y: header.height
+        x: Math.max(0, note.width - width)
+        width: 220
+        padding: 8
+
+        background: Rectangle {
+            radius: Theme.radius
+            color: Theme.surfaceHigh
+            border.color: Theme.outline
+        }
+
+        contentItem: Column {
+            spacing: 2
+
+            Repeater {
+                model: note.linkTitles
+
+                delegate: Item {
+                    id: linkRow
+
+                    required property string modelData
+                    required property int index
+
+                    width: 204
+                    height: 28
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.right: removeButton.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: 4
+                        text: linkRow.modelData
+                        color: Theme.onSurface
+                        font.family: Theme.sans
+                        font.pixelSize: Theme.fontBody
+                        elide: Text.ElideRight
+                    }
+                    IconButton {
+                        id: removeButton
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "×"
+                        tip: "Remove link"
+                        onClicked: note.removeLink(linkRow.index)
+                    }
+                }
+            }
         }
     }
 }
