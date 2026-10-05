@@ -1,5 +1,6 @@
 #include <QColor>
 #include <QPointF>
+#include <QSignalSpy>
 
 #include "atlas/viewmodels/notes_model.hpp"
 #include "doctest.h"
@@ -39,6 +40,7 @@ TEST_CASE("double clicking empty board creates a note there") {
     QmlFixture::settle();
     REQUIRE(n.f.context().notes().count() == 1);
     CHECK(n.window->findChildren<QObject*>("stickyNote").size() == 1);
+    CHECK(n.layer->property("noteItems").toList().size() == 1);
 }
 
 TEST_CASE("typing note: in the bar creates a note with that text") {
@@ -54,7 +56,7 @@ TEST_CASE("typing note: in the bar creates a note with that text") {
 
 TEST_CASE("notes keep their world place while the board zooms") {
     NoteFixture n;
-    QString id = n.f.context().notes().create(100, 100, "Stay");
+    QString id = n.f.context().notes().createNote(100, 100, "Stay");
     QmlFixture::settle();
     auto* note = QmlFixture::child(n.window.get(), "stickyNote");
     double width = note->property("width").toDouble();
@@ -66,7 +68,7 @@ TEST_CASE("notes keep their world place while the board zooms") {
 
 TEST_CASE("dragging and linking a note use board positions") {
     NoteFixture n;
-    QString id = n.f.context().notes().create(0, 0, "Link me");
+    QString id = n.f.context().notes().createNote(0, 0, "Link me");
     QmlFixture::settle();
     QPointF target = n.toScreen(500, 500);
     REQUIRE(QMetaObject::invokeMethod(n.layer, "moveNoteTo", Q_ARG(QString, id), Q_ARG(double, target.x()),
@@ -88,7 +90,7 @@ TEST_CASE("dragging and linking a note use board positions") {
 
 TEST_CASE("notes recolor with the theme") {
     NoteFixture n;
-    n.f.context().notes().create(0, 0, "Color");
+    n.f.context().notes().createNote(0, 0, "Color");
     QmlFixture::settle();
     auto* note = QmlFixture::child(n.window.get(), "stickyNote");
     QColor dark = note->property("color").value<QColor>();
@@ -106,7 +108,7 @@ TEST_CASE("note errors reach the toast") {
 
 TEST_CASE("releasing a link drag on a concept links the note") {
     NoteFixture n;
-    QString id = n.f.context().notes().create(0, 0, "Drag");
+    QString id = n.f.context().notes().createNote(0, 0, "Drag");
     QmlFixture::settle();
     QVariant point;
     REQUIRE(QMetaObject::invokeMethod(n.canvas, "screenPositionOf", Q_RETURN_ARG(QVariant, point),
@@ -119,4 +121,16 @@ TEST_CASE("releasing a link drag on a concept links the note") {
     QmlFixture::settle();
     CHECK(n.layer->property("draftNoteId").toString().isEmpty());
     CHECK(n.f.context().notes().note(id).value("links").toList().size() == 1);
+}
+
+TEST_CASE("link lines follow a note while its header is dragged") {
+    NoteFixture n;
+    QString id = n.f.context().notes().createNote(0, 0, "Follow");
+    REQUIRE(n.f.context().notes().link(id, "concept", n.concept_));
+    QmlFixture::settle();
+    auto* note = QmlFixture::child(n.window.get(), "stickyNote");
+    QSignalSpy painted(QmlFixture::child(n.layer, "noteLinks"), SIGNAL(painted()));
+    while (painted.wait(300)) painted.clear();
+    note->setProperty("dragDX", 40.0);
+    CHECK(painted.wait(300));
 }

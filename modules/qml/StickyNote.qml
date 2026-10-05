@@ -32,6 +32,9 @@ Rectangle {
     border.color: Qt.darker(color, 1.15)
     z: dragging ? 3 : 2
 
+    onDragDXChanged: notesLayer.repaintLinks()
+    onDragDYChanged: notesLayer.repaintLinks()
+
     Rectangle {
         anchors.fill: parent
         anchors.topMargin: 10

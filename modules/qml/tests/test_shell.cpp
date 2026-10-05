@@ -75,6 +75,27 @@ TEST_CASE("topics show as labeled regions on the board") {
     CHECK(labels[0]->property("topicName").toString() == "Operating Systems");
 }
 
+TEST_CASE("region names recolor with the theme") {
+    QmlFixture f;
+    QString os = f.context().topics().createTopic("Operating Systems");
+    f.context().map().setTopicId(os);
+    f.context().map().createConcept("Paging");
+    f.context().map().setTopicId(QString());
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto labels = QmlFixture::child(window.get(), "regionLabels")->findChildren<QObject*>("regionLabel");
+    REQUIRE(labels.size() == 1);
+    QObject* name = nullptr;
+    for (QObject* child : labels[0]->findChildren<QObject*>())
+        if (child->property("text").toString() == "Operating Systems") name = child;
+    REQUIRE(name != nullptr);
+    QColor dark = name->property("color").value<QColor>();
+    REQUIRE(dark.isValid());
+    f.context().settings().setDarkTheme(false);
+    QColor light = name->property("color").value<QColor>();
+    CHECK(light != dark);
+}
+
 TEST_CASE("switching the theme recolors the window at once") {
     QmlFixture f;
     auto window = f.create("Main");

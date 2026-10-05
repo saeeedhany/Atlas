@@ -8,6 +8,11 @@ Item {
     property Item canvas
     property bool interactive: true
     property int viewTick: 0
+    property var tints: tintList()
+
+    function tintList(): var {
+        return [0, 1, 2, 3, 4, 5].map(hue => Theme.regionTint(hue))
+    }
 
     visible: canvas !== null && !canvas.collapsed
 
@@ -19,6 +24,10 @@ Item {
     Connections {
         target: MapView
         function onSceneChanged() { labels.viewTick++ }
+    }
+    Connections {
+        target: Palette
+        function onChanged() { labels.tints = labels.tintList() }
     }
 
     Instantiator {
@@ -49,7 +58,7 @@ Item {
 
                 Text {
                     text: label.modelData.name
-                    color: { Palette.background; return Theme.regionTint(label.modelData.hue) }
+                    color: labels.tints[label.modelData.hue]
                     font.family: Theme.serif
                     font.pixelSize: 16
                 }

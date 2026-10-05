@@ -97,7 +97,7 @@ bool NotesModel::fail(const QString& message) {
     return false;
 }
 
-QString NotesModel::create(double x, double y, const QString& body) {
+QString NotesModel::createNote(double x, double y, const QString& body) {
     BoardNote note;
     note.id = Uuid::generate();
     note.body = toStdString(body);

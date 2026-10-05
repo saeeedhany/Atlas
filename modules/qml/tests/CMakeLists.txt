@@ -1,3 +1,5 @@
+find_package(Qt6 6.7 REQUIRED COMPONENTS Test)
+
 add_executable(atlas_qml_tests
     qml_fixture.cpp
     test_components.cpp
@@ -15,7 +17,7 @@ add_executable(atlas_qml_tests
 )
 
 target_link_libraries(atlas_qml_tests PRIVATE
-    atlas_qml atlas_qmlplugin atlas_viewmodels atlas_viewmodelsplugin Qt6::Quick
+    atlas_qml atlas_qmlplugin atlas_viewmodels atlas_viewmodelsplugin Qt6::Quick Qt6::Test
 )
 target_include_directories(atlas_qml_tests PRIVATE ${CMAKE_SOURCE_DIR}/third_party/doctest)
 

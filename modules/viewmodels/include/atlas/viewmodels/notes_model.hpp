@@ -36,12 +36,7 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    // A template so the QML factory never competes with create(0, 0).
-    template <typename Engine>
-    static NotesModel* create(Engine* engine, QJSEngine* scriptEngine) {
-        return ProvidedSingleton<NotesModel>::create(engine, scriptEngine);
-    }
-    Q_INVOKABLE QString create(double x, double y, const QString& body = QString());
+    Q_INVOKABLE QString createNote(double x, double y, const QString& body = QString());
     Q_INVOKABLE bool setBody(const QString& id, const QString& body);
     Q_INVOKABLE bool move(const QString& id, double x, double y);
     Q_INVOKABLE bool resize(const QString& id, double width, double height);

@@ -39,7 +39,7 @@ struct Fixture {
 
 TEST_CASE("notes are created, edited, moved, resized, and recolored") {
     Fixture f;
-    QString id = f.notes.create(10, 20, "Why half?");
+    QString id = f.notes.createNote(10, 20, "Why half?");
     REQUIRE_FALSE(id.isEmpty());
     CHECK(f.notes.count() == 1);
     REQUIRE(f.notes.setBody(id, "Why half full?"));
@@ -62,7 +62,7 @@ TEST_CASE("links follow the life of their targets") {
     Fixture f;
     auto concept_ = f.workspace.createKnowledgeObject("Paging").value();
     auto topic = f.workspace.createTopic("OS").value();
-    QString id = f.notes.create(0, 0);
+    QString id = f.notes.createNote(0, 0);
     REQUIRE(f.notes.link(id, "concept", idString(concept_)));
     REQUIRE(f.notes.link(id, "topic", idString(topic)));
     CHECK_FALSE(f.notes.link(id, "concept", "garbage"));
@@ -82,7 +82,7 @@ TEST_CASE("links follow the life of their targets") {
 
 TEST_CASE("a failed write leaves the board unchanged") {
     Fixture f;
-    QString id = f.notes.create(5, 5, "Keep");
+    QString id = f.notes.createNote(5, 5, "Keep");
     REQUIRE(executeRawSql(f.path, "DROP TABLE note_links; DROP TABLE board_notes;"));
     CHECK_FALSE(f.notes.move(id, 900, 900));
     CHECK(f.errors == 1);
@@ -92,7 +92,7 @@ TEST_CASE("a failed write leaves the board unchanged") {
 TEST_CASE("removing a linked target refreshes links without resetting the board") {
     Fixture f;
     auto concept_ = f.workspace.createKnowledgeObject("Paging").value();
-    QString id = f.notes.create(0, 0, "Typing");
+    QString id = f.notes.createNote(0, 0, "Typing");
     REQUIRE(f.notes.link(id, "concept", idString(concept_)));
 
     int resets = 0;

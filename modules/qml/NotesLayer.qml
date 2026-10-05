@@ -31,7 +31,7 @@ Item {
 
     function createAtScreen(sx: real, sy: real, body: string): string {
         let world = canvas.mapToWorld(sx, sy)
-        return Notes.create(world.x, world.y, body)
+        return Notes.createNote(world.x, world.y, body)
     }
 
     function moveNoteTo(noteId: string, sx: real, sy: real): bool {
@@ -57,6 +57,10 @@ Item {
             return canvas.screenPositionOf(link.targetId)
         let region = MapView.regions.find(r => r.topicId === link.targetId)
         return region ? canvas.mapToScreen(region.x + region.width / 2, region.y + region.height / 2) : undefined
+    }
+
+    function repaintLinks() {
+        lines.requestPaint()
     }
 
     function beginDraft(noteId: string, at: point) {
@@ -107,6 +111,7 @@ Item {
 
     Canvas {
         id: lines
+        objectName: "noteLinks"
         anchors.fill: parent
 
         onPaint: {
@@ -144,11 +149,11 @@ Item {
             notesLayer: layerRoot
         }
         onObjectAdded: (index, object) => {
-            layerRoot.noteItems = layerRoot.noteItems.concat([object])
+            layerRoot.noteItems.push(object)
             lines.requestPaint()
         }
         onObjectRemoved: (index, object) => {
-            layerRoot.noteItems = layerRoot.noteItems.filter(item => item !== object)
+            layerRoot.noteItems.splice(layerRoot.noteItems.indexOf(object), 1)
             lines.requestPaint()
         }
     }

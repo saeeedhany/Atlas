@@ -86,7 +86,7 @@ ApplicationWindow {
             Component.onCompleted: MapView.attach(canvas)
             onBackgroundDoubleClicked: (x, y) => {
                 if (window.mode === "board")
-                    Notes.create(x, y, "")
+                    Notes.createNote(x, y, "")
             }
         }
 
