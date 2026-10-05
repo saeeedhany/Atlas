@@ -66,7 +66,7 @@ Theme makeLight() {
     theme.nodeFill = QColor(0x6b6357);
     theme.label = QColor(0x5e574c);
     theme.ringStrong = QColor(0x7d8c62);
-    theme.ringMedium = QColor(0x8a8070);
+    theme.ringMedium = QColor(0x6b6357);
     theme.ringWeak = QColor(0xa8583f);
     theme.ringNew = QColor(0xc9bda8);
     theme.ringTrack = QColor(0xe6dccb);

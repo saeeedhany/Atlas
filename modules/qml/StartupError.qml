@@ -20,14 +20,14 @@ Window {
 
         Text {
             text: "Atlas could not start"
-            color: "#e4e4e7"
+            color: "#e2ddd3"
             font.pixelSize: 20
         }
         Text {
             objectName: "startupMessage"
             Layout.fillWidth: true
             text: window.message
-            color: "#a1a1aa"
+            color: "#a39c8f"
             font.pixelSize: 13
             wrapMode: Text.Wrap
         }

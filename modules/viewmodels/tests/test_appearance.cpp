@@ -121,3 +121,13 @@ TEST_CASE("the palette carries warm stone and clay in both themes") {
     CHECK(palette.accent() == QColor("#b8784a"));
     CHECK(palette.noteText("rose") == QColor("#5a2f24"));
 }
+
+TEST_CASE("the fading ring matches the node fill in both themes") {
+    QTemporaryDir dir;
+    QSettings store(dir.filePath("settings.ini"), QSettings::IniFormat);
+    AppSettings settings(store);
+    Palette palette(settings);
+    CHECK(palette.ringMedium() == palette.nodeFill());
+    settings.setDarkTheme(false);
+    CHECK(palette.ringMedium() == palette.nodeFill());
+}
