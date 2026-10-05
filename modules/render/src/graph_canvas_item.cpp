@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "atlas/render/canvas_view.hpp"
+#include "atlas/render/node_style.hpp"
 
 namespace atlas::render {
 
@@ -42,19 +43,8 @@ struct SceneVertices {
 
 namespace {
 
-constexpr float kNodeRadius = 5.5f;
-constexpr float kNodeHalo = 1.5f;
-constexpr float kDegreeGrowth = 0.5f;
-constexpr int kMaxDegreeGrowth = 5;
 constexpr float kGroupBorderWidth = 2.2f;
 constexpr float kHitRadius = 15.0f;
-constexpr float kSelectRingRadius = 13.5f;
-constexpr float kSelectRingThickness = 2.0f;
-constexpr float kNeighborRingRadius = 12.5f;
-constexpr float kHoverRingRadius = 12.5f;
-constexpr float kHighlightThickness = 1.5f;
-constexpr float kMemoryRingRadius = 9.5f;
-constexpr float kMemoryRingThickness = 1.6f;
 constexpr int kNewRingDashes = 12;
 constexpr float kArrowLength = 7.0f;
 constexpr float kArrowHalfWidth = 3.5f;
@@ -85,7 +75,6 @@ constexpr float kDotRadius = 1.3f;
 constexpr int kLabelPixelSize = 11;
 constexpr double kRecallEase = 0.06;
 constexpr double kRecallEpsilon = 0.002;
-constexpr float kHintRingRadius = 16.0f;
 constexpr int kHintAlphaPercent = 60;
 constexpr double kRegionCornerRadius = 28.0;
 constexpr int kRegionCornerSegments = 8;
@@ -641,7 +630,7 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
             halo.setAlpha(std::min(halo.alpha(), kDimmedAlpha));
             fill.setAlpha(std::min(fill.alpha(), kDimmedAlpha));
         }
-        float radius = kNodeRadius + static_cast<float>(std::min(node.degree, kMaxDegreeGrowth)) * kDegreeGrowth;
+        float radius = dotRadius(node.degree);
         appendDisc(out.borders, center, radius + kNodeHalo, halo);
         appendDisc(out.fills, center, radius, fill);
         appendMemoryRing(out.memory, center, kMemoryRingRadius, kMemoryRingThickness, shownRecallOf(node.id), theme,
@@ -651,7 +640,7 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
 
 void GraphCanvasItem::buildEdges(SceneVertices& out, const Theme& theme) const {
     bool hasHighlight = !selectedId_.isEmpty();
-    float trim = kMemoryRingRadius + kMemoryRingThickness / 2 + 2.0f;
+    float trim = linkTrim();
     for (const auto& edge : edges_) {
         if (edge.mark == EdgeMark::Hidden) continue;
         Vec2 from = positionOf(edge.sourceId);

@@ -18,6 +18,7 @@ if (ATLAS_BUILD_UI)
     add_library(atlas_render_canvas STATIC
         include/atlas/render/canvas_view.hpp
         include/atlas/render/graph_canvas_item.hpp
+        include/atlas/render/node_style.hpp
         include/atlas/render/region_geometry.hpp
         include/atlas/render/theme.hpp
         src/canvas_view.cpp
