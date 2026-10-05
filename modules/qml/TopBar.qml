@@ -10,6 +10,7 @@ Rectangle {
     signal settingsRequested()
     signal focusRequested(string id)
     signal fitRequested()
+    signal noteRequested(string body)
 
     function focusNewConcept() {
         topics.focusNewConcept()
@@ -50,6 +51,7 @@ Rectangle {
             embedded: true
             onFocusRequested: id => bar.focusRequested(id)
             onFitRequested: bar.fitRequested()
+            onNoteRequested: body => bar.noteRequested(body)
         }
 
         AppButton {

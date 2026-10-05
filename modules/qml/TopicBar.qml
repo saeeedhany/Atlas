@@ -16,6 +16,7 @@ Rectangle {
 
     signal focusRequested(string id)
     signal fitRequested()
+    signal noteRequested(string body)
 
     function openIdeas() {
         ideas = Topics.suggestProjects(MapView.topicId)
@@ -27,7 +28,13 @@ Rectangle {
     }
 
     function addConcept(title: string) {
-        let id = MapView.createConcept(title.trim())
+        let trimmed = title.trim()
+        if (trimmed.toLowerCase().startsWith("note:")) {
+            noteRequested(trimmed.slice(5).trim())
+            newField.clear()
+            return
+        }
+        let id = MapView.createConcept(trimmed)
         if (id === "")
             return
         newField.clear()

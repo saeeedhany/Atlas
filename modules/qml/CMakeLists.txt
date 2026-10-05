@@ -21,6 +21,7 @@ qt_add_qml_module(atlas_qml
         ListEditor.qml
         Main.qml
         MapOverlay.qml
+        NotesLayer.qml
         PinnedCard.qml
         Panel.qml
         PanelLayer.qml
@@ -32,6 +33,7 @@ qt_add_qml_module(atlas_qml
         SessionScreen.qml
         SettingsScreen.qml
         StartupError.qml
+        StickyNote.qml
         Theme.qml
         TodayPanel.qml
         Toast.qml

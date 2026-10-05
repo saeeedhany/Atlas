@@ -8,6 +8,7 @@ add_executable(atlas_qml_tests
     test_main.cpp
     test_panels.cpp
     test_map.cpp
+    test_notes.cpp
     test_session_screen.cpp
     test_settings.cpp
     test_shell.cpp

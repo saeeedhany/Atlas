@@ -67,6 +67,7 @@ ApplicationWindow {
         onSettingsRequested: window.openSettings()
         onFocusRequested: id => mapOverlay.focusConcept(id)
         onFitRequested: canvas.fitToContent()
+        onNoteRequested: body => notesLayer.createAtScreen(board.width / 2, board.height / 2, body)
     }
 
     Item {
@@ -83,10 +84,22 @@ ApplicationWindow {
             anchors.fill: parent
             animated: !AppSettings.reducedMotion
             Component.onCompleted: MapView.attach(canvas)
+            onBackgroundDoubleClicked: (x, y) => {
+                if (window.mode === "board")
+                    Notes.create(x, y, "")
+            }
         }
 
         RegionLabels {
             objectName: "regionLabels"
+            anchors.fill: parent
+            canvas: canvas
+            interactive: window.mode === "board"
+        }
+
+        NotesLayer {
+            id: notesLayer
+            objectName: "notesLayer"
             anchors.fill: parent
             canvas: canvas
             interactive: window.mode === "board"
@@ -174,6 +187,10 @@ ApplicationWindow {
     }
     Connections {
         target: ConceptLinks
+        function onErrorOccurred(message) { toast.show(message) }
+    }
+    Connections {
+        target: Notes
         function onErrorOccurred(message) { toast.show(message) }
     }
     Connections {
