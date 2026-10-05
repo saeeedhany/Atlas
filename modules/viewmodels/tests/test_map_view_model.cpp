@@ -423,6 +423,15 @@ TEST_CASE("topics become regions around their concepts") {
     CHECK(f.map.conceptInfo(idString(paging)).contains("definition"));
 }
 
+TEST_CASE("uncategorized concepts get no region") {
+    Fixture f;
+    f.addConcept("Loose", uncategorizedTopicId());
+    f.addConcept("Stray", uncategorizedTopicId());
+    f.settle();
+    CHECK(f.map.conceptCount() == 2);
+    CHECK(f.map.regions().isEmpty());
+}
+
 TEST_CASE("moving a topic moves all its concepts") {
     Fixture f;
     auto os = f.topic("OS");
