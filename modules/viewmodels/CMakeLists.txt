@@ -17,6 +17,7 @@ qt_add_qml_module(atlas_viewmodels
         include/atlas/viewmodels/ids.hpp
         include/atlas/viewmodels/map_view_model.hpp
         include/atlas/viewmodels/memory_controller.hpp
+        include/atlas/viewmodels/notes_model.hpp
         include/atlas/viewmodels/palette.hpp
         include/atlas/viewmodels/placement_controller.hpp
         include/atlas/viewmodels/provided_singleton.hpp
@@ -34,6 +35,7 @@ qt_add_qml_module(atlas_viewmodels
         src/ids.cpp
         src/map_view_model.cpp
         src/memory_controller.cpp
+        src/notes_model.cpp
         src/palette.cpp
         src/placement_controller.cpp
         src/session_controller.cpp

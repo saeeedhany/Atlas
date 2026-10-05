@@ -8,6 +8,7 @@
 #include "atlas/viewmodels/concept_links_model.hpp"
 #include "atlas/viewmodels/map_view_model.hpp"
 #include "atlas/viewmodels/memory_controller.hpp"
+#include "atlas/viewmodels/notes_model.hpp"
 #include "atlas/viewmodels/palette.hpp"
 #include "atlas/viewmodels/placement_controller.hpp"
 #include "atlas/viewmodels/session_controller.hpp"
@@ -37,6 +38,7 @@ public:
     ConceptEditor& conceptEditor() { return conceptEditor_; }
     ConceptLinksModel& links() { return links_; }
     TodayViewModel& today() { return today_; }
+    NotesModel& notes() { return notes_; }
     SessionController& session() { return session_; }
 
 private:
@@ -50,6 +52,7 @@ private:
     ConceptEditor conceptEditor_;
     ConceptLinksModel links_;
     TodayViewModel today_;
+    NotesModel notes_;
     SessionController session_;
 };
 

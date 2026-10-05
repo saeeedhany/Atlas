@@ -13,6 +13,7 @@ AppContext::AppContext(atlas::persistence::Database& database, QSettings& store,
       conceptEditor_(workspace_, memory_, placements_),
       links_(workspace_, memory_),
       today_(workspace_, memory_, settings_),
+      notes_(database, workspace_, [this] { return memory_.now(); }),
       session_(workspace_, memory_, map_, settings_) {}
 
 AppContext::~AppContext() {
@@ -23,6 +24,7 @@ AppContext::~AppContext() {
     ConceptEditor::provide(nullptr);
     ConceptLinksModel::provide(nullptr);
     TodayViewModel::provide(nullptr);
+    NotesModel::provide(nullptr);
     SessionController::provide(nullptr);
 }
 
@@ -30,6 +32,7 @@ Result<void, ControllerFailure> AppContext::load() {
     if (auto loaded = workspace_.load(); !loaded.hasValue()) return loaded;
     if (auto placed = placements_.load(); !placed.hasValue()) return placed;
     if (auto remembered = memory_.load(); !remembered.hasValue()) return remembered;
+    if (auto noted = notes_.load(); !noted.hasValue()) return noted;
     topics_.refresh();
     return Result<void, ControllerFailure>::ok();
 }
@@ -42,6 +45,7 @@ void AppContext::provideSingletons() {
     ConceptEditor::provide(&conceptEditor_);
     ConceptLinksModel::provide(&links_);
     TodayViewModel::provide(&today_);
+    NotesModel::provide(&notes_);
     SessionController::provide(&session_);
 }
 
