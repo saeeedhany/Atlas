@@ -3,16 +3,18 @@ import QtQuick
 import Atlas.ViewModels
 
 QtObject {
+    id: theme
+
     readonly property color background: Palette.background
     readonly property color surface: Palette.surface
     readonly property color surfaceHigh: Palette.surfaceRaised
     readonly property color outline: Palette.border
     readonly property color outlineStrong: Palette.outlineStrong
-    readonly property color onSurface: Palette.text
+    property color onSurface
     readonly property color onSurfaceMuted: Palette.textMuted
     readonly property color onSurfaceFaint: Palette.textFaint
     readonly property color primary: Palette.accent
-    readonly property color onPrimary: Palette.onPrimary
+    property color onPrimary
     readonly property color secondary: Palette.secondary
     readonly property color tertiary: Palette.tertiary
     readonly property color danger: Palette.danger
@@ -46,6 +48,12 @@ QtObject {
     readonly property int radiusChip: 8
     readonly property int radiusRegion: 28
     readonly property int panelWidth: 380
+
+    // A binding written as onSurface: or onPrimary: is read as a handler for surface or primary.
+    Component.onCompleted: {
+        theme.onSurface = Qt.binding(() => Palette.text)
+        theme.onPrimary = Qt.binding(() => Palette.onPrimary)
+    }
 
     function ringColor(recall: real): color {
         if (recall < 0)

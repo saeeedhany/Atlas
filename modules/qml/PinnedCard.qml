@@ -64,6 +64,7 @@ Rectangle {
                 text: pinned.info.title || ""
                 color: Theme.onSurface
                 font.family: Theme.serif
+                font.weight: Font.Medium
                 font.pixelSize: Theme.fontTitle
                 elide: Text.ElideRight
             }
@@ -81,7 +82,7 @@ Rectangle {
             visible: text !== ""
             text: pinned.info.definition || ""
             color: Theme.onSurfaceMuted
-            font.pixelSize: Theme.fontSmall + 1
+            font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
             maximumLineCount: 3
             elide: Text.ElideRight

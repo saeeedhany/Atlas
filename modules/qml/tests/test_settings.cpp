@@ -42,3 +42,12 @@ TEST_CASE("settings switches and the spin box share the right edge") {
     CHECK(rightEdge("darkThemeSwitch") == doctest::Approx(spin));
     CHECK(rightEdge("reducedMotionSwitch") == doctest::Approx(spin));
 }
+
+TEST_CASE("the theme caption names warm stone") {
+    QmlFixture f;
+    auto screen = f.create("SettingsScreen");
+    bool found = false;
+    for (QObject* child : screen->findChildren<QObject*>())
+        found = found || child->property("text").toString() == "Warm stone, or its light paper twin.";
+    CHECK(found);
+}

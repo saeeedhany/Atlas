@@ -60,7 +60,8 @@ Item {
                     text: label.modelData.name
                     color: labels.tints[label.modelData.hue]
                     font.family: Theme.serif
-                    font.pixelSize: 16
+                    font.weight: Font.Medium
+                    font.pixelSize: Theme.fontTitle
                 }
                 Text {
                     text: label.modelData.caption

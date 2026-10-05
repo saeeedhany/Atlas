@@ -87,7 +87,7 @@ Rectangle {
         newField.forceActiveFocus()
     }
 
-    implicitHeight: row.implicitHeight + 16
+    implicitHeight: row.implicitHeight + (embedded ? 0 : 16)
     radius: Theme.radius + 2
     color: embedded ? "transparent" : Theme.surface
     border.color: Theme.border
@@ -107,14 +107,13 @@ Rectangle {
     RowLayout {
         id: row
         anchors.fill: parent
-        anchors.margins: 8
+        anchors.margins: bar.embedded ? 0 : 8
         spacing: 8
 
-        ComboBox {
+        AppComboBox {
             id: topicBox
             objectName: "topicBox"
             Layout.preferredWidth: 180
-            font.pixelSize: Theme.fontBody
             model: [{ topicId: "", name: "All topics" }].concat(Topics.entries)
             textRole: "name"
             valueRole: "topicId"

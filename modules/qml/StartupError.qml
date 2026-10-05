@@ -21,7 +21,9 @@ Window {
         Text {
             text: "Atlas could not start"
             color: "#e2ddd3"
-            font.pixelSize: 20
+            font.family: "Newsreader"
+            font.weight: Font.Medium
+            font.pixelSize: 24
         }
         Text {
             objectName: "startupMessage"

@@ -10,11 +10,15 @@ Item {
     property bool fitPending: false
     property bool focusWaited: false
     property var pinnedIds: []
+    property var obstacles: []
+    readonly property bool cardExpanded: conceptCard.expanded
     onPinnedIdsChanged: scheduleLayout()
     onPinnedItemsChanged: scheduleLayout()
     onWidthChanged: scheduleLayout()
     onHeightChanged: scheduleLayout()
     property var pinnedItems: []
+
+    signal notice(string message)
 
     function focusConcept(id: string) {
         if (Object.keys(MapView.conceptInfo(id)).length === 0)
@@ -101,12 +105,22 @@ Item {
         return base
     }
 
+    function cardSpot(point, cardWidth, cardHeight) {
+        return placeClear(point, cardWidth, cardHeight, obstacles)
+    }
+
+    function restoreCard() {
+        conceptCard.restore()
+    }
+
     function scheduleLayout() {
         Qt.callLater(layoutPinned)
     }
 
     function layoutPinned() {
-        let taken = conceptCard.visible ? [Qt.rect(conceptCard.x, conceptCard.y, conceptCard.width, conceptCard.height)] : []
+        let taken = obstacles.slice()
+        if (conceptCard.visible)
+            taken.push(Qt.rect(conceptCard.x, conceptCard.y, conceptCard.width, conceptCard.height))
         for (const id of pinnedIds) {
             const item = pinnedItems.find(candidate => candidate.conceptId === id)
             if (!item)
@@ -122,10 +136,21 @@ Item {
     }
 
     function pinCurrent(): bool {
-        if (!Concept.exists || pinnedIds.includes(Concept.conceptId) || pinnedIds.length >= 3)
+        if (!Concept.exists || pinnedIds.includes(Concept.conceptId))
             return false
+        if (pinnedIds.length >= 3) {
+            notice("Up to three concepts can stay pinned")
+            return false
+        }
         pinnedIds = pinnedIds.concat([Concept.conceptId])
         return true
+    }
+
+    function togglePin() {
+        if (pinnedIds.includes(Concept.conceptId))
+            unpin(Concept.conceptId)
+        else
+            pinCurrent()
     }
 
     function unpin(id: string) {
@@ -138,6 +163,7 @@ Item {
             pinnedIds = kept
     }
 
+    onObstaclesChanged: scheduleLayout()
     opacity: active ? 1 : 0
     visible: opacity > 0
 
@@ -184,13 +210,31 @@ Item {
         canvas: overlay.canvas
     }
 
+    Rectangle {
+        anchors.fill: parent
+        z: 25
+        color: Theme.background
+        opacity: conceptCard.expanded ? 0.72 : 0
+        visible: opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: Motion.appear } }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            onClicked: conceptCard.restore()
+            onWheel: wheel => wheel.accepted = true
+        }
+    }
+
     ConceptCard {
         id: conceptCard
         objectName: "conceptCard"
         canvas: overlay.canvas
         area: overlay
+        pinned: overlay.pinnedIds.includes(Concept.conceptId)
         onFocusRequested: id => overlay.focusConcept(id)
-        onPinRequested: overlay.pinCurrent()
+        onPinRequested: overlay.togglePin()
     }
 
     Connections {
@@ -220,11 +264,5 @@ Item {
         }
         onObjectAdded: (index, object) => overlay.pinnedItems = overlay.pinnedItems.concat([object])
         onObjectRemoved: (index, object) => overlay.pinnedItems = overlay.pinnedItems.filter(item => item !== object)
-    }
-
-    Shortcut {
-        sequence: "Escape"
-        enabled: overlay.active
-        onActivated: MapView.selectedId = ""
     }
 }

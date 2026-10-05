@@ -16,7 +16,11 @@ Rectangle {
         topics.focusNewConcept()
     }
 
-    implicitHeight: 52
+    function openMenu() {
+        menu.popup(bar, 12, bar.height + 4)
+    }
+
+    implicitHeight: 44
     color: Theme.background
     opacity: enabled ? 1 : 0.55
 
@@ -30,18 +34,34 @@ Rectangle {
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 18
-        anchors.rightMargin: 16
+        anchors.rightMargin: 12
         spacing: 12
 
-        Text {
-            id: wordmark
-            text: "Atlas"
-            color: Theme.onSurface
-            font.family: Theme.serif
-            font.pixelSize: 22
+        Row {
+            spacing: 2
 
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: menu.popup(wordmark, 0, wordmark.height + 8) }
+            Text {
+                id: wordmark
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Atlas"
+                color: Theme.onSurface
+                font.family: Theme.serif
+                font.weight: Font.Medium
+                font.pixelSize: Theme.fontHeadline
+
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: bar.openMenu() }
+            }
+            IconButton {
+                objectName: "menuButton"
+                anchors.verticalCenter: parent.verticalCenter
+                width: 22
+                height: 22
+                tip: "Menu"
+                onClicked: bar.openMenu()
+
+                Chevron { anchors.centerIn: parent }
+            }
         }
 
         TopicBar {
@@ -65,6 +85,7 @@ Rectangle {
 
     Menu {
         id: menu
+        objectName: "topMenu"
 
         MenuItem { text: "Settings"; onTriggered: bar.settingsRequested() }
         MenuItem { text: "Fit the board"; onTriggered: bar.fitRequested() }

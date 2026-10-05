@@ -176,7 +176,8 @@ Item {
                     text: panel.title
                     color: Theme.onSurface
                     font.family: Theme.serif
-                    font.pixelSize: 15
+                    font.weight: Font.Medium
+                    font.pixelSize: Theme.fontTitle
                     elide: Text.ElideRight
                 }
                 IconButton {
@@ -187,7 +188,7 @@ Item {
                 }
                 IconButton {
                     visible: panel.mode === "floating"
-                    text: "\u21f2"
+                    text: "\u21a9"
                     tip: "Pin back"
                     onClicked: panel.dock()
                 }

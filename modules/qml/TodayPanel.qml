@@ -27,6 +27,7 @@ ColumnLayout {
         text: today.headline
         color: Theme.onSurface
         font.family: Theme.serif
+        font.weight: Font.Medium
         font.pixelSize: Theme.fontHeadline
         wrapMode: Text.Wrap
     }

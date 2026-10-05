@@ -10,13 +10,25 @@ ApplicationWindow {
 
     function startSession(): bool {
         panelLayer.closeExpanded()
+        mapOverlay.restoreCard()
+        notesLayer.flushNotes()
         if (Concept.dirty && !Concept.save())
             return false
         return Session.start()
     }
 
     function openSettings() {
+        mapOverlay.restoreCard()
         settingsPanel.expand()
+    }
+
+    function handleEscape() {
+        if (panelLayer.anyExpanded)
+            panelLayer.closeExpanded()
+        else if (mapOverlay.cardExpanded)
+            mapOverlay.restoreCard()
+        else
+            MapView.selectedId = ""
     }
 
     width: 1280
@@ -51,6 +63,7 @@ ApplicationWindow {
     }
 
     onClosing: close => {
+        notesLayer.flushNotes()
         if (Concept.dirty && !Concept.save())
             close.accepted = false
     }
@@ -86,7 +99,7 @@ ApplicationWindow {
             Component.onCompleted: MapView.attach(canvas)
             onBackgroundDoubleClicked: (x, y) => {
                 if (window.mode === "board")
-                    Notes.createNote(x, y, "")
+                    notesLayer.createAtWorld(x, y, "")
             }
         }
 
@@ -109,8 +122,11 @@ ApplicationWindow {
             id: mapOverlay
             objectName: "mapOverlay"
             anchors.fill: parent
+            z: cardExpanded ? 1 : 0
             canvas: canvas
             active: window.mode === "board"
+            obstacles: panelLayer.occupied
+            onNotice: message => toast.show(message)
         }
 
         SessionScreen {
@@ -171,6 +187,12 @@ ApplicationWindow {
             anchors.bottomMargin: 24
             z: 40
         }
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: window.mode === "board"
+        onActivated: window.handleEscape()
     }
 
     Connections {

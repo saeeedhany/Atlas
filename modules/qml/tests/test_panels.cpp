@@ -1,5 +1,7 @@
 #include <QRectF>
 
+#include <cmath>
+
 #include "doctest.h"
 #include "qml_fixture.hpp"
 
@@ -98,4 +100,22 @@ TEST_CASE("panels start at their slot without animating in") {
     auto* today = QmlFixture::child(layer.get(), "today");
     CHECK(today->property("x").toDouble() == doctest::Approx(targetOf(today).x()));
     CHECK(today->property("y").toDouble() == doctest::Approx(targetOf(today).y()));
+}
+
+TEST_CASE("a corrupt saved layout falls back to docked") {
+    QmlFixture f;
+    f.context().settings().setReducedMotion(true);
+    f.context().settings().setPanelLayout("today", {{"mode", "floating"}, {"x", "abc"}, {"y", 10.0},
+                                                    {"width", 300.0}, {"height", 200.0}});
+    f.context().settings().setPanelLayout("brain", {{"mode", "floating"}, {"x", 10.0}, {"y", std::nan("")},
+                                                    {"width", 300.0}, {"height", 200.0}});
+    auto layer = f.createFromData(kBoard);
+    for (const char* name : {"today", "brain"}) {
+        auto* panel = QmlFixture::child(layer.get(), name);
+        CHECK(panel->property("mode").toString() == "docked");
+        QRectF placed = targetOf(panel);
+        CHECK(std::isfinite(placed.x()));
+        CHECK(std::isfinite(placed.y()));
+        CHECK(placed.right() <= 1200.0);
+    }
 }

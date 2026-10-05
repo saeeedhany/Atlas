@@ -92,6 +92,7 @@ Rectangle {
                         text: Concept.title
                         placeholderText: "Title"
                         font.family: Theme.serif
+                        font.weight: Font.Medium
                         font.pixelSize: Theme.fontHeadline
                         onTextEdited: Concept.title = text
                     }
@@ -112,10 +113,9 @@ Rectangle {
                     spacing: 4
 
                     SectionLabel { text: "Topic" }
-                    ComboBox {
+                    AppComboBox {
                         id: topicBox
                         Layout.fillWidth: true
-                        font.pixelSize: Theme.fontBody
                         model: Topics.entries
                         textRole: "name"
                         valueRole: "topicId"
@@ -130,9 +130,8 @@ Rectangle {
                     spacing: 4
 
                     SectionLabel { text: "Difficulty" }
-                    ComboBox {
+                    AppComboBox {
                         Layout.fillWidth: true
-                        font.pixelSize: Theme.fontBody
                         model: Concept.difficultyNames
                         currentIndex: Concept.difficulty
                         onActivated: index => Concept.difficulty = index
@@ -221,8 +220,11 @@ Rectangle {
                     font.pixelSize: Theme.fontBody
                     elide: Text.ElideRight
 
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: panel.focusRequested(modelData.id) }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: panel.focusRequested(modelData.id)
+                    }
                 }
             }
 

@@ -1,28 +1,58 @@
 import QtQuick
+import QtQuick.Controls.Basic
 
 Rectangle {
     id: button
 
     property string text
     property string tip
+    property bool checked: false
 
     signal clicked()
 
     implicitWidth: 28
     implicitHeight: 28
     radius: Theme.radiusChip
-    color: hover.hovered ? Theme.surfaceHigh : "transparent"
+    color: checked ? Theme.primary : area.containsMouse ? Theme.surfaceHigh : "transparent"
 
     Behavior on color { ColorAnimation { duration: Motion.fast } }
 
     Text {
         anchors.centerIn: parent
         text: button.text
-        color: Theme.onSurfaceMuted
+        color: button.checked ? Theme.onPrimary : Theme.onSurfaceMuted
         font.family: Theme.sans
-        font.pixelSize: 14
+        font.pixelSize: Theme.fontBody
     }
 
-    HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-    TapHandler { onTapped: button.clicked() }
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: button.clicked()
+    }
+
+    ToolTip {
+        objectName: "iconTip"
+        visible: area.containsMouse && button.tip !== ""
+        delay: 500
+        text: button.tip
+        padding: 6
+        leftPadding: 8
+        rightPadding: 8
+
+        contentItem: Text {
+            text: button.tip
+            color: Theme.onSurface
+            font.family: Theme.sans
+            font.pixelSize: Theme.fontSmall
+        }
+
+        background: Rectangle {
+            radius: Theme.radiusChip
+            color: Theme.surfaceHigh
+            border.color: Theme.outline
+        }
+    }
 }

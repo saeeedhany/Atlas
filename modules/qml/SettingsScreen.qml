@@ -26,7 +26,7 @@ Item {
                 spacing: 2
 
                 Text { Layout.fillWidth: true; text: "Dark theme"; color: Theme.text; font.pixelSize: Theme.fontBody }
-                Text { Layout.fillWidth: true; text: "Graphite dark, or its light twin."; color: Theme.textMuted; font.pixelSize: Theme.fontSmall }
+                Text { Layout.fillWidth: true; text: "Warm stone, or its light paper twin."; color: Theme.textMuted; font.pixelSize: Theme.fontSmall }
             }
             AppSwitch {
                 objectName: "darkThemeSwitch"
@@ -71,7 +71,7 @@ Item {
                     wrapMode: Text.Wrap
                 }
             }
-            SpinBox {
+            AppSpinBox {
                 objectName: "newPerDayBox"
                 from: 1
                 to: 20

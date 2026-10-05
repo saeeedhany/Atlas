@@ -9,6 +9,7 @@ Item {
     property Item area
     property bool detached: false
     property bool expanded: false
+    property bool pinned: false
     property real detachedX: 0
     property real detachedY: 0
     property int viewTick: 0
@@ -19,7 +20,7 @@ Item {
         return canvas && Concept.exists ? canvas.screenPositionOf(Concept.conceptId) : undefined
     }
     readonly property rect besideRect: area && nodePoint !== undefined
-        ? area.besideRect(nodePoint, cardWidth, cardHeight, area.width, area.height)
+        ? area.cardSpot(nodePoint, cardWidth, cardHeight)
         : Qt.rect(16, 16, cardWidth, cardHeight)
 
     signal focusRequested(string id)
@@ -82,14 +83,27 @@ Item {
     }
 
     Rectangle {
+        id: frame
+        anchors.fill: parent
+        radius: Theme.radiusPanel
+        color: Theme.surface
+        border.color: Theme.outline
+        opacity: editor.opacity
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.AllButtons
+            onWheel: wheel => wheel.accepted = true
+        }
+    }
+
+    Item {
         id: strip
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: 32
-        radius: Theme.radiusPanel
-        color: Theme.surface
-        border.color: Theme.outline
+        height: 36
 
         MouseArea {
             anchors.fill: parent
@@ -111,8 +125,9 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 4
+            anchors.leftMargin: 16
+            anchors.rightMargin: 6
+            anchors.topMargin: 4
             spacing: 2
 
             Rectangle {
@@ -124,20 +139,33 @@ Item {
             Item { Layout.fillWidth: true }
             IconButton {
                 visible: card.detached
-                text: "\u2316"
+                text: "\u21a9"
                 tip: "Back to its node"
                 onClicked: card.attach()
             }
             IconButton {
+                objectName: "cardPinButton"
                 text: "\u2020"
-                tip: "Pin"
+                tip: card.pinned ? "Unpin" : "Pin"
+                checked: card.pinned
                 onClicked: card.pinRequested()
             }
             IconButton {
+                objectName: "cardExpandButton"
                 text: card.expanded ? "\u2199" : "\u2197"
                 tip: card.expanded ? "Restore" : "Expand"
                 onClicked: card.expanded ? card.restore() : card.expand()
             }
+        }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: 1
+            anchors.rightMargin: 1
+            height: 1
+            color: Theme.outline
         }
     }
 
@@ -148,7 +176,8 @@ Item {
         anchors.right: parent.right
         anchors.top: strip.bottom
         anchors.bottom: parent.bottom
-        anchors.topMargin: 6
+        color: "transparent"
+        border.width: 0
         onFocusRequested: id => card.focusRequested(id)
     }
 }

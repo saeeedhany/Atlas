@@ -10,6 +10,8 @@ qt_add_qml_module(atlas_qml
     VERSION 1.0
     QML_FILES
         AppButton.qml
+        AppComboBox.qml
+        AppSpinBox.qml
         AppSwitch.qml
         AppTextArea.qml
         AppTextField.qml
@@ -28,6 +30,7 @@ qt_add_qml_module(atlas_qml
         RegionLabels.qml
         Motion.qml
         CertaintyPicker.qml
+        Chevron.qml
         Ring.qml
         SectionLabel.qml
         SessionScreen.qml

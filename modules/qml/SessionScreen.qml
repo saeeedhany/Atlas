@@ -154,6 +154,7 @@ Item {
                             text: Session.focusTitle
                             color: Theme.text
                             font.family: Theme.serif
+                            font.weight: Font.Medium
                             font.pixelSize: Theme.fontHeadline
                             elide: Text.ElideRight
                         }
@@ -225,9 +226,8 @@ Item {
                                 font.pixelSize: Theme.fontBody
                                 elide: Text.ElideRight
                             }
-                            ComboBox {
+                            AppComboBox {
                                 id: typeBox
-                                font.pixelSize: Theme.fontBody
                                 model: Session.typeNames
                                 currentIndex: named.modelData.typeIndex
                                 onActivated: Session.updateRecalled(named.index, currentIndex, direction.checked)
@@ -322,6 +322,7 @@ Item {
                         text: Session.prompt
                         color: Theme.text
                         font.family: Theme.serif
+                        font.weight: Font.Medium
                         font.pixelSize: Theme.fontTitle
                         wrapMode: Text.Wrap
                     }
@@ -402,6 +403,7 @@ Item {
                         text: Session.recalledCount + " of " + Session.reviewedCount + " items recalled"
                         color: Theme.text
                         font.family: Theme.serif
+                        font.weight: Font.Medium
                         font.pixelSize: Theme.fontHero
                     }
                     Repeater {

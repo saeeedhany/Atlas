@@ -17,6 +17,9 @@ Item {
         return list
     }
     readonly property bool anyExpanded: panels.some(p => p.mode === "expanded")
+    readonly property var occupied: enabled
+        ? panels.filter(p => p.mode !== "hidden" && p.mode !== "expanded").map(p => p.target)
+        : []
 
     function panel(id: string) {
         return panels.find(p => p.panelId === id) || null
@@ -57,10 +60,13 @@ Item {
             let saved = AppSettings.panelLayout(p.panelId)
             if (saved.mode === undefined || p.onDemand)
                 continue
-            p.floatX = Number(saved.x)
-            p.floatY = Number(saved.y)
-            p.floatWidth = Number(saved.width)
-            p.floatHeight = Number(saved.height)
+            let geometry = [saved.x, saved.y, saved.width, saved.height].map(Number)
+            if (!geometry.every(Number.isFinite) || geometry[2] <= 0 || geometry[3] <= 0)
+                continue
+            p.floatX = geometry[0]
+            p.floatY = geometry[1]
+            p.floatWidth = geometry[2]
+            p.floatHeight = geometry[3]
             p.mode = ["docked", "folded", "floating"].includes(saved.mode) ? saved.mode : "docked"
         }
         clampFloating()
@@ -104,11 +110,5 @@ Item {
             onClicked: layer.closeExpanded()
             onWheel: wheel => wheel.accepted = true
         }
-    }
-
-    Shortcut {
-        sequence: "Escape"
-        enabled: layer.anyExpanded
-        onActivated: layer.closeExpanded()
     }
 }

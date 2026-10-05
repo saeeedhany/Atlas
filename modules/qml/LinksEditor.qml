@@ -101,8 +101,11 @@ ColumnLayout {
                     font.pixelSize: Theme.fontBody
                     elide: Text.ElideRight
 
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: editor.focusRequested(row.otherId) }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: editor.focusRequested(row.otherId)
+                    }
                 }
                 Text {
                     Layout.fillWidth: true
@@ -157,11 +160,10 @@ ColumnLayout {
             font.pixelSize: Theme.fontBody
             elide: Text.ElideRight
         }
-        ComboBox {
+        AppComboBox {
             id: typeBox
             objectName: "linkTypeBox"
             Layout.fillWidth: true
-            font.pixelSize: Theme.fontBody
             model: ConceptLinks.typeNames
         }
         AppSwitch {

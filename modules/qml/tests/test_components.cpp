@@ -1,3 +1,5 @@
+#include <QFont>
+#include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -48,7 +50,7 @@ TEST_CASE("a toast shows a message and hides itself") {
 
 TEST_CASE("every shared component loads without warnings") {
     QmlFixture f;
-    for (const char* type : {"AppButton", "AppSwitch", "AppTextField", "AppTextArea", "SectionLabel"}) {
+    for (const char* type : {"AppButton", "AppSwitch", "AppTextField", "AppTextArea", "AppComboBox", "AppSpinBox", "SectionLabel"}) {
         auto object = f.create(type);
         CHECK(object != nullptr);
     }
@@ -60,4 +62,22 @@ TEST_CASE("a disabled button dims as a whole") {
     CHECK(button->property("opacity").toDouble() == doctest::Approx(0.4));
     button->setProperty("enabled", true);
     CHECK(button->property("opacity").toDouble() == doctest::Approx(1.0));
+}
+
+TEST_CASE("the shared combo box and spin box take theme colors") {
+    QmlFixture f;
+    auto combo = f.create("AppComboBox", {{"model", QStringList{"One", "Two"}}});
+    CHECK(combo->property("currentText").toString() == "One");
+    CHECK(combo->property("font").value<QFont>().family() == "Inter");
+    auto spin = f.create("AppSpinBox", {{"from", 1}, {"to", 9}, {"value", 4}});
+    CHECK(spin->property("value").toInt() == 4);
+    CHECK(spin->property("font").value<QFont>().family() == "Inter");
+}
+
+TEST_CASE("an icon button shows its tip as a tooltip") {
+    QmlFixture f;
+    auto button = f.create("IconButton", {{"text", "+"}, {"tip", "Unfold"}});
+    auto* tip = QmlFixture::child(button.get(), "iconTip");
+    CHECK(tip->property("text").toString() == "Unfold");
+    CHECK_FALSE(tip->property("visible").toBool());
 }

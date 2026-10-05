@@ -78,7 +78,8 @@ Rectangle {
             text: card.title
             color: Theme.text
             font.family: Theme.serif
-            font.pixelSize: 15
+            font.weight: Font.Medium
+            font.pixelSize: Theme.fontTitle
             elide: Text.ElideRight
         }
         Text {

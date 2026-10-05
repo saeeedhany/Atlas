@@ -126,3 +126,21 @@ TEST_CASE("a card at the same node position lands below the first") {
                                       Q_ARG(QVariant, QVariantList{first})));
     CHECK_FALSE(first.toRectF().intersects(second.toRectF()));
 }
+
+TEST_CASE("the pin button shows the pinned state and a fourth pin explains the limit") {
+    CardFixture p;
+    p.select(p.a);
+    CHECK_FALSE(p.card->property("pinned").toBool());
+    REQUIRE(QMetaObject::invokeMethod(p.card, "pinRequested"));
+    CHECK(p.card->property("pinned").toBool());
+    CHECK(QmlFixture::child(p.card, "cardPinButton")->property("checked").toBool());
+    for (const QString& id : {p.b, p.c, p.d}) {
+        p.select(id);
+        REQUIRE(QMetaObject::invokeMethod(p.card, "pinRequested"));
+    }
+    QmlFixture::settle();
+    CHECK_FALSE(p.card->property("pinned").toBool());
+    auto* toast = QmlFixture::child(p.window.get(), "toast");
+    CHECK(toast->property("shown").toBool());
+    CHECK(toast->property("text").toString() == "Up to three concepts can stay pinned");
+}
