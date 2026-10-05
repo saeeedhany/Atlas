@@ -38,9 +38,11 @@ class MapViewModel : public QObject, public ProvidedSingleton<MapViewModel> {
     Q_PROPERTY(QString topicId READ topicId WRITE setTopicId NOTIFY topicIdChanged)
     Q_PROPERTY(QString selectedId READ selectedId WRITE setSelectedId NOTIFY selectedIdChanged)
     Q_PROPERTY(int conceptCount READ conceptCount NOTIFY sceneChanged)
+    Q_PROPERTY(QVariantList regions READ regions NOTIFY sceneChanged)
 
 public:
     static constexpr int kSearchLimit = 8;
+    static constexpr double kRegionPadding = 48.0;
 
     MapViewModel(WorkspaceController& workspace, MemoryController& memory, PlacementController& placements,
                  Palette& palette, QObject* parent = nullptr);
@@ -50,6 +52,7 @@ public:
     QString selectedId() const { return selectedId_; }
     void setSelectedId(const QString& conceptId);
     int conceptCount() const { return conceptCount_; }
+    QVariantList regions() const { return regions_; }
 
     Q_INVOKABLE void attach(QQuickItem* canvas);
     Q_INVOKABLE QVariantList search(const QString& query) const;
@@ -57,6 +60,7 @@ public:
     Q_INVOKABLE QVariantMap linkInfo(const QString& linkId) const;
     Q_INVOKABLE QString createConcept(const QString& title);
     Q_INVOKABLE void tidy();
+    Q_INVOKABLE bool moveTopic(const QString& topicId, double dx, double dy);
     Q_INVOKABLE void refresh();
 
     const std::vector<atlas::render::RenderNode>& nodes() const { return nodes_; }
@@ -81,6 +85,7 @@ private:
     bool isShown(const QString& conceptId) const;
     void pushToCanvas();
     void applySelection();
+    void buildRegions(const std::vector<atlas::core::KnowledgeObject>& objects);
 
     WorkspaceController* workspace_;
     MemoryController* memory_;
@@ -92,6 +97,8 @@ private:
     std::unordered_map<std::string, std::string> topicNames_;
     std::vector<atlas::render::RenderNode> nodes_;
     std::vector<atlas::render::RenderEdge> edges_;
+    QVariantList regions_;
+    std::vector<atlas::render::RenderRegion> renderRegions_;
     int conceptCount_ = 0;
     bool refreshPending_ = false;
 };

@@ -399,3 +399,38 @@ TEST_CASE("a session selection never highlights neighbors") {
     f.map.setSelectedId(idString(alpha));
     CHECK(canvas.highlightedNeighbors().empty());
 }
+
+TEST_CASE("topics become regions around their concepts") {
+    Fixture f;
+    auto os = f.topic("Operating Systems");
+    auto paging = f.addConcept("Paging", os);
+    auto tlb = f.addConcept("TLB", os);
+    f.addConcept("Loose", uncategorizedTopicId());
+    f.workspace.createRelationship(tlb, paging, RelationshipType::PartOf, std::nullopt).value();
+    f.settle();
+
+    auto regions = f.map.regions();
+    REQUIRE(regions.size() == 1);
+    auto region = regions[0].toMap();
+    CHECK(region.value("name").toString() == "Operating Systems");
+    CHECK(region.value("caption").toString() == "2 concepts");
+    auto* pagingNode = f.node(paging);
+    QRectF rect(region.value("x").toDouble(), region.value("y").toDouble(), region.value("width").toDouble(),
+                region.value("height").toDouble());
+    CHECK(rect.contains(QPointF(pagingNode->x, pagingNode->y)));
+    CHECK(rect.left() <= pagingNode->x - 48.0 + 1e-6);
+    CHECK(pagingNode->degree == 1);
+    CHECK(f.map.conceptInfo(idString(paging)).contains("definition"));
+}
+
+TEST_CASE("moving a topic moves all its concepts") {
+    Fixture f;
+    auto os = f.topic("OS");
+    auto paging = f.addConcept("Paging", os);
+    f.settle();
+    double x = f.node(paging)->x;
+    REQUIRE(f.map.moveTopic(idString(os), 100.0, 0.0));
+    f.settle();
+    CHECK(f.node(paging)->x == doctest::Approx(x + 100.0));
+    CHECK_FALSE(f.map.moveTopic("garbage", 1.0, 1.0));
+}

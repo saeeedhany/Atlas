@@ -3,10 +3,12 @@
 #include <QVariantMap>
 
 #include <algorithm>
+#include <numeric>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
+#include "atlas/render/region_geometry.hpp"
 #include "atlas/viewmodels/concept_links_model.hpp"
 #include "atlas/viewmodels/ids.hpp"
 
@@ -158,6 +160,12 @@ void MapViewModel::refresh() {
         edge.mark = atlas::render::EdgeMark::Confused;
         edges_.push_back(edge);
     }
+    for (auto& node : nodes_) {
+        node.degree = static_cast<int>(std::count_if(edges_.begin(), edges_.end(), [&](const RenderEdge& edge) {
+            return edge.sourceId == node.id || edge.targetId == node.id;
+        }));
+    }
+    buildRegions(objects);
     conceptCount_ = static_cast<int>(members.size());
 
     if (!selectedId_.isEmpty() && !isShown(selectedId_)) {
@@ -166,6 +174,45 @@ void MapViewModel::refresh() {
     }
     pushToCanvas();
     emit sceneChanged();
+}
+
+void MapViewModel::buildRegions(const std::vector<atlas::core::KnowledgeObject>& objects) {
+    std::unordered_map<std::string, std::vector<QPointF>> members;
+    std::unordered_map<std::string, std::vector<double>> recalls;
+    for (const auto& object : objects) {
+        auto topicId = object.topicId();
+        if (!topicId || *topicId == atlas::core::uncategorizedTopicId()) continue;
+        QString id = idString(object.id());
+        auto node = std::find_if(nodes_.begin(), nodes_.end(), [&](const RenderNode& n) { return n.id == id; });
+        if (node == nodes_.end() || node->ghost) continue;
+        members[topicId->toString()].emplace_back(node->x, node->y);
+        if (node->recall >= 0.0) recalls[topicId->toString()].push_back(node->recall);
+    }
+    regions_.clear();
+    renderRegions_.clear();
+    for (const auto& [topicKey, points] : members) {
+        QString topicId = toQString(topicKey);
+        QRectF rect = atlas::render::regionBounds(points, kRegionPadding);
+        int hue = atlas::render::regionHue(topicId);
+        QString caption = points.size() == 1 ? tr("1 concept") : tr("%1 concepts").arg(points.size());
+        if (auto learned = recalls.find(topicKey); learned != recalls.end() && !learned->second.empty()) {
+            double mean = std::accumulate(learned->second.begin(), learned->second.end(), 0.0) / learned->second.size();
+            caption += QStringLiteral("  \u00b7  %1%").arg(qRound(mean * 100.0));
+        }
+        auto name = topicNames_.find(topicKey);
+        regions_.append(QVariantMap{{"topicId", topicId},
+                                    {"name", name != topicNames_.end() ? toQString(name->second) : QString()},
+                                    {"caption", caption},
+                                    {"x", rect.x()},
+                                    {"y", rect.y()},
+                                    {"width", rect.width()},
+                                    {"height", rect.height()},
+                                    {"hue", hue}});
+        renderRegions_.push_back(atlas::render::RenderRegion{topicId, rect, hue});
+    }
+    std::sort(regions_.begin(), regions_.end(), [](const QVariant& a, const QVariant& b) {
+        return a.toMap().value("name").toString() < b.toMap().value("name").toString();
+    });
 }
 
 void MapViewModel::setSessionMarks(SessionMarks marks) {
@@ -181,6 +228,7 @@ void MapViewModel::clearSessionMarks() {
 void MapViewModel::pushToCanvas() {
     if (!canvas_) return;
     canvas_->setTheme(palette_->mode());
+    canvas_->setRegions(renderRegions_);
     canvas_->setGraphData(nodes_, edges_);
     applySelection();
 }
@@ -240,7 +288,8 @@ QVariantMap MapViewModel::conceptInfo(const QString& id) const {
     }
     return {{"title", toQString(object->title())},
             {"recall", memory_->recallChance(ItemRef::forConcept(*conceptId)).value_or(-1.0)},
-            {"topic", topic}};
+            {"topic", topic},
+            {"definition", toQString(object->definition())}};
 }
 
 QVariantMap MapViewModel::linkInfo(const QString& linkId) const {
@@ -272,6 +321,20 @@ QString MapViewModel::createConcept(const QString& title) {
 void MapViewModel::tidy() {
     auto tidied = placements_->tidy();
     if (!tidied.hasValue()) emit errorOccurred(toQString(tidied.error().detail));
+}
+
+bool MapViewModel::moveTopic(const QString& topicId, double dx, double dy) {
+    auto topic = parseId<TopicId>(topicId);
+    if (!topic) return false;
+    std::vector<KnowledgeObjectId> ids;
+    for (const auto& object : workspace_->knowledgeObjectsInTopic(*topic)) ids.push_back(object.id());
+    if (ids.empty()) return false;
+    auto moved = placements_->moveBy(ids, dx, dy);
+    if (!moved.hasValue()) {
+        emit errorOccurred(toQString(moved.error().detail));
+        return false;
+    }
+    return true;
 }
 
 }  // namespace atlas::viewmodels

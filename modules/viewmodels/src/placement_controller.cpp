@@ -141,6 +141,20 @@ Result<void, ControllerFailure> PlacementController::setPinned(const KnowledgeOb
     return save({updated});
 }
 
+Result<void, ControllerFailure> PlacementController::moveBy(const std::vector<KnowledgeObjectId>& ids, double dx,
+                                                            double dy) {
+    std::vector<Placement> moved;
+    for (const auto& id : ids) {
+        auto placed = placements_.find(id);
+        if (placed == placements_.end()) continue;
+        Placement next = placed->second;
+        next.x += dx;
+        next.y += dy;
+        moved.push_back(next);
+    }
+    return save(moved);
+}
+
 Result<void, ControllerFailure> PlacementController::save(const std::vector<Placement>& changed) {
     if (changed.empty()) return Result<void, ControllerFailure>::ok();
     auto saved = repository_.saveAll(changed);

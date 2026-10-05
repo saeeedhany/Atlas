@@ -198,3 +198,23 @@ TEST_CASE("starting offsets never put a new concept on top of its seed point") {
         CHECK(std::hypot(offset.x, offset.y) >= 0.25 * PlacementController::kMaxStartingOffset - 1e-9);
     }
 }
+
+TEST_CASE("moving concepts shifts them, keeps pins, and persists") {
+    Fixture f;
+    PlacementController placements(f.db, f.workspace);
+    REQUIRE(placements.load().hasValue());
+    REQUIRE(placements.setPinned(f.a, true).hasValue());
+    auto before = *placements.position(f.a);
+    int changes = 0;
+    QObject::connect(&placements, &PlacementController::placementsChanged, [&] { ++changes; });
+    REQUIRE(placements.moveBy({f.a, f.b}, 30.0, -20.0).hasValue());
+    CHECK(changes == 1);
+    auto after = *placements.position(f.a);
+    CHECK(after.x == doctest::Approx(before.x + 30.0));
+    CHECK(after.y == doctest::Approx(before.y - 20.0));
+    CHECK(placements.isPinned(f.a));
+
+    PlacementController reloaded(f.db, f.workspace);
+    REQUIRE(reloaded.load().hasValue());
+    CHECK(reloaded.position(f.a)->x == doctest::Approx(after.x));
+}

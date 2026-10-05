@@ -28,6 +28,7 @@ public:
     Result<void, ControllerFailure> arrange();
     Result<void, ControllerFailure> tidy();
     Result<void, ControllerFailure> setPinned(const KnowledgeObjectId& id, bool pinned);
+    Result<void, ControllerFailure> moveBy(const std::vector<KnowledgeObjectId>& ids, double dx, double dy);
 
     std::optional<atlas::render::Point2D> position(const KnowledgeObjectId& id) const;
     bool isPinned(const KnowledgeObjectId& id) const;
