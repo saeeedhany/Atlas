@@ -5,6 +5,7 @@ add_executable(atlas_qml_tests
     test_foundation.cpp
     test_links_editor.cpp
     test_main.cpp
+    test_panels.cpp
     test_map.cpp
     test_session_screen.cpp
     test_settings.cpp

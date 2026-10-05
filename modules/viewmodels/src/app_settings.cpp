@@ -52,4 +52,17 @@ QString AppSettings::deviceId() const {
     return deviceId_;
 }
 
+QVariantMap AppSettings::panelLayout(const QString& id) const {
+    QString prefix = QStringLiteral("panels/%1/").arg(id);
+    if (!store_->contains(prefix + "mode")) return {};
+    QVariantMap layout;
+    for (const char* key : {"mode", "x", "y", "width", "height"}) layout.insert(key, store_->value(prefix + key));
+    return layout;
+}
+
+void AppSettings::setPanelLayout(const QString& id, const QVariantMap& layout) {
+    QString prefix = QStringLiteral("panels/%1/").arg(id);
+    for (auto it = layout.begin(); it != layout.end(); ++it) store_->setValue(prefix + it.key(), it.value());
+}
+
 }  // namespace atlas::viewmodels

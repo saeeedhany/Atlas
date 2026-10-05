@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QSettings>
+#include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 #include "atlas/viewmodels/provided_singleton.hpp"
@@ -30,6 +31,8 @@ public:
     int newPerDay() const;
     void setNewPerDay(int count);
     QString deviceId() const;
+    Q_INVOKABLE QVariantMap panelLayout(const QString& id) const;
+    Q_INVOKABLE void setPanelLayout(const QString& id, const QVariantMap& layout);
 
 signals:
     void darkThemeChanged();

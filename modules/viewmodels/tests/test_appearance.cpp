@@ -131,3 +131,16 @@ TEST_CASE("the fading ring matches the node fill in both themes") {
     settings.setDarkTheme(false);
     CHECK(palette.ringMedium() == palette.nodeFill());
 }
+
+TEST_CASE("panel layouts are stored per panel") {
+    QTemporaryDir dir;
+    QSettings store(dir.filePath("settings.ini"), QSettings::IniFormat);
+    AppSettings settings(store);
+    CHECK(settings.panelLayout("today").isEmpty());
+    settings.setPanelLayout("today", {{"mode", "floating"}, {"x", 120.0}, {"y", 80.0}, {"width", 300.0}, {"height", 200.0}});
+    AppSettings again(store);
+    auto layout = again.panelLayout("today");
+    CHECK(layout.value("mode").toString() == "floating");
+    CHECK(layout.value("x").toDouble() == doctest::Approx(120.0));
+    CHECK(again.panelLayout("brain").isEmpty());
+}
