@@ -9,6 +9,7 @@ Item {
     property string focusId
     property bool fitPending: false
     property bool focusWaited: false
+    property var pinnedIds: []
 
     function focusConcept(id: string) {
         if (Object.keys(MapView.conceptInfo(id)).length === 0)
@@ -57,6 +58,34 @@ Item {
         }
     }
 
+    function besideRect(point, cardWidth, cardHeight, areaWidth, areaHeight) {
+        const gapToNode = 28
+        const edge = 16
+        let x = point.x + gapToNode
+        if (x + cardWidth > areaWidth - edge)
+            x = point.x - gapToNode - cardWidth
+        x = Math.max(edge, Math.min(x, areaWidth - cardWidth - edge))
+        let y = Math.max(edge, Math.min(point.y - 80, areaHeight - cardHeight - edge))
+        return Qt.rect(x, y, cardWidth, cardHeight)
+    }
+
+    function pinCurrent(): bool {
+        if (!Concept.exists || pinnedIds.includes(Concept.conceptId) || pinnedIds.length >= 3)
+            return false
+        pinnedIds = pinnedIds.concat([Concept.conceptId])
+        return true
+    }
+
+    function unpin(id: string) {
+        pinnedIds = pinnedIds.filter(pinnedId => pinnedId !== id)
+    }
+
+    function dropMissingPins() {
+        let kept = pinnedIds.filter(id => Object.keys(MapView.conceptInfo(id)).length > 0)
+        if (kept.length !== pinnedIds.length)
+            pinnedIds = kept
+    }
+
     opacity: active ? 1 : 0
     visible: opacity > 0
 
@@ -68,7 +97,10 @@ Item {
             overlay.fitPending = true
             Qt.callLater(overlay.settle)
         }
-        function onSceneChanged() { Qt.callLater(overlay.settle) }
+        function onSceneChanged() {
+            overlay.dropMissingPins()
+            Qt.callLater(overlay.settle)
+        }
         function onSelectedIdChanged() {
             if (Session.stage === "idle")
                 overlay.openConcept(MapView.selectedId)
@@ -96,20 +128,25 @@ Item {
         canvas: overlay.canvas
     }
 
-    ConceptPanel {
-        id: panel
-        objectName: "conceptPanel"
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.topMargin: Theme.gap * 2
-        anchors.bottomMargin: Theme.gap * 2
-        anchors.leftMargin: panel.shown || Motion.reduced ? Theme.gap * 2 : Theme.gap * 2 - 24
+    ConceptCard {
+        id: conceptCard
+        objectName: "conceptCard"
+        canvas: overlay.canvas
+        area: overlay
         onFocusRequested: id => overlay.focusConcept(id)
+        onPinRequested: overlay.pinCurrent()
+    }
 
-        Behavior on anchors.leftMargin {
-            enabled: !Motion.reduced
-            NumberAnimation { duration: Motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.curve }
+    Instantiator {
+        model: overlay.pinnedIds.filter(id => id !== Concept.conceptId)
+
+        delegate: PinnedCard {
+            required property string modelData
+            parent: overlay
+            conceptId: modelData
+            canvas: overlay.canvas
+            area: overlay
+            onUnpinRequested: id => overlay.unpin(id)
         }
     }
 

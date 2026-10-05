@@ -13,6 +13,7 @@ qt_add_qml_module(atlas_qml
         AppSwitch.qml
         AppTextArea.qml
         AppTextField.qml
+        ConceptCard.qml
         ConceptPanel.qml
         HoverCard.qml
         IconButton.qml
@@ -20,6 +21,7 @@ qt_add_qml_module(atlas_qml
         ListEditor.qml
         Main.qml
         MapOverlay.qml
+        PinnedCard.qml
         Panel.qml
         PanelLayer.qml
         RegionLabels.qml
