@@ -1,9 +1,9 @@
 import QtQuick
 
 Text {
-    color: Theme.textMuted
+    color: Theme.onSurfaceFaint
     font.family: Theme.mono
-    font.pixelSize: Theme.fontSmall
+    font.pixelSize: Theme.fontCaption
     font.capitalization: Font.AllUppercase
-    font.letterSpacing: 1
+    font.letterSpacing: 0.6
 }

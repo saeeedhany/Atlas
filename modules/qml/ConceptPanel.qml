@@ -31,7 +31,7 @@ Rectangle {
     }
 
     width: Theme.panelWidth
-    radius: Theme.radius + 4
+    radius: Theme.radiusPanel
     color: Theme.surface
     border.color: Theme.border
     opacity: shown ? 1 : 0
@@ -91,7 +91,8 @@ Rectangle {
                         Layout.fillWidth: true
                         text: Concept.title
                         placeholderText: "Title"
-                        font.pixelSize: Theme.fontTitle
+                        font.family: Theme.serif
+                        font.pixelSize: Theme.fontHeadline
                         onTextEdited: Concept.title = text
                     }
                 }

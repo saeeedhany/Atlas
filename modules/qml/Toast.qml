@@ -16,11 +16,20 @@ Rectangle {
     implicitHeight: label.implicitHeight + 20
     radius: Theme.radius
     color: Theme.surfaceRaised
-    border.color: Theme.danger
+    border.color: Theme.outline
     opacity: shown ? 1 : 0
     visible: opacity > 0
 
     Behavior on opacity { NumberAnimation { duration: Motion.appear } }
+
+    Rectangle {
+        width: 3
+        height: parent.height - 2 * toast.radius
+        anchors.verticalCenter: parent.verticalCenter
+        x: 1
+        radius: 1.5
+        color: Theme.danger
+    }
 
     Text {
         id: label

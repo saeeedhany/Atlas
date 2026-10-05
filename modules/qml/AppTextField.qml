@@ -4,10 +4,11 @@ import QtQuick.Controls.Basic
 TextField {
     id: control
 
-    color: Theme.text
-    placeholderTextColor: Theme.textMuted
-    selectionColor: Theme.accent
-    selectedTextColor: Theme.background
+    color: Theme.onSurface
+    placeholderTextColor: Theme.onSurfaceFaint
+    selectionColor: Theme.primary
+    selectedTextColor: Theme.onPrimary
+    font.family: Theme.sans
     font.pixelSize: Theme.fontBody
     leftPadding: 10
     rightPadding: 10
@@ -15,9 +16,9 @@ TextField {
     background: Rectangle {
         implicitWidth: 200
         implicitHeight: 34
-        radius: Theme.radius - 2
+        radius: Theme.radius
         color: Theme.surface
-        border.color: control.activeFocus ? Theme.accent : Theme.border
+        border.color: control.activeFocus ? Theme.primary : Theme.outline
 
         Behavior on border.color { ColorAnimation { duration: Motion.fast } }
     }

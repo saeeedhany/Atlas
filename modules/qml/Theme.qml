@@ -45,7 +45,6 @@ QtObject {
     readonly property int radiusPanel: 16
     readonly property int radiusChip: 8
     readonly property int radiusRegion: 28
-    readonly property int railWidth: 72
     readonly property int panelWidth: 380
 
     function ringColor(recall: real): color {

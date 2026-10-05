@@ -77,7 +77,8 @@ Rectangle {
             width: parent.width
             text: card.title
             color: Theme.text
-            font.pixelSize: Theme.fontBody
+            font.family: Theme.serif
+            font.pixelSize: 15
             elide: Text.ElideRight
         }
         Text {
@@ -86,7 +87,7 @@ Rectangle {
             text: card.detail
             color: Theme.textMuted
             font.family: Theme.mono
-            font.pixelSize: Theme.fontSmall
+            font.pixelSize: Theme.fontCaption
             wrapMode: Text.Wrap
         }
     }

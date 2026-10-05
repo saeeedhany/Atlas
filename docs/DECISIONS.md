@@ -733,3 +733,24 @@ Organized by module, roughly in the order each decision arose.
 - "Learn first" orders only the concept's own transitive DependsOn prerequisites, ties by id. A loop is reported only when it lies among them, and the path refreshes when the concept loads or the graph changes.
 - Recorded review times are floored to whole milliseconds and each batch is applied in replay order, so live memory states equal replayed ones.
 - The device id is read once per run and kept in memory.
+
+## Workspace and identity (parts 1 and 2)
+
+- Atlas looks warm stone and clay: matte surfaces separated by tone and a 1 px outline, one soft shadow only on floating panels and dragged items, no glass, glow, gradients, or blur.
+- Color roles follow Material names in `Theme` (surface, surfaceHigh, outline, onSurface, primary, secondary, tertiary); older token names stay as aliases.
+- Newsreader titles, Inter text, and IBM Plex Mono labels ship inside the app under the SIL Open Font License.
+- Nodes are small dots with a thin memory ring; link count slightly enlarges a dot.
+- The board is the only screen. Today sits in the corner stack, Settings opens as an expanded panel, and a session runs as a card on the board.
+- Panels dock, fold, float, and expand; their layout is a view preference stored in `settings.ini`, and floating panels are pulled back inside the window when it shrinks.
+- Topics are tinted regions fitted around their concepts; dragging a region's name moves every concept of the topic.
+- One concept card is editable at a time; up to three more stay pinned as read only summaries beside their nodes.
+- Sticky notes live in world coordinates in `board_notes`, link to concepts or topics through `note_links`, and lose a link automatically when its target is deleted.
+- The on-demand panel flag is named `onDemand` because `transient` is reserved in QML.
+- Floating panels get a soft shadow made of a few stacked translucent rounded rectangles (no blur); panels never animate in from the corner at start; dragged panels stay inside the window.
+- Dots grow with link count up to three links, so the halo always stays inside the memory ring; links stop outside the selection ring.
+- Notes and topics refresh links without resetting the board, so typing in a note is never interrupted.
+- Note and region colors are rebuilt on theme change, because a binding that only reads Palette.background can be compiled away.
+- Delegates that tests must find use Instantiator with an explicit parent.
+- Pinned cards are laid out in one imperative pass so they never overlap and never form binding loops.
+- NotesModel's factory method is createNote, because a method named create hides the singleton factory, as with createTopic.
+- During a session the panel layer fades out and is disabled; starting a session closes an expanded panel.

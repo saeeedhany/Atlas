@@ -114,7 +114,7 @@ Item {
         anchors.bottomMargin: Theme.gap * 3
         width: Math.min(640, parent.width - 48)
         height: Math.min(content.implicitHeight + 48, parent.height - 48)
-        radius: Theme.radius + 4
+        radius: Theme.radiusPanel
         color: Theme.surface
         border.color: Theme.border
 
@@ -153,7 +153,8 @@ Item {
                             Layout.fillWidth: true
                             text: Session.focusTitle
                             color: Theme.text
-                            font.pixelSize: Theme.fontTitle
+                            font.family: Theme.serif
+                            font.pixelSize: Theme.fontHeadline
                             elide: Text.ElideRight
                         }
                     }
@@ -320,6 +321,7 @@ Item {
                         Layout.fillWidth: true
                         text: Session.prompt
                         color: Theme.text
+                        font.family: Theme.serif
                         font.pixelSize: Theme.fontTitle
                         wrapMode: Text.Wrap
                     }
@@ -399,6 +401,7 @@ Item {
                     Text {
                         text: Session.recalledCount + " of " + Session.reviewedCount + " items recalled"
                         color: Theme.text
+                        font.family: Theme.serif
                         font.pixelSize: Theme.fontHero
                     }
                     Repeater {

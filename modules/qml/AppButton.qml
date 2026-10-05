@@ -7,7 +7,9 @@ Button {
     property bool primary: false
     property bool danger: false
 
+    font.family: Theme.sans
     font.pixelSize: Theme.fontBody
+    font.weight: Font.Medium
     leftPadding: 14
     rightPadding: 14
     topPadding: 8
@@ -17,7 +19,7 @@ Button {
     contentItem: Text {
         text: control.text
         font: control.font
-        color: control.primary ? Theme.background : control.danger ? Theme.danger : Theme.text
+        color: control.primary ? Theme.onPrimary : control.danger ? Theme.danger : Theme.onSurface
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
@@ -25,9 +27,9 @@ Button {
 
     background: Rectangle {
         implicitHeight: 34
-        radius: Theme.radius - 2
-        color: control.primary ? Theme.accent : control.hovered ? Theme.surfaceRaised : Theme.surface
-        border.color: control.primary ? Theme.accent : control.danger ? Theme.danger : Theme.border
+        radius: Theme.radius
+        color: control.primary ? Theme.primary : control.hovered ? Theme.surfaceHigh : Theme.surface
+        border.color: control.primary ? Theme.primary : Theme.outline
         scale: control.down ? 0.97 : 1
 
         Behavior on color { ColorAnimation { duration: Motion.fast } }
