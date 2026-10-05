@@ -9,6 +9,7 @@ ApplicationWindow {
     readonly property string mode: Session.stage === "idle" ? "board" : "session"
 
     function startSession(): bool {
+        panelLayer.closeExpanded()
         if (Concept.dirty && !Concept.save())
             return false
         return Session.start()
@@ -110,6 +111,11 @@ ApplicationWindow {
             id: panelLayer
             objectName: "panelLayer"
             anchors.fill: parent
+            enabled: window.mode === "board"
+            opacity: enabled ? 1 : 0
+            visible: opacity > 0
+
+            Behavior on opacity { NumberAnimation { duration: Motion.appear } }
 
             Panel {
                 panelId: "today"
@@ -124,6 +130,8 @@ ApplicationWindow {
                             window.startSession()
                         else if (action === "add")
                             topBar.focusNewConcept()
+                        else
+                            canvas.fitToContent()
                     }
                 }
             }

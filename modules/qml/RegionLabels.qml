@@ -87,6 +87,10 @@ Item {
                     label.dragX = 0
                     label.dragY = 0
                 }
+                onCanceled: {
+                    label.dragX = 0
+                    label.dragY = 0
+                }
             }
         }
     }

@@ -1,7 +1,21 @@
 #include <QColor>
+#include <QCoreApplication>
+#include <QElapsedTimer>
+#include <functional>
 
 #include "doctest.h"
 #include "qml_fixture.hpp"
+
+namespace {
+
+bool waitFor(const std::function<bool()>& done) {
+    QElapsedTimer clock;
+    clock.start();
+    while (!done() && clock.elapsed() < 2000) QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+    return done();
+}
+
+}  // namespace
 
 TEST_CASE("first run with an empty map says so") {
     QmlFixture f;
@@ -87,4 +101,47 @@ TEST_CASE("view model errors reach the toast") {
     auto* toast = QmlFixture::child(window.get(), "toast");
     CHECK(toast->property("shown").toBool());
     CHECK(toast->property("text").toString() == "Could not rename the topic");
+}
+
+TEST_CASE("panels step aside during a session and come back after") {
+    QmlFixture f;
+    f.context().settings().setReducedMotion(true);
+    f.context().map().createConcept("Recursion");
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto* layer = QmlFixture::child(window.get(), "panelLayer");
+    auto* settings = QmlFixture::child(window.get(), "settingsPanel");
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "openSettings"));
+    REQUIRE(settings->property("mode").toString() == "expanded");
+
+    REQUIRE(QMetaObject::invokeMethod(window.get(), "startSession"));
+    QmlFixture::settle();
+    CHECK(window->property("mode").toString() == "session");
+    CHECK(settings->property("mode").toString() == "hidden");
+    CHECK_FALSE(layer->property("enabled").toBool());
+    CHECK(waitFor([&] { return !layer->property("visible").toBool(); }));
+
+    f.context().session().quit();
+    f.context().session().finish();
+    QmlFixture::settle();
+    CHECK(window->property("mode").toString() == "board");
+    CHECK(layer->property("enabled").toBool());
+    CHECK(waitFor([&] { return layer->property("opacity").toDouble() == 1.0; }));
+    CHECK(layer->property("visible").toBool());
+}
+
+TEST_CASE("exploring the map from Today fits the board") {
+    QmlFixture f;
+    f.context().settings().setReducedMotion(true);
+    f.context().map().createConcept("Recursion");
+    f.context().map().createConcept("Stack");
+    auto window = f.create("Main");
+    QmlFixture::settle();
+    auto* canvas = QmlFixture::child(window.get(), "graphCanvas");
+    canvas->setProperty("zoom", 6.0);
+    QmlFixture::settle();
+    REQUIRE(QMetaObject::invokeMethod(QmlFixture::child(window.get(), "todayPanel"), "actionTriggered",
+                                      Q_ARG(QString, "map")));
+    QmlFixture::settle();
+    CHECK(canvas->property("zoom").toDouble() <= 2.5);
 }
