@@ -134,3 +134,26 @@ TEST_CASE("the panel shows what to learn first") {
     REQUIRE(path.size() == 1);
     CHECK(path[0].toMap().value("title").toString() == "Beta");
 }
+
+TEST_CASE("the path follows graph changes and reports a loop once per refresh") {
+    PanelFixture p;
+    int loops = 0;
+    QObject::connect(&p.f.context().conceptEditor(), &ConceptEditor::errorOccurred, [&] { ++loops; });
+    auto alpha = *parseId<KnowledgeObjectId>(p.a);
+    auto beta = *parseId<KnowledgeObjectId>(p.b);
+    p.select(p.a);
+    REQUIRE(p.panel->property("path").toList().isEmpty());
+
+    REQUIRE(p.f.context().workspace().createRelationship(alpha, beta, RelationshipType::DependsOn, std::nullopt).hasValue());
+    QmlFixture::settle();
+    CHECK(p.panel->property("path").toList().size() == 1);
+
+    REQUIRE(p.f.context().workspace().createRelationship(beta, alpha, RelationshipType::DependsOn, std::nullopt).hasValue());
+    QmlFixture::settle();
+    CHECK(p.panel->property("path").toList().isEmpty());
+    CHECK(loops == 1);
+
+    p.f.context().map().refresh();
+    QmlFixture::settle();
+    CHECK(loops == 1);
+}

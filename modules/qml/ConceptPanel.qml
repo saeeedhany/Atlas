@@ -41,16 +41,9 @@ Rectangle {
 
     Connections {
         target: Concept
-        function onLoaded() {
-            panel.syncTopic()
-            panel.refreshPath()
-        }
+        function onLoaded() { panel.syncTopic() }
         function onEdited() { panel.syncTopic() }
-    }
-
-    Connections {
-        target: MapView
-        function onSceneChanged() { panel.refreshPath() }
+        function onRoadmapChanged() { panel.refreshPath() }
     }
 
     MouseArea {

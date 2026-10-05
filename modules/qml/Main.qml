@@ -92,6 +92,8 @@ ApplicationWindow {
             shown: window.page === "today"
             onActionTriggered: action => {
                 if (action === "session") {
+                    if (Concept.dirty && !Concept.save())
+                        return
                     if (Session.start())
                         window.show("session")
                     return

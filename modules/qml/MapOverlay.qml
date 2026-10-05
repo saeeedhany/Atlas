@@ -55,7 +55,8 @@ Item {
             focusId = ""
             fitPending = false
         } else if (fitPending) {
-            canvas.fitToContent()
+            if (Session.stage === "idle")
+                canvas.fitToContent()
             fitPending = false
         }
     }

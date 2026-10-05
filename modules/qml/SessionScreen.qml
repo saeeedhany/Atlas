@@ -12,11 +12,13 @@ Item {
     property bool revealed: false
     property var candidates: []
     property string followedFocus
+    readonly property bool predictionLocked: Session.stage === "explain" ? revealed : Session.hintsUsed > 0
 
     signal done()
 
     function chooseCertainty(level: int) {
-        certainty = level
+        if (!predictionLocked)
+            certainty = level
     }
 
     function addCandidate(id: string) {
@@ -53,15 +55,14 @@ Item {
 
     function finish() {
         Session.finish()
-        followedFocus = ""
-        reset()
-        done()
     }
 
     function follow() {
         if (Session.stage === "idle") {
             followedFocus = ""
             reset()
+            if (shown)
+                done()
             return
         }
         if (Session.focusId === followedFocus)
@@ -177,6 +178,8 @@ Item {
                     }
                     SectionLabel { text: "How sure are you?" }
                     CertaintyPicker {
+                        objectName: "rebuildCertainty"
+                        enabled: !screen.predictionLocked
                         value: screen.certainty
                         onPicked: level => screen.chooseCertainty(level)
                     }
@@ -245,7 +248,9 @@ Item {
                         Layout.fillWidth: true
 
                         AppButton {
+                            objectName: "hintButton"
                             text: Session.hintsUsed > 0 ? "Hint (" + Session.hintsUsed + ")" : "Hint"
+                            enabled: screen.certainty > 0
                             onClicked: Session.hint()
                         }
                         Item { Layout.fillWidth: true }
@@ -320,6 +325,8 @@ Item {
                     }
                     SectionLabel { text: "How sure are you?" }
                     CertaintyPicker {
+                        objectName: "explainCertainty"
+                        enabled: !screen.predictionLocked
                         value: screen.certainty
                         onPicked: level => screen.chooseCertainty(level)
                     }
@@ -390,7 +397,7 @@ Item {
 
                     SectionLabel { text: "Session done" }
                     Text {
-                        text: Session.recalledCount + " of " + Session.reviewedCount + " recalled"
+                        text: Session.recalledCount + " of " + Session.reviewedCount + " items recalled"
                         color: Theme.text
                         font.pixelSize: Theme.fontHero
                     }
