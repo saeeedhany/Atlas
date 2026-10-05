@@ -14,6 +14,14 @@
 
 namespace atlas::viewmodels {
 
+namespace {
+
+bool regionOrder(const QString& nameA, const QString& idA, const QString& nameB, const QString& idB) {
+    return nameA != nameB ? nameA < nameB : idA < idB;
+}
+
+}  // namespace
+
 using atlas::core::ItemRef;
 using atlas::core::KnowledgeObjectId;
 using atlas::core::RelationshipType;
@@ -21,6 +29,7 @@ using atlas::core::TopicId;
 using atlas::render::GraphCanvasItem;
 using atlas::render::RenderEdge;
 using atlas::render::RenderNode;
+using atlas::render::RenderRegion;
 
 MapViewModel::MapViewModel(WorkspaceController& workspace, MemoryController& memory, PlacementController& placements,
                            Palette& palette, QObject* parent)
@@ -131,6 +140,9 @@ void MapViewModel::refresh() {
         nodes_.push_back(std::move(node));
     }
 
+    std::unordered_map<QString, size_t> nodeIndex;
+    for (size_t i = 0; i < nodes_.size(); ++i) nodeIndex.emplace(nodes_[i].id, i);
+
     edges_.clear();
     for (const auto& link : relationships) {
         if (!shown.contains(link.sourceId()) || !shown.contains(link.targetId())) continue;
@@ -147,6 +159,8 @@ void MapViewModel::refresh() {
         if (auto outcome = marks_.outcomes.find(edge.id); outcome != marks_.outcomes.end()) edge.mark = outcome->second;
         else if (marks_.hiddenLinks.contains(edge.id)) edge.mark = atlas::render::EdgeMark::Hidden;
         edges_.push_back(edge);
+        ++nodes_[nodeIndex.at(edge.sourceId)].degree;
+        ++nodes_[nodeIndex.at(edge.targetId)].degree;
     }
     for (const auto& wrongId : marks_.confused) {
         auto focus = parseId<KnowledgeObjectId>(marks_.focusId);
@@ -160,12 +174,7 @@ void MapViewModel::refresh() {
         edge.mark = atlas::render::EdgeMark::Confused;
         edges_.push_back(edge);
     }
-    for (auto& node : nodes_) {
-        node.degree = static_cast<int>(std::count_if(edges_.begin(), edges_.end(), [&](const RenderEdge& edge) {
-            return edge.sourceId == node.id || edge.targetId == node.id;
-        }));
-    }
-    buildRegions(objects);
+    buildRegions(objects, nodeIndex);
     conceptCount_ = static_cast<int>(members.size());
 
     if (!selectedId_.isEmpty() && !isShown(selectedId_)) {
@@ -176,18 +185,24 @@ void MapViewModel::refresh() {
     emit sceneChanged();
 }
 
-void MapViewModel::buildRegions(const std::vector<atlas::core::KnowledgeObject>& objects) {
+void MapViewModel::buildRegions(const std::vector<atlas::core::KnowledgeObject>& objects,
+                                const std::unordered_map<QString, size_t>& nodeIndex) {
     std::unordered_map<std::string, std::vector<QPointF>> members;
     std::unordered_map<std::string, std::vector<double>> recalls;
     for (const auto& object : objects) {
         auto topicId = object.topicId();
         if (!topicId || *topicId == atlas::core::uncategorizedTopicId()) continue;
         QString id = idString(object.id());
-        auto node = std::find_if(nodes_.begin(), nodes_.end(), [&](const RenderNode& n) { return n.id == id; });
-        if (node == nodes_.end() || node->ghost) continue;
-        members[topicId->toString()].emplace_back(node->x, node->y);
-        if (node->recall >= 0.0) recalls[topicId->toString()].push_back(node->recall);
+        auto index = nodeIndex.find(id);
+        if (index == nodeIndex.end() || nodes_[index->second].ghost) continue;
+        const RenderNode& node = nodes_[index->second];
+        members[topicId->toString()].emplace_back(node.x, node.y);
+        if (node.recall >= 0.0) recalls[topicId->toString()].push_back(node.recall);
     }
+    auto nameOf = [&](const QString& topicId) {
+        auto name = topicNames_.find(toStdString(topicId));
+        return name != topicNames_.end() ? toQString(name->second) : QString();
+    };
     regions_.clear();
     renderRegions_.clear();
     for (const auto& [topicKey, points] : members) {
@@ -211,7 +226,11 @@ void MapViewModel::buildRegions(const std::vector<atlas::core::KnowledgeObject>&
         renderRegions_.push_back(atlas::render::RenderRegion{topicId, rect, hue});
     }
     std::sort(regions_.begin(), regions_.end(), [](const QVariant& a, const QVariant& b) {
-        return a.toMap().value("name").toString() < b.toMap().value("name").toString();
+        return regionOrder(a.toMap().value("name").toString(), a.toMap().value("topicId").toString(),
+                           b.toMap().value("name").toString(), b.toMap().value("topicId").toString());
+    });
+    std::sort(renderRegions_.begin(), renderRegions_.end(), [&](const RenderRegion& a, const RenderRegion& b) {
+        return regionOrder(nameOf(a.key), a.key, nameOf(b.key), b.key);
     });
 }
 

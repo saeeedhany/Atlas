@@ -434,3 +434,21 @@ TEST_CASE("moving a topic moves all its concepts") {
     CHECK(f.node(paging)->x == doctest::Approx(x + 100.0));
     CHECK_FALSE(f.map.moveTopic("garbage", 1.0, 1.0));
 }
+
+TEST_CASE("session confused links do not change node degree") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha", uncategorizedTopicId());
+    auto beta = f.addConcept("Beta", uncategorizedTopicId());
+    auto gamma = f.addConcept("Gamma", uncategorizedTopicId());
+    f.workspace.createRelationship(alpha, beta, RelationshipType::DependsOn, std::nullopt).value();
+    f.settle();
+    CHECK(f.node(alpha)->degree == 1);
+    CHECK(f.node(gamma)->degree == 0);
+
+    SessionMarks marks;
+    marks.focusId = idString(alpha);
+    marks.confused.push_back(idString(gamma));
+    f.map.setSessionMarks(marks);
+    CHECK(f.node(alpha)->degree == 1);
+    CHECK(f.node(gamma)->degree == 0);
+}

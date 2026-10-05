@@ -85,7 +85,8 @@ private:
     bool isShown(const QString& conceptId) const;
     void pushToCanvas();
     void applySelection();
-    void buildRegions(const std::vector<atlas::core::KnowledgeObject>& objects);
+    void buildRegions(const std::vector<atlas::core::KnowledgeObject>& objects,
+                      const std::unordered_map<QString, size_t>& nodeIndex);
 
     WorkspaceController* workspace_;
     MemoryController* memory_;
