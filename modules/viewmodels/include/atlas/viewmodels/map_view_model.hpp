@@ -76,6 +76,7 @@ private:
     SessionMarks marks_;
     std::optional<atlas::core::TopicId> scope() const;
     void scheduleRefresh();
+    void openGroup(const QString& topicId);
     void dropMissingScope();
     bool isShown(const QString& conceptId) const;
     void pushToCanvas();

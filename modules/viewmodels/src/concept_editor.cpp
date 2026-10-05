@@ -84,6 +84,7 @@ void ConceptEditor::load() {
     dirty_ = false;
     emit loaded();
     emit edited();
+    emit roadmapChanged();
 }
 
 void ConceptEditor::onGraphChanged() {
@@ -95,7 +96,8 @@ void ConceptEditor::onGraphChanged() {
         load();
         return;
     }
-    if (!dirty_) load();
+    if (dirty_) emit roadmapChanged();
+    else load();
 }
 
 void ConceptEditor::setDifficulty(int value) { assign(draft_.difficulty, std::clamp(value, 0, kHighestDifficulty)); }

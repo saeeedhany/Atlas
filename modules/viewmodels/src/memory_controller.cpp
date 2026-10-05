@@ -83,12 +83,15 @@ Result<void, ControllerFailure> MemoryController::record(std::vector<atlas::core
     using Out = Result<void, ControllerFailure>;
     if (events.empty()) return Out::ok();
     TimePoint now = clock_();
+    for (auto& event : events) {
+        event.reviewedAt = std::chrono::floor<std::chrono::milliseconds>(std::min(event.reviewedAt, now));
+        event.elapsedDays = std::max(0.0, event.elapsedDays);
+    }
+    events = atlas::learning::inReplayOrder(std::move(events), now);
     auto next = states_;
     auto boost = rules_.boostFn();
     std::unordered_set<ItemRef> touched;
-    for (auto& event : events) {
-        event.reviewedAt = std::min(event.reviewedAt, now);
-        event.elapsedDays = std::max(0.0, event.elapsedDays);
+    for (const auto& event : events) {
         ledger_.apply(next, event, boost);
         touched.insert(event.item);
     }

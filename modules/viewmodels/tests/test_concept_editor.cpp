@@ -140,3 +140,53 @@ TEST_CASE("the roadmap lists what to learn first, in order") {
     f.editor.setConceptId(idString(c));
     CHECK(f.editor.roadmap().isEmpty());
 }
+
+TEST_CASE("a loop elsewhere does not affect another concept's roadmap") {
+    Fixture f;
+    auto a = f.workspace.createKnowledgeObject("A").value();
+    auto b = f.workspace.createKnowledgeObject("B").value();
+    auto x = f.workspace.createKnowledgeObject("X").value();
+    auto y = f.workspace.createKnowledgeObject("Y").value();
+    REQUIRE(f.workspace.createRelationship(a, b, RelationshipType::DependsOn, std::nullopt).hasValue());
+    REQUIRE(f.workspace.createRelationship(x, y, RelationshipType::DependsOn, std::nullopt).hasValue());
+    REQUIRE(f.workspace.createRelationship(y, x, RelationshipType::DependsOn, std::nullopt).hasValue());
+    f.editor.setConceptId(idString(a));
+    auto path = f.editor.roadmap();
+    REQUIRE(path.size() == 1);
+    CHECK(path[0].toMap().value("title").toString() == "B");
+    CHECK(f.errors == 0);
+}
+
+TEST_CASE("a loop inside the prerequisites is reported once per roadmap request") {
+    Fixture f;
+    auto a = f.workspace.createKnowledgeObject("A").value();
+    auto b = f.workspace.createKnowledgeObject("B").value();
+    auto c = f.workspace.createKnowledgeObject("C").value();
+    REQUIRE(f.workspace.createRelationship(a, b, RelationshipType::DependsOn, std::nullopt).hasValue());
+    REQUIRE(f.workspace.createRelationship(b, c, RelationshipType::DependsOn, std::nullopt).hasValue());
+    REQUIRE(f.workspace.createRelationship(c, b, RelationshipType::DependsOn, std::nullopt).hasValue());
+    f.editor.setConceptId(idString(a));
+    CHECK(f.editor.roadmap().isEmpty());
+    CHECK(f.errors == 1);
+}
+
+TEST_CASE("the roadmap is announced on loads and graph changes, not memory changes") {
+    Fixture f;
+    int announced = 0;
+    QObject::connect(&f.editor, &ConceptEditor::roadmapChanged, [&] { ++announced; });
+    ReviewEvent event;
+    event.id = Uuid::generate();
+    event.item = ItemRef::forConcept(f.tree);
+    event.sessionId = Uuid::generate();
+    event.deviceId = "test";
+    event.reviewedAt = std::chrono::system_clock::now();
+    event.grade = Grade::Good;
+    REQUIRE(f.memory.record({event}).hasValue());
+    CHECK(announced == 0);
+
+    f.editor.setNotes("draft");
+    f.workspace.createKnowledgeObject("Hash Table");
+    CHECK(announced == 1);
+    f.editor.revert();
+    CHECK(announced == 2);
+}

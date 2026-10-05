@@ -24,15 +24,44 @@ struct Fixture {
     Database db = openTestDatabase(path);
     WorkspaceController workspace{db};
     bool loaded = workspace.load().hasValue();
-    TopicsModel topics{workspace};
+    TimePoint now = std::chrono::system_clock::now();
+    MemoryController memory{db, workspace, [this] { return now; }};
+    TopicsModel topics{workspace, memory};
     int errors = 0;
 
     Fixture() {
         REQUIRE(loaded);
+        REQUIRE(memory.load().hasValue());
         QObject::connect(&topics, &TopicsModel::errorOccurred, [this] { ++errors; });
     }
 
     QVariant at(int row, TopicsModel::Role role) const { return topics.data(topics.index(row), role); }
+
+    KnowledgeObjectId addConcept(const char* title, const QString& topic, bool withProject) {
+        auto id = workspace.createKnowledgeObject(title, *parseId<TopicId>(topic)).value();
+        if (withProject) {
+            KnowledgeObjectEdits edits;
+            edits.miniProjects = std::vector<MiniProject>{{"Build it", ""}};
+            REQUIRE(workspace.updateKnowledgeObject(id, edits).hasValue());
+        }
+        return id;
+    }
+
+    void learn(const KnowledgeObjectId& id) {
+        ReviewEvent event;
+        event.id = Uuid::generate();
+        event.item = ItemRef::forConcept(id);
+        event.sessionId = Uuid::generate();
+        event.deviceId = "test";
+        event.reviewedAt = now - std::chrono::hours(1);
+        event.grade = Grade::Good;
+        REQUIRE(memory.record({event}).hasValue());
+    }
+
+    void needs(const KnowledgeObjectId& dependent, const KnowledgeObjectId& prerequisite) {
+        REQUIRE(workspace.createRelationship(dependent, prerequisite, RelationshipType::DependsOn, std::nullopt)
+                    .hasValue());
+    }
 };
 
 }  // namespace
@@ -117,4 +146,41 @@ TEST_CASE("project ideas come from concepts with mini projects") {
     CHECK(idea.value("title").toString() == "Index");
     CHECK(idea.value("projects").toList()[0].toMap().value("title").toString() == "Build a B-Tree");
     CHECK(f.topics.suggestProjects("garbage").isEmpty());
+}
+
+TEST_CASE("project idea readiness is the share of solid prerequisites") {
+    Fixture f;
+    QString topic = f.topics.createTopic("Databases");
+    auto index = f.addConcept("Index", topic, true);
+    auto tree = f.addConcept("Tree", topic, false);
+    auto hash = f.addConcept("Hash", topic, false);
+    f.needs(index, tree);
+    f.needs(index, hash);
+    f.learn(tree);
+
+    auto ideas = f.topics.suggestProjects(topic);
+    REQUIRE(ideas.size() == 1);
+    CHECK(ideas[0].toMap().value("readiness").toDouble() == doctest::Approx(0.5));
+    CHECK(ideas[0].toMap().value("leverage").toInt() == 0);
+}
+
+TEST_CASE("project ideas skip solid concepts and rank by readiness and leverage") {
+    Fixture f;
+    QString topic = f.topics.createTopic("Databases");
+    auto known = f.addConcept("Known", topic, true);
+    auto base = f.addConcept("Base", topic, true);
+    auto blocked = f.addConcept("Blocked", topic, true);
+    auto missing = f.addConcept("Missing", topic, false);
+    f.needs(blocked, missing);
+    f.needs(blocked, base);
+    f.learn(known);
+
+    auto ideas = f.topics.suggestProjects(topic);
+    REQUIRE(ideas.size() == 2);
+    CHECK(ideas[0].toMap().value("id").toString() == idString(base));
+    CHECK(ideas[0].toMap().value("readiness").toDouble() == doctest::Approx(1.0));
+    CHECK(ideas[0].toMap().value("leverage").toInt() == 1);
+    CHECK(ideas[1].toMap().value("id").toString() == idString(blocked));
+    CHECK(ideas[1].toMap().value("readiness").toDouble() == doctest::Approx(0.0));
+    for (const auto& idea : ideas) CHECK(idea.toMap().value("id").toString() != idString(known));
 }

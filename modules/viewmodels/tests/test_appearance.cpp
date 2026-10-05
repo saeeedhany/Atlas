@@ -93,3 +93,12 @@ TEST_CASE("the device id is created once and kept") {
     AppSettings again(store);
     CHECK(again.deviceId() == first);
 }
+
+TEST_CASE("the device id stays fixed for the run even if the stored value goes away") {
+    QTemporaryDir dir;
+    QSettings store(dir.filePath("settings.ini"), QSettings::IniFormat);
+    AppSettings settings(store);
+    QString first = settings.deviceId();
+    store.remove("device/id");
+    CHECK(settings.deviceId() == first);
+}

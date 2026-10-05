@@ -64,6 +64,10 @@ void MapViewModel::setTopicId(const QString& topicId) {
     refresh();
 }
 
+void MapViewModel::openGroup(const QString& topicId) {
+    if (!inSession()) setTopicId(topicId);
+}
+
 void MapViewModel::setSelectedId(const QString& conceptId) {
     auto parsed = parseId<KnowledgeObjectId>(conceptId);
     QString normalized = parsed ? idString(*parsed) : QString();
@@ -209,7 +213,7 @@ void MapViewModel::attach(QQuickItem* item) {
     if (canvas_ && canvas_ != canvas) disconnect(canvas_, nullptr, this, nullptr);
     canvas_ = canvas;
     connect(canvas, &GraphCanvasItem::nodeClicked, this, &MapViewModel::setSelectedId, Qt::UniqueConnection);
-    connect(canvas, &GraphCanvasItem::groupClicked, this, &MapViewModel::setTopicId, Qt::UniqueConnection);
+    connect(canvas, &GraphCanvasItem::groupClicked, this, &MapViewModel::openGroup, Qt::UniqueConnection);
     if (refreshPending_) refresh();
     else pushToCanvas();
 }

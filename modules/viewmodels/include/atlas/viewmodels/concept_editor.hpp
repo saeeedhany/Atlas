@@ -77,6 +77,7 @@ public:
 signals:
     void loaded();
     void edited();
+    void roadmapChanged();
     void errorOccurred(const QString& message);
 
 private:

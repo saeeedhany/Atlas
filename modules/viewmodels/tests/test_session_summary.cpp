@@ -38,10 +38,25 @@ TEST_CASE("tips follow what happened in the session") {
 
     auto confused = event(Certainty::Unsure, Grade::Again);
     confused.wrongTarget = KnowledgeObjectId::generate();
-    CHECK(chooseTip({confused}).source == "Kornell & Bjork 2008");
+    CHECK(chooseTip({confused}).source == "Rohrer & Taylor 2007");
 
     CHECK(chooseTip({event(Certainty::Unsure, Grade::Hard, Exercise::Rebuild, 1),
                      event(Certainty::Unsure, Grade::Good)})
               .source == "Bjork 1994");
     CHECK(chooseTip({event(Certainty::Unsure, Grade::Good)}).source == "Roediger & Karpicke 2006");
+}
+
+TEST_CASE("items are counted once and judged by their first event") {
+    auto link = ItemRef::forLink(RelationshipId::generate());
+    auto tree = ItemRef::forConcept(KnowledgeObjectId::generate());
+    auto missedFirst = event(Certainty::Certain, Grade::Again);
+    missedFirst.item = link;
+    auto laterGood = event(Certainty::Certain, Grade::Good, Exercise::Explain);
+    laterGood.item = link;
+    auto recalled = event(Certainty::Unsure, Grade::Hard, Exercise::Explain);
+    recalled.item = tree;
+    std::vector<ReviewEvent> events{missedFirst, laterGood, recalled};
+    CHECK(itemsReviewed(events) == 2);
+    CHECK(itemsRecalled(events) == 1);
+    CHECK(itemsReviewed({}) == 0);
 }

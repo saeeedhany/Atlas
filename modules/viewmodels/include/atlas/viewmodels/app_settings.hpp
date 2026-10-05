@@ -38,6 +38,7 @@ signals:
 
 private:
     QSettings* store_;
+    mutable QString deviceId_;
 };
 
 }  // namespace atlas::viewmodels

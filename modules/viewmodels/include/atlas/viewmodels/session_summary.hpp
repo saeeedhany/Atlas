@@ -17,6 +17,8 @@ struct SessionTip {
 
 QString linkPrompt(atlas::core::RelationshipType type, const QString& source, const QString& target);
 QStringList certaintyNames();
+int itemsReviewed(const std::vector<atlas::core::ReviewEvent>& events);
+int itemsRecalled(const std::vector<atlas::core::ReviewEvent>& events);
 QStringList calibrationLines(const std::vector<atlas::core::ReviewEvent>& events);
 SessionTip chooseTip(const std::vector<atlas::core::ReviewEvent>& events);
 

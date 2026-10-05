@@ -43,12 +43,13 @@ void AppSettings::setNewPerDay(int count) {
 }
 
 QString AppSettings::deviceId() const {
-    QString id = store_->value(kDeviceIdKey).toString();
-    if (id.isEmpty()) {
-        id = QString::fromStdString(atlas::core::Uuid::generate().toString());
-        store_->setValue(kDeviceIdKey, id);
+    if (!deviceId_.isEmpty()) return deviceId_;
+    deviceId_ = store_->value(kDeviceIdKey).toString();
+    if (deviceId_.isEmpty()) {
+        deviceId_ = QString::fromStdString(atlas::core::Uuid::generate().toString());
+        store_->setValue(kDeviceIdKey, deviceId_);
     }
-    return id;
+    return deviceId_;
 }
 
 }  // namespace atlas::viewmodels

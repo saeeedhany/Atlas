@@ -54,11 +54,6 @@ QString SessionController::focusId() const { return active() ? idString(current(
 QString SessionController::focusTitle() const { return active() ? titleOf(current().plan.conceptId) : QString(); }
 bool SessionController::focusIsNew() const { return active() && current().plan.isNew; }
 
-int SessionController::recalledCount() const {
-    return static_cast<int>(std::count_if(recorded_.begin(), recorded_.end(),
-                                          [](const ReviewEvent& event) { return event.grade != Grade::Again; }));
-}
-
 QStringList SessionController::typeNames() const {
     QStringList names;
     for (int type = 0; type <= static_cast<int>(RelationshipType::Causes); ++type) {
@@ -132,6 +127,7 @@ bool SessionController::start() {
     sessionId_ = Uuid::generate();
     recorded_.clear();
     previousTopic_ = map_->topicId();
+    previousSelection_ = map_->selectedId();
     map_->setTopicId(QString());
     seekFocus();
     return true;
@@ -344,7 +340,10 @@ bool SessionController::submitExplain(int certainty, int grade, const QString& w
     auto graded = atlas::core::gradeFromInt(grade);
     if (!predicted || !graded) return fail(tr("Choose how sure you were and how it went"));
     QString written = writtenKey.trimmed();
-    if (answerKey_.isEmpty() && !written.isEmpty() && saveAnswerKey(written)) answerKey_ = written;
+    if (answerKey_.isEmpty() && !written.isEmpty() && itemExists(explainItem_)) {
+        if (!saveAnswerKey(written)) return false;
+        answerKey_ = written;
+    }
 
     auto events = pending_;
     auto explain = makeEvent(explainItem_, Exercise::Explain, *predicted, *graded, memory_->now());
@@ -399,8 +398,8 @@ void SessionController::finish() {
     feedback_.clear();
     marks_ = SessionMarks{};
     map_->clearSessionMarks();
-    map_->setSelectedId(QString());
     map_->setTopicId(previousTopic_);
+    map_->setSelectedId(previousSelection_);
     emit changed();
 }
 

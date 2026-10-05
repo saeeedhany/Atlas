@@ -171,7 +171,8 @@ TEST_CASE("a confident miss returns once at the end") {
     f.session.continueToExplain();
     REQUIRE(f.session.submitExplain(4, 1, QString()));
     CHECK(f.session.stage() == "summary");
-    CHECK(f.session.reviewedCount() == 4);
+    CHECK(f.session.reviewedCount() == 1);
+    CHECK(f.session.recalledCount() == 0);
     CHECK(f.session.tipSource() == "Butterfield & Metcalfe 2001");
 }
 
@@ -314,4 +315,54 @@ TEST_CASE("a failed write in a rebuild focus keeps the focus") {
     CHECK(f.session.stage() == "explain");
     CHECK(f.session.focusNumber() == 1);
     CHECK(f.memory.events().size() == before);
+}
+
+TEST_CASE("the summary counts items, judged by their first attempt") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha");
+    auto beta = f.addConcept("Beta");
+    f.dueLink(alpha, beta);
+
+    REQUIRE(f.session.start());
+    REQUIRE(f.session.addRecalled(idString(beta), 0, true));
+    REQUIRE(f.session.submitRebuild(3));
+    f.session.continueToExplain();
+    REQUIRE(f.session.submitExplain(3, 1, QString()));
+    CHECK(f.session.stage() == "summary");
+    CHECK(f.session.reviewedCount() == 1);
+    CHECK(f.session.recalledCount() == 1);
+}
+
+TEST_CASE("finishing restores the selection from before the session") {
+    Fixture f;
+    auto alpha = f.addConcept("Alpha");
+    f.addConcept("Beta");
+    f.map.setSelectedId(idString(alpha));
+    REQUIRE(f.map.selectedId() == idString(alpha));
+
+    REQUIRE(f.session.start());
+    REQUIRE(f.session.submitExplain(3, 3, QString()));
+    f.session.quit();
+    CHECK(f.session.stage() == "summary");
+    CHECK(f.map.selectedId().isEmpty());
+
+    f.session.finish();
+    CHECK(f.map.selectedId() == idString(alpha));
+}
+
+TEST_CASE("a failed save of the written answer keeps the text for a retry") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    REQUIRE(f.session.start());
+    REQUIRE(executeRawSql(f.path, "CREATE TRIGGER blocked BEFORE UPDATE ON knowledge_objects "
+                                  "BEGIN SELECT RAISE(ABORT, 'blocked'); END;"));
+    CHECK_FALSE(f.session.submitExplain(3, 3, "A branching structure"));
+    CHECK(f.errors == 1);
+    CHECK(f.session.stage() == "explain");
+    CHECK(f.memory.events().empty());
+
+    REQUIRE(executeRawSql(f.path, "DROP TRIGGER blocked;"));
+    REQUIRE(f.session.submitExplain(3, 3, "A branching structure"));
+    CHECK(f.workspace.findKnowledgeObject(tree)->definition() == "A branching structure");
+    CHECK(f.memory.events().size() == 1);
 }

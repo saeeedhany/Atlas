@@ -2,16 +2,18 @@
 
 #include <QVariantMap>
 
+#include <algorithm>
 #include <unordered_map>
 
 #include "atlas/viewmodels/ids.hpp"
 
 namespace atlas::viewmodels {
 
+using atlas::core::KnowledgeObject;
 using atlas::core::TopicId;
 
-TopicsModel::TopicsModel(WorkspaceController& workspace, QObject* parent)
-    : QAbstractListModel(parent), workspace_(&workspace) {
+TopicsModel::TopicsModel(WorkspaceController& workspace, MemoryController& memory, QObject* parent)
+    : QAbstractListModel(parent), workspace_(&workspace), memory_(&memory) {
     connect(workspace_, &WorkspaceController::topicsChanged, this, &TopicsModel::refresh);
     connect(workspace_, &WorkspaceController::graphChanged, this, &TopicsModel::refresh);
     refresh();
@@ -108,17 +110,40 @@ QVariantList TopicsModel::entries() const {
 QVariantList TopicsModel::suggestProjects(const QString& topicId) const {
     auto id = parseId<TopicId>(topicId);
     if (!id) return {};
+    struct Idea {
+        KnowledgeObject object;
+        double readiness;
+        int leverage;
+        double score() const { return readiness * (1 + leverage); }
+    };
+    const auto& graph = workspace_->graph();
+    const auto& rules = memory_->rules();
+    auto now = memory_->now();
+    std::vector<Idea> ranked;
+    for (const auto& object : workspace_->allKnowledgeObjects()) {
+        if (object.topicId() != id || object.miniProjects().empty()) continue;
+        if (rules.isSolid(object.id(), now, memory_->states())) continue;
+        auto prerequisites = graph.dependsOn(object.id());
+        auto solid = std::count_if(prerequisites.begin(), prerequisites.end(), [&](const auto& prerequisite) {
+            return rules.isSolid(prerequisite, now, memory_->states());
+        });
+        double readiness = prerequisites.empty() ? 1.0 : static_cast<double>(solid) / prerequisites.size();
+        ranked.push_back(Idea{object, readiness, rules.leverage(object.id())});
+    }
+    std::sort(ranked.begin(), ranked.end(), [](const Idea& a, const Idea& b) {
+        if (a.score() != b.score()) return a.score() > b.score();
+        return a.object.id().toString() < b.object.id().toString();
+    });
     QVariantList ideas;
-    for (const auto& suggestion : workspace_->suggestProjects(*id)) {
-        const auto& object = suggestion.knowledgeObject;
+    for (const auto& idea : ranked) {
         QVariantList projects;
-        for (const auto& project : object.miniProjects()) {
+        for (const auto& project : idea.object.miniProjects()) {
             projects.append(QVariantMap{{"title", toQString(project.title)}, {"description", toQString(project.description)}});
         }
-        ideas.append(QVariantMap{{"id", idString(object.id())},
-                                 {"title", toQString(object.title())},
-                                 {"readiness", suggestion.readiness},
-                                 {"leverage", suggestion.leverage},
+        ideas.append(QVariantMap{{"id", idString(idea.object.id())},
+                                 {"title", toQString(idea.object.title())},
+                                 {"readiness", idea.readiness},
+                                 {"leverage", idea.leverage},
                                  {"projects", projects}});
     }
     return ideas;

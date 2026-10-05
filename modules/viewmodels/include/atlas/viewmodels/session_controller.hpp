@@ -63,8 +63,8 @@ public:
     QVariantList feedback() const { return feedback_; }
     QString prompt() const { return prompt_; }
     QString answerKey() const { return answerKey_; }
-    int reviewedCount() const { return static_cast<int>(recorded_.size()); }
-    int recalledCount() const;
+    int reviewedCount() const { return itemsReviewed(recorded_); }
+    int recalledCount() const { return itemsRecalled(recorded_); }
     QStringList calibration() const { return calibrationLines(recorded_); }
     QString tip() const { return tip_.text; }
     QString tipSource() const { return tip_.source; }
@@ -125,6 +125,7 @@ private:
     size_t index_ = 0;
     atlas::core::Uuid sessionId_;
     QString previousTopic_;
+    QString previousSelection_;
     std::vector<atlas::learning::RecalledLink> recalled_;
     std::vector<atlas::core::KnowledgeObjectId> hinted_;
     std::vector<atlas::core::ReviewEvent> pending_;

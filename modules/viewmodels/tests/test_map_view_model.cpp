@@ -164,6 +164,25 @@ TEST_CASE("clicking a collapsed topic opens it and clicking a node selects it") 
     CHECK(f.map.selectedId() == idString(paging));
 }
 
+TEST_CASE("clicking a collapsed topic during a session keeps the map topic") {
+    Fixture f;
+    auto os = f.topic("OS");
+    auto paging = f.addConcept("Paging", os);
+    f.settle();
+    atlas::render::GraphCanvasItem canvas;
+    f.map.attach(&canvas);
+    SessionMarks marks;
+    marks.focusId = idString(paging);
+    f.map.setSessionMarks(marks);
+
+    emit canvas.groupClicked(idString(os));
+    CHECK(f.map.topicId().isEmpty());
+
+    f.map.clearSessionMarks();
+    emit canvas.groupClicked(idString(os));
+    CHECK(f.map.topicId() == idString(os));
+}
+
 TEST_CASE("search and new concepts stay inside the topic scope") {
     Fixture f;
     auto os = f.topic("OS");

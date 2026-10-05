@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include "atlas/viewmodels/memory_controller.hpp"
 #include "atlas/viewmodels/provided_singleton.hpp"
 #include "atlas/viewmodels/workspace_controller.hpp"
 
@@ -22,7 +23,7 @@ class TopicsModel : public QAbstractListModel, public ProvidedSingleton<TopicsMo
 public:
     enum Role { IdRole = Qt::UserRole + 1, NameRole, ConceptCountRole, IsUncategorizedRole };
 
-    explicit TopicsModel(WorkspaceController& workspace, QObject* parent = nullptr);
+    TopicsModel(WorkspaceController& workspace, MemoryController& memory, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -52,6 +53,7 @@ private:
     bool fail(const QString& message);
 
     WorkspaceController* workspace_;
+    MemoryController* memory_;
     std::vector<Row> rows_;
 };
 

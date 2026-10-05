@@ -1,6 +1,7 @@
 #include "atlas/viewmodels/session_summary.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 
 #include "atlas/learning/calibration.hpp"
 
@@ -9,6 +10,7 @@ namespace atlas::viewmodels {
 using atlas::core::Certainty;
 using atlas::core::Exercise;
 using atlas::core::Grade;
+using atlas::core::ItemRef;
 using atlas::core::RelationshipType;
 using atlas::core::ReviewEvent;
 
@@ -26,6 +28,21 @@ QString linkPrompt(RelationshipType type, const QString& source, const QString& 
         case RelationshipType::Causes: return QString("How does %1 cause %2?").arg(source, target);
     }
     return QString("How are %1 and %2 connected?").arg(source, target);
+}
+
+int itemsReviewed(const std::vector<ReviewEvent>& events) {
+    std::unordered_set<ItemRef> items;
+    for (const auto& event : events) items.insert(event.item);
+    return static_cast<int>(items.size());
+}
+
+int itemsRecalled(const std::vector<ReviewEvent>& events) {
+    std::unordered_set<ItemRef> seen;
+    int recalled = 0;
+    for (const auto& event : events) {
+        if (seen.insert(event.item).second && event.grade != Grade::Again) ++recalled;
+    }
+    return recalled;
 }
 
 QStringList certaintyNames() { return {"Guess", "Unsure", "Fairly sure", "Certain"}; }
@@ -52,7 +69,7 @@ SessionTip chooseTip(const std::vector<ReviewEvent>& events) {
         return {"Confident mistakes are the easiest to fix. Look at those again tomorrow.", "Butterfield & Metcalfe 2001"};
     }
     if (any([](const ReviewEvent& e) { return e.wrongTarget.has_value(); })) {
-        return {"Ideas you mix up are worth studying side by side, so their differences stand out.", "Kornell & Bjork 2008"};
+        return {"Ideas you mix up are worth studying side by side, so their differences stand out.", "Rohrer & Taylor 2007"};
     }
     auto rebuilds = std::count_if(events.begin(), events.end(), [](const ReviewEvent& e) { return e.exercise == Exercise::Rebuild; });
     auto hinted = std::count_if(events.begin(), events.end(), [](const ReviewEvent& e) {

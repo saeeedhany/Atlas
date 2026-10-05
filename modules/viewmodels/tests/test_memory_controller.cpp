@@ -234,3 +234,25 @@ TEST_CASE("elapsed days count from the last review") {
     CHECK(memory.elapsedDaysFor(item, f.now + std::chrono::hours(36)) == doctest::Approx(1.5));
     CHECK(memory.elapsedDaysFor(item, f.now - std::chrono::hours(2)) == 0.0);
 }
+
+TEST_CASE("states after a live batch equal the states replayed from the log") {
+    Fixture f;
+    auto tree = f.addConcept("Tree");
+    f.now += std::chrono::microseconds(1700);
+    auto later = reviewOf(tree, f.now - std::chrono::hours(1) + std::chrono::microseconds(300), Grade::Good);
+    auto earlier = reviewOf(tree, f.now - std::chrono::hours(30), Grade::Again);
+    atlas::learning::StateMap live;
+    {
+        MemoryController memory(f.db, f.workspace, f.clock);
+        REQUIRE(memory.load().hasValue());
+        REQUIRE(memory.record({later, earlier}).hasValue());
+        live = memory.states();
+    }
+    REQUIRE(executeRawSql(f.path, "UPDATE memory_meta SET value = '0' WHERE key = 'replay_version';"));
+    LearningRepository repository(f.db);
+    REQUIRE_FALSE(repository.isCacheFresh(atlas::learning::kReplayVersion).value());
+
+    MemoryController reloaded(f.db, f.workspace, f.clock);
+    REQUIRE(reloaded.load().hasValue());
+    CHECK(reloaded.states() == live);
+}
