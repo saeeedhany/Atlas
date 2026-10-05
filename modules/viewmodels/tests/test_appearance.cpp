@@ -102,3 +102,22 @@ TEST_CASE("the device id stays fixed for the run even if the stored value goes a
     store.remove("device/id");
     CHECK(settings.deviceId() == first);
 }
+
+TEST_CASE("the palette carries warm stone and clay in both themes") {
+    QTemporaryDir dir;
+    QSettings store(dir.filePath("settings.ini"), QSettings::IniFormat);
+    AppSettings settings(store);
+    Palette palette(settings);
+    CHECK(palette.background() == QColor("#1d1c1a"));
+    CHECK(palette.accent() == QColor("#d29b6c"));
+    CHECK(palette.secondary() == QColor("#a3b18a"));
+    CHECK(palette.tertiary() == QColor("#c4806b"));
+    CHECK(palette.link() == QColor("#57524a"));
+    CHECK(palette.noteFill("olive") == QColor("#262b22"));
+    CHECK(palette.noteFill("unknown") == palette.noteFill("clay"));
+    CHECK(palette.regionTint(1) == QColor("#a3b18a"));
+    settings.setDarkTheme(false);
+    CHECK(palette.background() == QColor("#f6f1e7"));
+    CHECK(palette.accent() == QColor("#b8784a"));
+    CHECK(palette.noteText("rose") == QColor("#5a2f24"));
+}

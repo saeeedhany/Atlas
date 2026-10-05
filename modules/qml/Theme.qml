@@ -5,12 +5,18 @@ import Atlas.ViewModels
 QtObject {
     readonly property color background: Palette.background
     readonly property color surface: Palette.surface
-    readonly property color surfaceRaised: Palette.surfaceRaised
-    readonly property color border: Palette.border
-    readonly property color text: Palette.text
-    readonly property color textMuted: Palette.textMuted
-    readonly property color accent: Palette.accent
+    readonly property color surfaceHigh: Palette.surfaceRaised
+    readonly property color outline: Palette.border
+    readonly property color outlineStrong: Palette.outlineStrong
+    readonly property color onSurface: Palette.text
+    readonly property color onSurfaceMuted: Palette.textMuted
+    readonly property color onSurfaceFaint: Palette.textFaint
+    readonly property color primary: Palette.accent
+    readonly property color onPrimary: Palette.onPrimary
+    readonly property color secondary: Palette.secondary
+    readonly property color tertiary: Palette.tertiary
     readonly property color danger: Palette.danger
+    readonly property color link: Palette.link
     readonly property color nodeFill: Palette.nodeFill
     readonly property color ringStrong: Palette.ringStrong
     readonly property color ringMedium: Palette.ringMedium
@@ -18,16 +24,29 @@ QtObject {
     readonly property color ringNew: Palette.ringNew
     readonly property color ringTrack: Palette.ringTrack
 
-    readonly property string mono: "monospace"
+    readonly property color surfaceRaised: surfaceHigh
+    readonly property color border: outline
+    readonly property color text: onSurface
+    readonly property color textMuted: onSurfaceMuted
+    readonly property color accent: primary
+
+    readonly property string serif: "Newsreader"
+    readonly property string sans: "Inter"
+    readonly property string mono: "IBM Plex Mono"
+    readonly property int fontCaption: 10
     readonly property int fontSmall: 11
     readonly property int fontBody: 13
     readonly property int fontTitle: 17
-    readonly property int fontHero: 26
+    readonly property int fontHeadline: 24
+    readonly property int fontHero: 32
 
     readonly property int gap: 8
-    readonly property int radius: 10
+    readonly property int radius: 12
+    readonly property int radiusPanel: 16
+    readonly property int radiusChip: 8
+    readonly property int radiusRegion: 28
     readonly property int railWidth: 72
-    readonly property int panelWidth: 400
+    readonly property int panelWidth: 380
 
     function ringColor(recall: real): color {
         if (recall < 0)
@@ -35,5 +54,17 @@ QtObject {
         if (recall >= 0.8)
             return ringStrong
         return recall >= 0.5 ? ringMedium : ringWeak
+    }
+
+    function regionTint(hue: int): color {
+        return Palette.regionTint(hue)
+    }
+
+    function noteFill(name: string): color {
+        return Palette.noteFill(name)
+    }
+
+    function noteText(name: string): color {
+        return Palette.noteText(name)
     }
 }

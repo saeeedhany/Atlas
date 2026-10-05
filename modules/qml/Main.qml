@@ -5,6 +5,7 @@ import Atlas.ViewModels
 
 ApplicationWindow {
     id: window
+    font.family: Theme.sans
 
     property string page: "today"
 

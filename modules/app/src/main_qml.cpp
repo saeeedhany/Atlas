@@ -6,6 +6,7 @@
 #include <QtQml/qqmlextensionplugin.h>
 
 #include "atlas/render/graph_canvas_item.hpp"
+#include "atlas/ui/fonts.hpp"
 #include "atlas/viewmodels/app_startup.hpp"
 
 Q_IMPORT_QML_PLUGIN(Atlas_ViewModelsPlugin)
@@ -16,6 +17,7 @@ int main(int argc, char** argv) {
     QGuiApplication::setApplicationName("atlas_app");
     QGuiApplication::setApplicationDisplayName("Atlas");
     atlas::render::registerGraphCanvasQmlType();
+    atlas::ui::loadBundledFonts();
 
     QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(dataDir);

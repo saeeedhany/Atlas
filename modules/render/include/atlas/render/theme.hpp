@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QColor>
+#include <array>
 
 namespace atlas::render {
 
@@ -34,6 +35,15 @@ struct Theme {
     QColor ringNew;
     QColor ringTrack;
     QColor danger;
+    QColor outlineStrong;
+    QColor textFaint;
+    QColor secondary;
+    QColor tertiary;
+    QColor onPrimary;
+    QColor link;
+    std::array<QColor, 6> regionHues{};
+    std::array<QColor, 3> noteFills{};
+    std::array<QColor, 3> noteTexts{};
 };
 
 const Theme& themeFor(ThemeMode mode);

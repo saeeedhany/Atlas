@@ -1,5 +1,6 @@
 #include <QColor>
 #include <QCoreApplication>
+#include <QFontDatabase>
 #include <QQmlComponent>
 #include <QQmlEngine>
 
@@ -75,4 +76,28 @@ TEST_CASE("the startup error window loads in a bare engine without singletons") 
     QCoreApplication::processEvents();
     INFO(warnings.join('\n').toStdString());
     CHECK(warnings.isEmpty());
+}
+
+TEST_CASE("Theme exposes Material roles, aliases, and bundled fonts") {
+    QmlFixture f;
+    auto probe = f.createFromData("import QtQuick\nimport Atlas.Ui\n"
+                                  "QtObject { property color primary: Theme.primary\n"
+                                  "           property color accent: Theme.accent\n"
+                                  "           property color outline: Theme.outline\n"
+                                  "           property string serif: Theme.serif\n"
+                                  "           property int hero: Theme.fontHero\n"
+                                  "           property color note: Theme.noteFill(\"clay\") }");
+    CHECK(probe->property("primary").value<QColor>() == f.context().palette().accent());
+    CHECK(probe->property("accent").value<QColor>() == probe->property("primary").value<QColor>());
+    CHECK(probe->property("outline").value<QColor>() == f.context().palette().border());
+    CHECK(probe->property("serif").toString() == "Newsreader");
+    CHECK(probe->property("hero").toInt() == 32);
+    CHECK(probe->property("note").value<QColor>() == QColor("#2e2a23"));
+}
+
+TEST_CASE("the three bundled fonts are registered") {
+    auto families = QFontDatabase::families();
+    CHECK(families.contains("Inter"));
+    CHECK(families.contains("Newsreader"));
+    CHECK(families.contains("IBM Plex Mono"));
 }

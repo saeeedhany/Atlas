@@ -28,6 +28,12 @@ class Palette : public QObject, public ProvidedSingleton<Palette> {
     Q_PROPERTY(QColor ringWeak READ ringWeak NOTIFY changed)
     Q_PROPERTY(QColor ringNew READ ringNew NOTIFY changed)
     Q_PROPERTY(QColor ringTrack READ ringTrack NOTIFY changed)
+    Q_PROPERTY(QColor outlineStrong READ outlineStrong NOTIFY changed)
+    Q_PROPERTY(QColor textFaint READ textFaint NOTIFY changed)
+    Q_PROPERTY(QColor secondary READ secondary NOTIFY changed)
+    Q_PROPERTY(QColor tertiary READ tertiary NOTIFY changed)
+    Q_PROPERTY(QColor onPrimary READ onPrimary NOTIFY changed)
+    Q_PROPERTY(QColor link READ link NOTIFY changed)
 
 public:
     explicit Palette(AppSettings& settings, QObject* parent = nullptr);
@@ -49,6 +55,15 @@ public:
     QColor ringWeak() const { return theme().ringWeak; }
     QColor ringNew() const { return theme().ringNew; }
     QColor ringTrack() const { return theme().ringTrack; }
+    QColor outlineStrong() const { return theme().outlineStrong; }
+    QColor textFaint() const { return theme().textFaint; }
+    QColor secondary() const { return theme().secondary; }
+    QColor tertiary() const { return theme().tertiary; }
+    QColor onPrimary() const { return theme().onPrimary; }
+    QColor link() const { return theme().link; }
+    Q_INVOKABLE QColor regionTint(int hue) const;
+    Q_INVOKABLE QColor noteFill(const QString& color) const;
+    Q_INVOKABLE QColor noteText(const QString& color) const;
 
 signals:
     void changed();

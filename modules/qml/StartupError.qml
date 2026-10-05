@@ -11,7 +11,7 @@ Window {
     height: 280
     visible: true
     title: "Atlas"
-    color: "#18181b"
+    color: "#1d1c1a"
 
     ColumnLayout {
         anchors.fill: parent
