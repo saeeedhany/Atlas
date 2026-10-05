@@ -18,9 +18,11 @@ if (ATLAS_BUILD_UI)
     add_library(atlas_render_canvas STATIC
         include/atlas/render/canvas_view.hpp
         include/atlas/render/graph_canvas_item.hpp
+        include/atlas/render/region_geometry.hpp
         include/atlas/render/theme.hpp
         src/canvas_view.cpp
         src/graph_canvas_item.cpp
+        src/region_geometry.cpp
         src/theme.cpp
     )
     target_include_directories(atlas_render_canvas PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

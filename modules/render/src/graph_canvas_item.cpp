@@ -30,6 +30,8 @@ struct ColoredVertex {
 };
 
 struct SceneVertices {
+    std::vector<ColoredVertex> regionFill;
+    std::vector<ColoredVertex> regionOutline;
     std::vector<ColoredVertex> highlight;
     std::vector<ColoredVertex> edges;
     std::vector<ColoredVertex> arrows;
@@ -40,16 +42,19 @@ struct SceneVertices {
 
 namespace {
 
-constexpr float kNodeRadius = 8.0f;
-constexpr float kNodeBorderWidth = 2.2f;
+constexpr float kNodeRadius = 5.5f;
+constexpr float kNodeHalo = 1.5f;
+constexpr float kDegreeGrowth = 0.5f;
+constexpr int kMaxDegreeGrowth = 5;
+constexpr float kGroupBorderWidth = 2.2f;
 constexpr float kHitRadius = 15.0f;
-constexpr float kSelectRingRadius = 17.5f;
+constexpr float kSelectRingRadius = 13.5f;
 constexpr float kSelectRingThickness = 2.0f;
-constexpr float kNeighborRingRadius = 16.5f;
-constexpr float kHoverRingRadius = 16.5f;
+constexpr float kNeighborRingRadius = 12.5f;
+constexpr float kHoverRingRadius = 12.5f;
 constexpr float kHighlightThickness = 1.5f;
-constexpr float kMemoryRingRadius = 12.5f;
-constexpr float kMemoryRingThickness = 2.0f;
+constexpr float kMemoryRingRadius = 9.5f;
+constexpr float kMemoryRingThickness = 1.6f;
 constexpr int kNewRingDashes = 12;
 constexpr float kArrowLength = 7.0f;
 constexpr float kArrowHalfWidth = 3.5f;
@@ -80,10 +85,25 @@ constexpr float kDotRadius = 1.3f;
 constexpr int kLabelPixelSize = 11;
 constexpr double kRecallEase = 0.06;
 constexpr double kRecallEpsilon = 0.002;
-constexpr float kHintRingRadius = 21.0f;
+constexpr float kHintRingRadius = 16.0f;
 constexpr int kHintAlphaPercent = 60;
+constexpr double kRegionCornerRadius = 28.0;
+constexpr int kRegionCornerSegments = 8;
+constexpr float kRegionFillAlpha = 0.08f;
+constexpr float kRegionOutlineAlpha = 0.20f;
+constexpr int kRegionHueCount = 6;
 
-enum Layer { HighlightLayer, EdgeLayer, ArrowLayer, BorderLayer, FillLayer, MemoryLayer, LayerCount };
+enum Layer {
+    RegionFillLayer,
+    RegionOutlineLayer,
+    HighlightLayer,
+    EdgeLayer,
+    ArrowLayer,
+    BorderLayer,
+    FillLayer,
+    MemoryLayer,
+    LayerCount
+};
 
 float effectiveDotSpacingPx(double scale) {
     float spacing = static_cast<float>(kBaseDotSpacingWorld * scale);
@@ -99,6 +119,10 @@ QColor faded(QColor color, int percent) {
 
 void appendTriangles(std::vector<ColoredVertex>& out, const std::vector<Vec2>& points, const QColor& color) {
     for (const auto& point : points) out.push_back({point.x, point.y, color});
+}
+
+void appendTriangle(std::vector<ColoredVertex>& out, QPointF a, QPointF b, QPointF c, const QColor& color) {
+    for (QPointF point : {a, b, c}) out.push_back({static_cast<float>(point.x()), static_cast<float>(point.y()), color});
 }
 
 void appendDisc(std::vector<ColoredVertex>& out, Vec2 center, float radius, const QColor& color) {
@@ -172,8 +196,7 @@ void upload(QSGNode* node, const std::vector<ColoredVertex>& vertices) {
 }
 
 QFont labelFont() {
-    QFont font(QStringLiteral("monospace"));
-    font.setStyleHint(QFont::Monospace);
+    QFont font(QStringLiteral("Inter"));
     font.setPixelSize(kLabelPixelSize);
     return font;
 }
@@ -382,11 +405,18 @@ void GraphCanvasItem::clearHighlight() {
     update();
 }
 
+void GraphCanvasItem::setRegions(std::vector<RenderRegion> regions) {
+    regions_ = std::move(regions);
+    regionsDirty_ = true;
+    update();
+}
+
 void GraphCanvasItem::setTheme(ThemeMode mode) {
     if (themeMode_ == mode) return;
     themeMode_ = mode;
     backgroundDirty_ = true;
     dataDirty_ = true;
+    regionsDirty_ = true;
     update();
 }
 
@@ -414,6 +444,7 @@ void GraphCanvasItem::applyCamera(double scale, double offsetX, double offsetY) 
     offsetX_ = offsetX;
     offsetY_ = offsetY;
     if (collapsed() != wasCollapsed) dataDirty_ = true;
+    if (zoomed) regionsDirty_ = true;
     viewMoved();
     if (zoomed) emit zoomChanged();
 }
@@ -464,6 +495,13 @@ void GraphCanvasItem::fitToContent() {
     moveCamera(scale, width() / 2.0 - center.x() * scale, height() / 2.0 - center.y() * scale);
 }
 
+void GraphCanvasItem::fitWorldRect(double x, double y, double width, double height) {
+    if (this->width() <= 0.0 || this->height() <= 0.0 || width <= 0.0 || height <= 0.0) return;
+    double scale = std::min((this->width() - 2.0 * kFitMarginPx) / width, (this->height() - 2.0 * kFitMarginPx) / height);
+    scale = std::clamp(scale, kMinScale, kFitMaxScale);
+    moveCamera(scale, this->width() / 2.0 - (x + width / 2.0) * scale, this->height() / 2.0 - (y + height / 2.0) * scale);
+}
+
 void GraphCanvasItem::zoomAt(double factor, double screenX, double screenY) {
     double scale = std::clamp(scale_ * factor, kMinScale, kMaxScale);
     double worldX = (screenX - offsetX_) / scale_;
@@ -509,6 +547,25 @@ QPointF GraphCanvasItem::toScreen(QPointF world) const {
     return QPointF(world.x() * scale_ + offsetX_, world.y() * scale_ + offsetY_);
 }
 
+QPointF GraphCanvasItem::mapToScreen(double worldX, double worldY) const { return toScreen(QPointF(worldX, worldY)); }
+
+QPointF GraphCanvasItem::mapToWorld(double screenX, double screenY) const {
+    return QPointF((screenX - offsetX_) / scale_, (screenY - offsetY_) / scale_);
+}
+
+QString GraphCanvasItem::nodeAt(double screenX, double screenY) const {
+    if (collapsed()) return {};
+    QPointF world = mapToWorld(screenX, screenY);
+    int hit = hitTest(world.x(), world.y());
+    return hit >= 0 ? nodes_[static_cast<size_t>(hit)].id : QString();
+}
+
+void GraphCanvasItem::handleDoubleClick(double screenX, double screenY) {
+    if (!nodeAt(screenX, screenY).isEmpty()) return;
+    QPointF world = mapToWorld(screenX, screenY);
+    emit backgroundDoubleClicked(world.x(), world.y());
+}
+
 QString GraphCanvasItem::groupAt(double screenX, double screenY) const {
     if (!collapsed()) return {};
     for (const auto& group : summarizeGroups(nodes_, currentPositions_)) {
@@ -530,6 +587,29 @@ int GraphCanvasItem::hitTest(double worldX, double worldY) const {
         if (dx * dx + dy * dy <= radiusSq) return i;
     }
     return -1;
+}
+
+void GraphCanvasItem::buildRegions(SceneVertices& out, const Theme& theme) const {
+    double outlineWidth = 1.0 / scale_;
+    for (const auto& region : regions_) {
+        if (region.rect.isEmpty()) continue;
+        int hueIndex = ((region.hue % kRegionHueCount) + kRegionHueCount) % kRegionHueCount;
+        QColor hue = theme.regionHues[static_cast<size_t>(hueIndex)];
+        QColor fill = hue;
+        fill.setAlphaF(kRegionFillAlpha);
+        QColor line = hue;
+        line.setAlphaF(kRegionOutlineAlpha);
+        auto outer = roundedRectOutline(region.rect, kRegionCornerRadius, kRegionCornerSegments);
+        auto inner = roundedRectOutline(region.rect.adjusted(outlineWidth, outlineWidth, -outlineWidth, -outlineWidth),
+                                        kRegionCornerRadius - outlineWidth, kRegionCornerSegments);
+        QPointF center = region.rect.center();
+        for (size_t i = 0; i < outer.size(); ++i) {
+            size_t next = (i + 1) % outer.size();
+            appendTriangle(out.regionFill, center, outer[i], outer[next], fill);
+            appendTriangle(out.regionOutline, outer[i], outer[next], inner[next], line);
+            appendTriangle(out.regionOutline, outer[i], inner[next], inner[i], line);
+        }
+    }
 }
 
 void GraphCanvasItem::buildHighlight(SceneVertices& out, const Theme& theme) const {
@@ -555,14 +635,15 @@ void GraphCanvasItem::buildNodes(SceneVertices& out, const Theme& theme) const {
         bool isNeighbor = hasHighlight && neighborIds_.contains(node.id);
         int alpha = node.ghost ? kGhostAlphaPercent : 100;
         bool dimmed = hasHighlight && !isSelected && !isNeighbor;
-        QColor border = faded(theme.nodeBorder, alpha);
-        QColor fill = faded(node.color.isValid() ? node.color : theme.nodeFill, alpha);
+        QColor halo = faded(theme.nodeBorder, alpha);
+        QColor fill = faded(theme.nodeFill, alpha);
         if (dimmed) {
-            border.setAlpha(std::min(border.alpha(), kDimmedAlpha));
+            halo.setAlpha(std::min(halo.alpha(), kDimmedAlpha));
             fill.setAlpha(std::min(fill.alpha(), kDimmedAlpha));
         }
-        appendDisc(out.borders, center, kNodeRadius + kNodeBorderWidth, border);
-        appendDisc(out.fills, center, kNodeRadius, fill);
+        float radius = kNodeRadius + static_cast<float>(std::min(node.degree, kMaxDegreeGrowth)) * kDegreeGrowth;
+        appendDisc(out.borders, center, radius + kNodeHalo, halo);
+        appendDisc(out.fills, center, radius, fill);
         appendMemoryRing(out.memory, center, kMemoryRingRadius, kMemoryRingThickness, shownRecallOf(node.id), theme,
                          dimmed ? std::min(alpha, kDimmedRingAlphaPercent) : alpha);
     }
@@ -610,7 +691,7 @@ void GraphCanvasItem::buildGroups(SceneVertices& out, const Theme& theme) const 
     float radius = kGroupRadiusPx * pixel;
     for (const auto& group : summarizeGroups(nodes_, currentPositions_)) {
         Vec2 center{static_cast<float>(group.center.x()), static_cast<float>(group.center.y())};
-        appendDisc(out.borders, center, radius + kNodeBorderWidth * pixel, theme.nodeBorder);
+        appendDisc(out.borders, center, radius + kGroupBorderWidth * pixel, theme.nodeBorder);
         appendDisc(out.fills, center, radius, theme.nodeFill);
         appendMemoryRing(out.memory, center, radius + 4.0f * pixel, 3.0f * pixel, group.meanRecall, theme, 100);
     }
@@ -666,6 +747,7 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         backgroundDirty_ = true;
         dataDirty_ = true;
         labelsDirty_ = true;
+        regionsDirty_ = true;
     }
     auto* background = container->childAtIndex(0);
     auto* root = static_cast<QSGTransformNode*>(container->childAtIndex(1));
@@ -682,6 +764,13 @@ QSGNode* GraphCanvasItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*
         upload(background, backgroundDots(static_cast<float>(width()), static_cast<float>(height()), offsetX_,
                                           offsetY_, scale_, theme.dot));
         backgroundDirty_ = false;
+    }
+    if (regionsDirty_ || dataDirty_) {
+        SceneVertices scene;
+        if (!collapsed()) buildRegions(scene, theme);
+        upload(root->childAtIndex(RegionFillLayer), scene.regionFill);
+        upload(root->childAtIndex(RegionOutlineLayer), scene.regionOutline);
+        regionsDirty_ = false;
     }
     if (dataDirty_) {
         cullRect_ = cullRectFor(viewportInWorld(offsetX_, offsetY_, scale_, width(), height()));
@@ -756,6 +845,11 @@ void GraphCanvasItem::mouseReleaseEvent(QMouseEvent* event) {
     }
     dragging_ = false;
     dragMoved_ = false;
+    event->accept();
+}
+
+void GraphCanvasItem::mouseDoubleClickEvent(QMouseEvent* event) {
+    if (event->button() == Qt::LeftButton) handleDoubleClick(event->position().x(), event->position().y());
     event->accept();
 }
 

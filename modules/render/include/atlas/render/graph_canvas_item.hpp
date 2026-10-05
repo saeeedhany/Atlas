@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "atlas/render/canvas_geometry.hpp"
+#include "atlas/render/region_geometry.hpp"
 #include "atlas/render/theme.hpp"
 
 class QSGTextNode;
@@ -31,6 +32,7 @@ struct RenderNode {
     QString groupKey;
     QString groupLabel;
     bool hinted = false;
+    int degree = 0;
 };
 
 enum class EdgeMark { None, Hidden, Recalled, Partial, Missed, Confused };
@@ -43,6 +45,12 @@ struct RenderEdge {
     bool contrast = false;
     bool ghost = false;
     EdgeMark mark = EdgeMark::None;
+};
+
+struct RenderRegion {
+    QString key;
+    QRectF rect;
+    int hue = 0;
 };
 
 struct RenderGroup {
@@ -75,6 +83,9 @@ public:
     const std::vector<RenderNode>& nodes() const { return nodes_; }
     const std::vector<RenderEdge>& edges() const { return edges_; }
 
+    void setRegions(std::vector<RenderRegion> regions);
+    const std::vector<RenderRegion>& regions() const { return regions_; }
+
     void setTheme(ThemeMode mode);
     ThemeMode theme() const { return themeMode_; }
 
@@ -94,6 +105,11 @@ public:
     Q_INVOKABLE void zoomAt(double factor, double screenX, double screenY);
     Q_INVOKABLE QVariant screenPositionOf(const QString& id) const;
     Q_INVOKABLE QString linkAt(double screenX, double screenY) const;
+    Q_INVOKABLE QPointF mapToScreen(double worldX, double worldY) const;
+    Q_INVOKABLE QPointF mapToWorld(double screenX, double screenY) const;
+    Q_INVOKABLE QString nodeAt(double screenX, double screenY) const;
+    Q_INVOKABLE void fitWorldRect(double x, double y, double width, double height);
+    Q_INVOKABLE void handleDoubleClick(double screenX, double screenY);
 
     double shownRecallOf(const QString& id) const;
     const std::unordered_set<QString>& highlightedNeighbors() const { return neighborIds_; }
@@ -109,12 +125,14 @@ signals:
     void linkHovered(QString id);
     void viewChanged();
     void animatedChanged();
+    void backgroundDoubleClicked(double worldX, double worldY);
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void hoverMoveEvent(QHoverEvent* event) override;
     void hoverLeaveEvent(QHoverEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
@@ -139,6 +157,7 @@ private:
     void viewMoved();
     bool insideCull(QPointF world) const;
     void fitOnce();
+    void buildRegions(SceneVertices& out, const Theme& theme) const;
     void buildHighlight(SceneVertices& out, const Theme& theme) const;
     void buildNodes(SceneVertices& out, const Theme& theme) const;
     void buildEdges(SceneVertices& out, const Theme& theme) const;
@@ -147,6 +166,7 @@ private:
 
     std::vector<RenderNode> nodes_;
     std::vector<RenderEdge> edges_;
+    std::vector<RenderRegion> regions_;
     std::unordered_map<QString, LabelLayout> labelLayouts_;
     std::unordered_map<QString, LabelLayout> groupLayouts_;
 
@@ -174,6 +194,7 @@ private:
     bool dataDirty_ = true;
     bool highlightDirty_ = true;
     bool labelsDirty_ = true;
+    bool regionsDirty_ = true;
 
     bool animated_ = true;
     bool fitted_ = false;

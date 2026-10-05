@@ -226,3 +226,53 @@ TEST_CASE("memory rings ease to new values unless motion is reduced") {
     CHECK(canvas.shownRecallOf("a") == doctest::Approx(0.5));
     CHECK(canvas.shownRecallOf("missing") == -1.0);
 }
+
+TEST_CASE("screen and world mapping are inverse and find nodes") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    canvas.setGraphData({makeNode("a", 100, 50, "")}, {});
+    QPointF screen = canvas.mapToScreen(100, 50);
+    QPointF world = canvas.mapToWorld(screen.x(), screen.y());
+    CHECK(world.x() == doctest::Approx(100.0));
+    CHECK(world.y() == doctest::Approx(50.0));
+    CHECK(canvas.nodeAt(screen.x(), screen.y()) == "a");
+    CHECK(canvas.nodeAt(screen.x() + 200, screen.y()).isEmpty());
+}
+
+TEST_CASE("double clicking empty board reports the world point") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    canvas.setGraphData({makeNode("a", 0, 0, "")}, {});
+    QPointF reported(-1, -1);
+    int calls = 0;
+    QObject::connect(&canvas, &GraphCanvasItem::backgroundDoubleClicked, [&](double x, double y) {
+        reported = QPointF(x, y);
+        ++calls;
+    });
+    QPointF onNode = canvas.mapToScreen(0, 0);
+    canvas.handleDoubleClick(onNode.x(), onNode.y());
+    CHECK(calls == 0);
+    QPointF empty = canvas.mapToScreen(300, 200);
+    canvas.handleDoubleClick(empty.x(), empty.y());
+    REQUIRE(calls == 1);
+    CHECK(reported.x() == doctest::Approx(300.0));
+    CHECK(reported.y() == doctest::Approx(200.0));
+}
+
+TEST_CASE("regions are kept and fitting a world rect shows it") {
+    GraphCanvasItem canvas;
+    canvas.setSize(QSizeF(800, 600));
+    canvas.setProperty("animated", false);
+    canvas.setRegions({RenderRegion{"t", QRectF(1000, 1000, 400, 200), 2}});
+    REQUIRE(canvas.regions().size() == 1);
+    CHECK(canvas.regions()[0].hue == 2);
+    canvas.fitWorldRect(1000, 1000, 400, 200);
+    QPointF topLeft = canvas.mapToScreen(1000, 1000);
+    QPointF bottomRight = canvas.mapToScreen(1400, 1200);
+    CHECK(topLeft.x() >= 0.0);
+    CHECK(bottomRight.x() <= 800.0);
+    CHECK(topLeft.y() >= 0.0);
+    CHECK(bottomRight.y() <= 600.0);
+}

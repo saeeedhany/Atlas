@@ -19,6 +19,7 @@ if (ATLAS_BUILD_UI)
         test_canvas_main.cpp
         test_canvas_view.cpp
         test_graph_canvas_item.cpp
+        test_region_geometry.cpp
     )
     target_link_libraries(atlas_render_canvas_tests PRIVATE atlas_render_canvas)
     target_include_directories(atlas_render_canvas_tests PRIVATE ${CMAKE_SOURCE_DIR}/third_party/doctest)
